@@ -1,0 +1,39 @@
+# ---------- JS / React Native ----------
+node_modules/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/.cxx/
+apps/mobile/android/local.properties
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+*.keystore
+!debug.keystore
+
+# Metro / RN caches
+.metro-health-check*
+*.log
+yarn-error.log
+npm-debug.log*
+
+# ---------- Python / Django ----------
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+staticfiles/
+
+# ---------- env / secrets ----------
+.env
+.env.local
+.env.*.local
+
+# ---------- editors / OS ----------
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# ---------- misc ----------
+*.tmp
