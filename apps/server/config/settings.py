@@ -74,6 +74,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# 커스텀 유저 모델 (google_uid 기반 인증) — 최초 마이그레이션 전에 반드시 등록.
+AUTH_USER_MODEL = 'accounts.User'
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
