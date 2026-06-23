@@ -194,3 +194,8 @@ if _cors:
 else:
     # Dev default: allow all origins so the RN Metro/dev client can connect.
     CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+
+# Google OAuth — RN 클라이언트가 보낸 ID 토큰 검증 시 audience 로 사용.
+# 비어있으면(dev) audience 검사를 건너뛴다.
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
