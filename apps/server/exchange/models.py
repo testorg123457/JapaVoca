@@ -34,6 +34,7 @@ class GiftExchange(models.Model):
     issued_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        db_table = 'tbl_exchange_giftexchange'
         verbose_name = '기프티콘 교환'
         verbose_name_plural = '기프티콘 교환'
         indexes = [
@@ -66,6 +67,7 @@ class AdRewardLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_exchange_adrewardlog'
         verbose_name = '광고 보상 로그'
         verbose_name_plural = '광고 보상 로그'
         indexes = [

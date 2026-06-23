@@ -83,7 +83,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['email']
 
     class Meta:
-        db_table = 'accounts_user'
+        db_table = 'tbl_accounts_user'
         verbose_name = '유저'
         verbose_name_plural = '유저'
 

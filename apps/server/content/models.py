@@ -17,6 +17,8 @@ class Kanji(models.Model):
 
     character = models.CharField(max_length=10, unique=True, help_text='한자')
     meaning_ko = models.TextField(help_text='한국어 뜻 (예: 바칠 공)')
+    meaning_ko_detail = models.TextField(blank=True, default='')
+    # 한국어 훈독 상세 설명 (예: meaning_ko="한 일", meaning_ko_detail="하나 일")
     components = models.TextField(blank=True, help_text='구성자')
     stroke_count = models.PositiveIntegerField(null=True, blank=True, help_text='획수')
     on_reading = models.CharField(max_length=100, blank=True, help_text='음독')
@@ -29,6 +31,7 @@ class Kanji(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_content_kanji'
         verbose_name = '한자'
         verbose_name_plural = '한자'
         indexes = [models.Index(fields=['jlpt_level'])]
@@ -56,6 +59,7 @@ class Word(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_content_word'
         verbose_name = '단어'
         verbose_name_plural = '단어'
         indexes = [
@@ -80,6 +84,7 @@ class WordMeaning(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_content_wordmeaning'
         verbose_name = '단어 뜻'
         verbose_name_plural = '단어 뜻'
         ordering = ['word', 'sense_no']

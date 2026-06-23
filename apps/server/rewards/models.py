@@ -28,6 +28,7 @@ class Wallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'tbl_rewards_wallet'
         verbose_name = '지갑'
         verbose_name_plural = '지갑'
         constraints = [
@@ -77,6 +78,7 @@ class Ledger(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_rewards_ledger'
         verbose_name = '원장'
         verbose_name_plural = '원장'
         indexes = [
@@ -124,6 +126,7 @@ class CashBox(models.Model):
     opened_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        db_table = 'tbl_rewards_cashbox'
         verbose_name = '캐시상자'
         verbose_name_plural = '캐시상자'
         indexes = [
@@ -147,6 +150,7 @@ class Attendance(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_rewards_attendance'
         verbose_name = '출석'
         verbose_name_plural = '출석'
         constraints = [
@@ -177,6 +181,7 @@ class Daily(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'tbl_rewards_daily'
         verbose_name = '데일리'
         verbose_name_plural = '데일리'
         constraints = [

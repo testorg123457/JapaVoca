@@ -12,7 +12,7 @@
 
 ## accounts
 
-### accounts_user (User) — 커스텀 유저
+### tbl_accounts_user (User) — 커스텀 유저
 `AbstractBaseUser` + `PermissionsMixin`. `USERNAME_FIELD='google_uid'`, `REQUIRED_FIELDS=['email']`.
 
 | 컬럼 | 타입 | 비고 |
@@ -36,7 +36,7 @@ Enum: `JLPTLevel(N1~N5)`, `Status(active/flagged/banned)`
 
 ## content
 
-### content_kanji (Kanji) — 한자(~2,200)
+### tbl_content_kanji (Kanji) — 한자(~2,200)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -52,7 +52,7 @@ Enum: `JLPTLevel(N1~N5)`, `Status(active/flagged/banned)`
 
 Index: `(jlpt_level)`
 
-### content_word (Word) — 단어(~7,000)
+### tbl_content_word (Word) — 단어(~7,000)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -65,7 +65,7 @@ Index: `(jlpt_level)`
 
 Enum: `WordType(kana/kanji)` · Index: `(surface)`, `(jlpt_level)`
 
-### content_wordmeaning (WordMeaning) — 단어 뜻 (Word 1:N)
+### tbl_content_wordmeaning (WordMeaning) — 단어 뜻 (Word 1:N)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -81,7 +81,7 @@ Unique: `(word, sense_no)`
 
 ## learning
 
-### learning_srsstate (SrsState) — SRS 현재 상태(유저×항목)
+### tbl_learning_srsstate (SrsState) — SRS 현재 상태(유저×항목)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -99,7 +99,7 @@ Unique: `(word, sense_no)`
 Enum: `ItemType(word/kanji)`(모듈공용), `LastResult(correct/wrong)`
 Unique: `(user, item_type, item_id)` · Index: `(user, due_at)`
 
-### learning_quizlog (QuizLog) — 풀이 이력 (7일 보관)
+### tbl_learning_quizlog (QuizLog) — 풀이 이력 (7일 보관)
 > 보관 정책: `created_at < now()-7d` 행은 배치 삭제. 장기 통계는 rewards.Daily로 보존.
 
 | 컬럼 | 타입 | 비고 |
@@ -124,7 +124,7 @@ Index: `(user, created_at)`, `(created_at)`(7일 삭제용)
 ## rewards
 > ⚠️ 모든 캐시 변동 = Wallet 잔액 갱신 + Ledger 기록을 **하나의 트랜잭션**으로. `wallet.balance == ledger earn합−use합`.
 
-### rewards_wallet (Wallet) — 캐시 잔고(유저 1:1)
+### tbl_rewards_wallet (Wallet) — 캐시 잔고(유저 1:1)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | user_id | OneToOne(User) PK CASCADE | related_name=wallet |
@@ -136,7 +136,7 @@ Index: `(user, created_at)`, `(created_at)`(7일 삭제용)
 
 Constraint: `CHECK(balance >= 0)`
 
-### rewards_ledger (Ledger) — 통합 원장 (append-only, 불변)
+### tbl_rewards_ledger (Ledger) — 통합 원장 (append-only, 불변)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -153,7 +153,7 @@ Constraint: `CHECK(balance >= 0)`
 Enum: `Direction(earn/use)`, `Reason(...)`
 Index: `(user, created_at)`, `(user, direction, created_at)` · Constraint: `CHECK(amount > 0)`
 
-### rewards_cashbox (CashBox) — 캐시상자 인벤토리
+### tbl_rewards_cashbox (CashBox) — 캐시상자 인벤토리
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -167,7 +167,7 @@ Index: `(user, created_at)`, `(user, direction, created_at)` · Constraint: `CHE
 
 Enum: `Grade(...)`, `Status(...)` · Index: `(user, status)`
 
-### rewards_attendance (Attendance) — 출석/연속출석
+### tbl_rewards_attendance (Attendance) — 출석/연속출석
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -180,7 +180,7 @@ Enum: `Grade(...)`, `Status(...)` · Index: `(user, status)`
 
 Unique: `(user, date)`
 
-### rewards_daily (Daily) — 데일리 현황/일일상한
+### tbl_rewards_daily (Daily) — 데일리 현황/일일상한
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -201,7 +201,7 @@ Unique: `(user, date)`
 
 ## exchange
 
-### exchange_giftexchange (GiftExchange) — 기프티콘 교환
+### tbl_exchange_giftexchange (GiftExchange) — 기프티콘 교환
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |
@@ -217,7 +217,7 @@ Unique: `(user, date)`
 
 Enum: `Status(...)` · Index: `(user, created_at)`, `(status)`
 
-### exchange_adrewardlog (AdRewardLog) — 광고 SSV 검증 로그
+### tbl_exchange_adrewardlog (AdRewardLog) — 광고 SSV 검증 로그
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | BigAutoField PK | |

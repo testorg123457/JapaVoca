@@ -37,6 +37,7 @@ class SrsState(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'tbl_learning_srsstate'
         verbose_name = 'SRS 상태'
         verbose_name_plural = 'SRS 상태'
         constraints = [
@@ -88,6 +89,7 @@ class QuizLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tbl_learning_quizlog'
         verbose_name = '퀴즈 로그'
         verbose_name_plural = '퀴즈 로그'
         indexes = [

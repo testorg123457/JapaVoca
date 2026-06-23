@@ -5,9 +5,9 @@ from .models import Kanji, Word, WordMeaning
 
 @admin.register(Kanji)
 class KanjiAdmin(admin.ModelAdmin):
-    list_display = ('id', 'character', 'meaning_ko', 'stroke_count', 'jlpt_level')
+    list_display = ('id', 'character', 'meaning_ko', 'meaning_ko_detail', 'stroke_count', 'jlpt_level')
     list_filter = ('jlpt_level',)
-    search_fields = ('character', 'meaning_ko', 'on_reading', 'kun_reading')
+    search_fields = ('character', 'meaning_ko', 'meaning_ko_detail', 'on_reading', 'kun_reading')
 
 
 class WordMeaningInline(admin.TabularInline):
