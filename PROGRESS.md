@@ -13,10 +13,11 @@
 7. JWT 로그인 + 구글 소셜 인증 API — 구글 ID토큰 검증→유저 get_or_create→JWT 발급(`/api/auth/google`), `/me` 조회·수정, 토큰 갱신. 스모크 테스트 통과.
 8. 캐시 트랜잭션 서비스 — `rewards/services.py` earn/use(원장+잔액 한 트랜잭션, select_for_update로 음수/이중차감 방지), 상자 개봉(`/api/rewards/boxes/<id>/open`)·지갑 조회. 정합성 검증 통과.
 9. 퀴즈 출제 API — `/api/quiz/next`(SRS 기반 출제+4지선다 오답), `/api/quiz/answer`(서명 토큰 서버 채점+SM-2+QuizLog+Daily+정답 시 상자). 스모크 통과.
+10. QuizLog 7일 배치 삭제 — management command(`delete_old_quiz_logs --dry-run`) + Celery task(max_retries=0) + Beat 매일 03:00(KST). 테스트 7건 통과(경계값 포함).
 
 ## ⬜ 다음 할 일
 
 1. 콘텐츠 시드 (한자/단어 임포트)
-2. QuizLog 7일 보관 삭제 배치
-3. 기프티콘 교환 API (멱등성 + 캐시 차감/롤백)
-4. AdMob SSV 검증 연동
+2. 기프티콘 교환 API (멱등성 + 캐시 차감/롤백)
+3. AdMob SSV 검증 연동
+4. Celery worker/beat 실행 운영 문서화 (README)

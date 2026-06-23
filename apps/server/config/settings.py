@@ -61,6 +61,9 @@ INSTALLED_APPS = [
     'learning',
     'rewards',
     'exchange',
+
+    # Celery Beat (DB 기반 주기 스케줄러)
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -199,3 +202,11 @@ else:
 # Google OAuth — RN 클라이언트가 보낸 ID 토큰 검증 시 audience 로 사용.
 # 비어있으면(dev) audience 검사를 건너뛴다.
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+
+
+# Celery — 주기 배치(QuizLog 7일 삭제 등). 브로커는 Redis.
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+# crontab(hour=3) 을 서버 로컬타임 기준으로 해석하도록 TIME_ZONE 과 맞춘다.
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = False
