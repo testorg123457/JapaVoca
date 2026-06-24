@@ -12,9 +12,10 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { View, useColorScheme } from 'react-native';
 import { vars } from 'nativewind';
 
-import { colorVarName, semantic, type ColorScheme } from './tokens';
+import { colorVarName, semantic, type ColorScheme, type SemanticColorToken } from './tokens';
 
-type SemanticColors = (typeof semantic)['light'];
+/** 토큰명 → 색 문자열. light/dark 가 값(리터럴)이 달라도 동일 형태로 다룬다. */
+type SemanticColors = Record<SemanticColorToken, string>;
 
 function buildVars(scheme: ColorScheme) {
   const set = semantic[scheme];

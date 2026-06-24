@@ -1,30 +1,30 @@
 /**
- * Button — NativeWind 기반 공용 버튼 (Arco풍).
+ * Button — NativeWind 기반 공용 버튼 (배달의민족 배시시 스타일).
  *
  * variant:
- *  - filled  : 브랜드 블루 채움 + on-brand(흰) 텍스트 (= primary)
- *  - soft    : brand-subtle 면 + brand 텍스트
- *  - outline : 면(bg-primary) + 0.5px 보더(border-secondary) + 기본 텍스트 (= secondary)
- * 눌렀을 때 살짝 축소(active:scale-[0.98]). 라운드는 lg(12).
+ *  - filled  : brand-400(#2AC1BC) 채움 + 흰 텍스트, 눌림 brand-500 (= primary)
+ *  - soft    : brand-subtle(연민트) 면 + brand 텍스트 (tonal)
+ *  - outline : 흰 면 + brand-400 보더 + brand-400 텍스트 (= secondary)
+ * 높이 52(배민식 넉넉한 터치 타겟), radius md(12), 텍스트 Bold.
  */
 import React from 'react';
 import { Pressable, type PressableProps } from 'react-native';
 
-import { hairline, typography } from '../theme/tokens';
+import { fontFamily } from '../theme/tokens';
 import AppText from './AppText';
 
 type Variant = 'filled' | 'soft' | 'outline';
 
 const boxByVariant: Record<Variant, string> = {
-  filled: 'bg-brand',
-  soft: 'bg-brand-subtle',
-  outline: 'bg-bg-primary border-border-secondary',
+  filled: 'bg-brand active:bg-brand-active',
+  soft: 'bg-brand-subtle active:bg-brand-subtle-active',
+  outline: 'bg-bg-primary border border-brand active:bg-brand-subtle',
 };
 
 const textByVariant: Record<Variant, string> = {
   filled: 'text-on-brand',
   soft: 'text-brand',
-  outline: 'text-text-primary',
+  outline: 'text-brand',
 };
 
 export interface ButtonProps extends Omit<PressableProps, 'children'> {
@@ -43,15 +43,14 @@ export function Button({
   return (
     <Pressable
       disabled={disabled}
-      className={`rounded-lg px-xl py-lg items-center justify-center active:scale-[0.98] ${
+      className={`h-[52px] rounded-md px-xl items-center justify-center ${
         boxByVariant[variant]
       } ${disabled ? 'opacity-40' : ''} ${className}`}
-      style={variant === 'outline' ? { borderWidth: hairline } : undefined}
       {...rest}>
       <AppText
         variant="body"
         className={textByVariant[variant]}
-        style={{ fontFamily: typography.title.fontFamily }}>
+        style={{ fontFamily: fontFamily.bold, fontSize: 16 }}>
         {title}
       </AppText>
     </Pressable>
