@@ -4,11 +4,12 @@
   - 정답 판정은 서버에서만. 클라이언트가 보낸 is_correct 를 신뢰하지 않는다.
   - 정답 인덱스는 *서명된 토큰*(TTL)에 담아 내려보내, 클라가 정답을 알 수 없게 한다.
 """
+import hashlib
 import random
 from datetime import timedelta
 
 from django.core import signing
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from content.models import Kanji, Word, WordMeaning
@@ -52,6 +53,31 @@ def _item_texts(item_type, item_id):
     if not kanji:
         return '', ''
     return kanji.character, kanji.meaning_ko
+
+
+def _item_extra(item_type, item_id):
+    """(reading, jlpt_level) 반환. 문제 카드 부가 표시용.
+
+    reading: 단어는 Word.reading(표기와 같으면=가나 단어면 생략), 한자는 음·훈독 결합.
+    jlpt_level: 미태깅이면 빈 문자열.
+    """
+    if item_type == ItemType.WORD:
+        word = (
+            Word.objects.filter(id=item_id)
+            .only('reading', 'surface', 'jlpt_level').first()
+        )
+        if not word:
+            return '', ''
+        reading = word.reading if (word.reading and word.reading != word.surface) else ''
+        return reading, (word.jlpt_level or '')
+    kanji = (
+        Kanji.objects.filter(id=item_id)
+        .only('on_reading', 'kun_reading', 'jlpt_level').first()
+    )
+    if not kanji:
+        return '', ''
+    reading = ' · '.join(p for p in (kanji.on_reading, kanji.kun_reading) if p)
+    return reading, (kanji.jlpt_level or '')
 
 
 def _pick_item_id(user, item_type):
@@ -124,6 +150,11 @@ def build_question(user, mode):
     random.shuffle(options)
     correct_index = options.index(correct_text)
 
+    # 부가 표시: 읽기는 표기(단어/한자)를 묻는 word_to_meaning 일 때만 의미가 있다.
+    # (meaning_to_word 는 prompt 가 한국어 뜻이라 읽기를 같이 주면 정답이 노출됨)
+    reading_raw, jlpt_level = _item_extra(item_type, item_id)
+    reading = reading_raw if question_type == QuizLog.QuestionType.WORD_TO_MEANING else ''
+
     token = signing.dumps(
         {'it': item_type, 'id': int(item_id), 'qt': question_type, 'ci': correct_index},
         salt=QUESTION_SALT,
@@ -134,6 +165,8 @@ def build_question(user, mode):
         'item_type': item_type,
         'question_type': question_type,
         'prompt': prompt,
+        'reading': reading,
+        'jlpt_level': jlpt_level,
         'choices': [{'index': i, 'text': t} for i, t in enumerate(options)],
     }
 
@@ -177,6 +210,13 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
     question_type = payload['qt']
     is_correct = int(choice_index) == int(payload['ci'])
 
+    # 0) 멱등성 — 같은 토큰의 재채점(더블탭/리플레이)을 차단. 흔한 경우는 사전
+    #    조회로 빠르게 거부하고, 동시 요청 경합은 QuizLog.token_hash unique 가
+    #    최종 방어한다(아래 4번).
+    token_hash = hashlib.sha256(question_token.encode()).hexdigest()
+    if QuizLog.objects.filter(token_hash=token_hash).exists():
+        raise InvalidQuestionToken('이미 채점된 문제입니다.')
+
     # 1) SRS 상태 갱신(없으면 생성).
     state, _ = SrsState.objects.select_for_update().get_or_create(
         user=user, item_type=item_type, item_id=item_id,
@@ -207,11 +247,18 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
         k = Kanji.objects.filter(id=item_id).only('jlpt_level').first()
         jlpt = (k.jlpt_level or '') if k else ''
 
-    QuizLog.objects.create(
-        user=user, mode=item_type, item_type=item_type, item_id=item_id,
-        question_type=question_type, is_correct=is_correct,
-        answer_ms=answer_ms, jlpt_level=jlpt, box=box,
-    )
+    # token_hash unique 충돌 = 동시 요청이 사전 조회를 함께 통과한 경우.
+    # savepoint(중첩 atomic) 안에서 create 하여 IntegrityError 시 깔끔히 거부하고,
+    # 바깥 트랜잭션 전체(SRS/상자/Daily)를 롤백한다.
+    try:
+        with transaction.atomic():
+            QuizLog.objects.create(
+                user=user, mode=item_type, item_type=item_type, item_id=item_id,
+                question_type=question_type, is_correct=is_correct,
+                answer_ms=answer_ms, jlpt_level=jlpt, box=box, token_hash=token_hash,
+            )
+    except IntegrityError as exc:
+        raise InvalidQuestionToken('이미 채점된 문제입니다.') from exc
 
     daily.quiz_count += 1
     if is_correct:

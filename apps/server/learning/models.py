@@ -80,6 +80,12 @@ class QuizLog(models.Model):
     answer_ms = models.PositiveIntegerField(
         null=True, blank=True, help_text='응답 소요 시간(ms), 어뷰징 탐지용',
     )
+    # 채점 멱등성 — 같은 문제 토큰의 재채점(더블탭/리플레이)을 unique 로 차단.
+    # 기존 행 호환을 위해 null 허용(Postgres 는 NULL 다중 허용 → unique 무영향).
+    token_hash = models.CharField(
+        max_length=64, null=True, blank=True, unique=True,
+        help_text='question_token 의 sha256. 재채점 방지용.',
+    )
     jlpt_level = models.CharField(max_length=2, blank=True, help_text='출제 당시 문제 급수')
     # 정답으로 생성된 상자(상자가 삭제돼도 로그는 남도록 SET_NULL).
     box = models.ForeignKey(
