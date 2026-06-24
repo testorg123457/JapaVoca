@@ -24,6 +24,8 @@ export type MainStackParamList = {
   BottomTab: NavigatorScreenParams<BottomTabParamList>;
   Quiz: undefined;
   BoxOpen: { boxIds: number[] };
+  /** DEBUG 전용 — 디자인 시스템 쇼케이스(설정에서 진입). */
+  StyleGuide: undefined;
 };
 
 export type BottomTabParamList = {

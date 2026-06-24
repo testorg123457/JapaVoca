@@ -5,6 +5,9 @@
  * 응답에 오지 않으므로 choices[correct_index].text 로 표시한다. 일일 상한
  * 도달은 "정답인데 box_id가 null"로 판별한다(서버 실제 상한과 진행바 표시
  * 상한이 달라도 정확). 퀴즈 중 서버 에러는 조용히 넘기지 않고 홈으로 보낸다.
+ *
+ * 디자인: Duolingo식 — 큰 문제 카드 + 번호 배지가 달린 큼직한 선택지(누를 맛) +
+ * 정답/오답을 색·아이콘으로 즉각 피드백. 색은 테마(다크 대응) 토큰으로.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
@@ -20,8 +23,9 @@ import Animated, {
 import type { AxiosError } from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AppText, Button } from '../../components';
-import { colors, radius } from '../../theme/tokens';
+import { AppText, Button, Icon, PressableScale, ProgressBar, Tag } from '../../components';
+import { shadowStyle } from '../../theme/tokens';
+import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   getNextQuiz,
   submitAnswer,
@@ -56,19 +60,10 @@ function choiceVisual(
   return isMine ? 'wrongFilled' : 'default';
 }
 
-const VISUAL_STYLE: Record<
-  ChoiceVisual,
-  { backgroundColor: string; borderColor: string; textColor: string }
-> = {
-  default: { backgroundColor: colors.surface, borderColor: colors.border, textColor: colors.textStrong },
-  correctFilled: { backgroundColor: colors.success, borderColor: colors.success, textColor: '#FFFFFF' },
-  correctOutline: { backgroundColor: colors.surface, borderColor: colors.success, textColor: colors.success },
-  wrongFilled: { backgroundColor: colors.danger, borderColor: colors.danger, textColor: '#FFFFFF' },
-};
-
 export default function QuizScreen({
   navigation,
 }: MainStackScreenProps<'Quiz'>): React.JSX.Element {
+  const c = useThemeColors();
   const queryClient = useQueryClient();
   const daily = useDailyToday();
 
@@ -170,7 +165,7 @@ export default function QuizScreen({
       setResult(res);
 
       if (res.is_correct) {
-        setSessionCorrect((c) => c + 1);
+        setSessionCorrect((prev) => prev + 1);
         if (res.box_id !== null) {
           setPendingBoxIds((ids) => [...ids, res.box_id as number]);
         }
@@ -209,37 +204,32 @@ export default function QuizScreen({
   const progress = Math.min(1, (daily.data?.boxes_earned ?? 0) / MAX_DAILY_BOXES);
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
       {/* 1. 상단바 */}
       <View className="flex-row items-center justify-between px-xl py-md">
-        <Pressable onPress={confirmExit} hitSlop={12}>
-          <AppText variant="title" className="text-text-weak">
-            ✕
-          </AppText>
+        <Pressable
+          onPress={confirmExit}
+          hitSlop={12}
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-60">
+          <Icon name="close" size={24} color={c['text-secondary']} />
         </Pressable>
-        <AppText variant="body" className="text-text">
-          오늘 {sessionCorrect}문제 정답
-        </AppText>
+        <Tag label={`정답 ${sessionCorrect}`} variant="brand" leftIcon="check" />
       </View>
-      <View
-        className="mx-xl mb-md overflow-hidden rounded-pill bg-surface"
-        style={{ height: 8 }}>
-        <View
-          className="h-full rounded-pill bg-brand"
-          style={{ width: `${progress * 100}%` }}
-        />
+      <View className="mx-xl mb-md">
+        <ProgressBar progress={progress} height={8} />
       </View>
 
       {noContent ? (
         <View className="flex-1 items-center justify-center gap-lg px-xl">
-          <AppText variant="title" className="text-text-strong">
-            오늘 복습할 단어가 없어요 🎊
+          <Icon name="sparkles" size={48} color={c.amber} />
+          <AppText variant="title" className="text-text-primary text-center">
+            오늘 복습할 단어가 없어요
           </AppText>
-          <Button title="홈으로" onPress={goHome} />
+          <Button title="홈으로" onPress={goHome} className="self-stretch" />
         </View>
       ) : loading || !question ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={colors.brand} />
+          <ActivityIndicator color={c.brand} />
         </View>
       ) : (
         <View className="flex-1 px-xl">
@@ -252,31 +242,20 @@ export default function QuizScreen({
 
           {/* 3. 선택지 */}
           <View className="mt-2xl gap-md">
-            {question.choices.map((choice) => {
-              const visual = VISUAL_STYLE[choiceVisual(choice.index, result, selectedIndex)];
-              return (
-                <Pressable
-                  key={choice.index}
-                  disabled={result !== null}
-                  onPress={() => handleSelect(choice.index)}
-                  className="rounded-md px-lg py-lg"
-                  style={{
-                    backgroundColor: visual.backgroundColor,
-                    borderColor: visual.borderColor,
-                    borderWidth: 2,
-                  }}>
-                  <AppText variant="body" style={{ color: visual.textColor }}>
-                    {choice.text}
-                  </AppText>
-                </Pressable>
-              );
-            })}
+            {question.choices.map((choice) => (
+              <ChoiceButton
+                key={choice.index}
+                index={choice.index}
+                text={choice.text}
+                visual={choiceVisual(choice.index, result, selectedIndex)}
+                disabled={result !== null}
+                onPress={() => handleSelect(choice.index)}
+              />
+            ))}
           </View>
 
           {/* 4. 피드백 */}
-          <View
-            className="mt-xl items-center justify-center"
-            style={{ minHeight: 80 }}>
+          <View className="mt-xl items-center justify-center" style={{ minHeight: 88 }}>
             {result !== null && (
               <Feedback result={result} question={question} onNext={loadNextQuestion} />
             )}
@@ -299,24 +278,75 @@ function QuestionCard({
 }): React.JSX.Element {
   return (
     <View
-      className="mt-2xl items-center rounded-lg bg-surface px-xl py-3xl"
-      style={shadowFloat}>
+      className="mt-2xl items-center rounded-xl bg-bg-primary px-xl py-4xl"
+      style={shadowStyle('md')}>
       {jlpt ? (
-        <View className="absolute right-md top-md rounded-pill bg-brand-soft px-md py-xs">
-          <AppText variant="caption" className="text-brand">
-            {jlpt}
-          </AppText>
+        <View className="absolute right-lg top-lg">
+          <Tag label={jlpt} variant="brand" />
         </View>
       ) : null}
-      <AppText variant="display" className="text-text-strong">
+      <AppText variant="hero" className="text-text-primary text-center">
         {prompt}
       </AppText>
       {reading ? (
-        <AppText variant="body" className="mt-sm text-text-weak">
+        <AppText variant="body" className="mt-sm text-text-tertiary">
           {reading}
         </AppText>
       ) : null}
     </View>
+  );
+}
+
+/** 선택지 1개 — 번호 배지 + 텍스트, 결과에 따라 색/아이콘 변화. */
+function ChoiceButton({
+  index,
+  text,
+  visual,
+  disabled,
+  onPress,
+}: {
+  index: number;
+  text: string;
+  visual: ChoiceVisual;
+  disabled: boolean;
+  onPress: () => void;
+}): React.JSX.Element {
+  const c = useThemeColors();
+
+  const style = {
+    default: { box: c['bg-primary'], border: c['border-secondary'], text: c['text-primary'], badge: c['bg-tertiary'], badgeText: c['text-secondary'] },
+    correctFilled: { box: c['success-subtle'], border: c.success, text: c.success, badge: c.success, badgeText: '#FFFFFF' },
+    correctOutline: { box: c['bg-primary'], border: c.success, text: c.success, badge: c.success, badgeText: '#FFFFFF' },
+    wrongFilled: { box: c['danger-subtle'], border: c.danger, text: c.danger, badge: c.danger, badgeText: '#FFFFFF' },
+  }[visual];
+
+  const showCheck = visual === 'correctFilled' || visual === 'correctOutline';
+  const showCross = visual === 'wrongFilled';
+
+  return (
+    <PressableScale
+      disabled={disabled}
+      pressedScale={0.98}
+      onPress={onPress}
+      className="flex-row items-center rounded-md px-lg"
+      style={{ height: 60, backgroundColor: style.box, borderColor: style.border, borderWidth: 1.5 }}>
+      <View
+        className="items-center justify-center rounded-full"
+        style={{ width: 28, height: 28, backgroundColor: style.badge }}>
+        {showCheck ? (
+          <Icon name="check" size={16} color={style.badgeText} strokeWidth={2.6} />
+        ) : showCross ? (
+          <Icon name="close" size={16} color={style.badgeText} strokeWidth={2.6} />
+        ) : (
+          <AppText variant="label" style={{ color: style.badgeText }}>
+            {index + 1}
+          </AppText>
+        )}
+      </View>
+      <AppText variant="subheading" className="ml-md flex-1" style={{ color: style.text }}>
+        {text}
+      </AppText>
+    </PressableScale>
   );
 }
 
@@ -330,14 +360,12 @@ function Feedback({
   question: QuizQuestion;
   onNext: () => void;
 }): React.JSX.Element {
+  const c = useThemeColors();
   const boxScale = useSharedValue(0);
 
   useEffect(() => {
     if (result.is_correct && result.box_id !== null) {
-      boxScale.value = withSequence(
-        withTiming(1.3, { duration: 180 }),
-        withSpring(1),
-      );
+      boxScale.value = withSequence(withTiming(1.3, { duration: 180 }), withSpring(1));
     }
   }, [result, boxScale]);
 
@@ -346,13 +374,18 @@ function Feedback({
   if (result.is_correct) {
     return (
       <Animated.View entering={FadeInUp} className="items-center gap-sm">
-        <AppText variant="title" className="text-success">
-          🎉 정답!{result.box_id !== null ? ' +상자 1개' : ''}
-        </AppText>
+        <View className="flex-row items-center" style={{ gap: 6 }}>
+          <Icon name="check-circle" size={22} color={c.success} />
+          <AppText variant="title" className="text-success">
+            정답!{result.box_id !== null ? ' 상자 +1' : ''}
+          </AppText>
+        </View>
         {result.box_id !== null && (
-          <Animated.Text style={[{ fontSize: 40 }, boxStyle]}>🎁</Animated.Text>
+          <Animated.View style={boxStyle}>
+            <Icon name="gift" size={40} color={c.amber} />
+          </Animated.View>
         )}
-        <Button title="다음" variant="soft" onPress={onNext} />
+        <Button title="다음" variant="soft" size="sm" onPress={onNext} />
       </Animated.View>
     );
   }
@@ -360,22 +393,16 @@ function Feedback({
   const correctText = question.choices[result.correct_index]?.text ?? '';
   return (
     <Animated.View entering={FadeInUp} className="items-center gap-sm">
-      <AppText variant="title" className="text-danger">
-        😢 오답
-      </AppText>
-      <AppText variant="body" className="text-text">
+      <View className="flex-row items-center" style={{ gap: 6 }}>
+        <Icon name="close" size={20} color={c.danger} strokeWidth={2.6} />
+        <AppText variant="title" className="text-danger">
+          오답
+        </AppText>
+      </View>
+      <AppText variant="body" className="text-text-secondary">
         정답: {correctText}
       </AppText>
-      <Button title="다음" variant="soft" onPress={onNext} />
+      <Button title="다음" variant="soft" size="sm" onPress={onNext} />
     </Animated.View>
   );
 }
-
-const shadowFloat = {
-  shadowColor: colors.textStrong,
-  shadowOpacity: 0.1,
-  shadowRadius: 24,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 4,
-  borderRadius: radius.lg,
-};

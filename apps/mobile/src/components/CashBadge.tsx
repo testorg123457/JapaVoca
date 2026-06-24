@@ -1,16 +1,18 @@
 /**
- * CashBadge — 캐시/코인 표시용 pill 뱃지 (배달의민족 배시시 스타일).
+ * CashBadge — 캐시/코인 표시용 pill 뱃지.
  *
- * variant:
- *  - cash (기본) : yellow-400(#FFCE00) 면 + gray-900 텍스트 — 캐시/리워드 강조
- *  - brand       : brand-subtle(연민트) 면 + brand 텍스트
- * radius full(9999), padding sm(4)/md(8).
+ * 이모지 🪙 대신 SVG 코인 아이콘으로 교체(일관된 룩). 솔리드 옐로 대신 옅은 크림
+ * 틴트 + 골드 코인으로 정제된 인상 — 노랑은 코인과 hero에서 포인트로만 쓴다.
+ *
+ * variant: cash(골드 코인, 기본) · brand(민트 반짝임)
  */
 import React from 'react';
 import { View } from 'react-native';
 
-import { fontFamily } from '../theme/tokens';
+import { fontFamily, yellow } from '../theme/tokens';
+import { useThemeColors } from '../theme/ThemeProvider';
 import AppText from './AppText';
+import Icon from './Icon';
 
 type Variant = 'cash' | 'brand';
 
@@ -22,26 +24,25 @@ export interface CashBadgeProps {
   className?: string;
 }
 
-const boxByVariant: Record<Variant, string> = {
-  cash: 'bg-gold',
+const BOX: Record<Variant, string> = {
+  cash: 'bg-amber-subtle',
   brand: 'bg-brand-subtle',
 };
 
-const textByVariant: Record<Variant, string> = {
+const TEXT: Record<Variant, string> = {
   cash: 'text-text-primary',
   brand: 'text-brand-active',
 };
 
 export function CashBadge({ amount, variant = 'cash', className = '' }: CashBadgeProps) {
-  const v = variant;
+  const c = useThemeColors();
+  const iconColor = variant === 'cash' ? yellow[400] : c.brand;
   return (
     <View
-      className={`flex-row items-center rounded-full px-md py-sm ${boxByVariant[v]} ${className}`}>
-      <AppText
-        variant="caption"
-        className={textByVariant[v]}
-        style={{ fontFamily: fontFamily.bold }}>
-        {v === 'cash' ? '🪙 ' : '💎 '}
+      className={`flex-row items-center rounded-full px-md py-xs ${BOX[variant]} ${className}`}
+      style={{ gap: 5 }}>
+      <Icon name={variant === 'cash' ? 'coin' : 'sparkles'} size={15} color={iconColor} />
+      <AppText variant="label" className={TEXT[variant]} style={{ fontFamily: fontFamily.bold }}>
         {amount}
       </AppText>
     </View>

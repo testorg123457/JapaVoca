@@ -11,6 +11,7 @@ import type { MainStackParamList } from './types';
 import BottomTabNavigator from './BottomTabNavigator';
 import QuizScreen from '../screens/quiz/QuizScreen';
 import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
+import StyleGuideScreen from '../screens/StyleGuideScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -28,6 +29,13 @@ export default function MainStack(): React.JSX.Element {
         component={BoxOpenScreen}
         options={{ presentation: 'fullScreenModal' }}
       />
+      {__DEV__ && (
+        <Stack.Screen
+          name="StyleGuide"
+          component={StyleGuideScreen}
+          options={{ presentation: 'fullScreenModal' }}
+        />
+      )}
     </Stack.Navigator>
   );
 }

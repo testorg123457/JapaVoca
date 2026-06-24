@@ -5,9 +5,13 @@
  * AuthContext 갱신까지의 흐름을 담당한다. 로그인 성공 시 RootNavigator가
  * isLoggedIn 변화를 감지해 MainStack으로 전환한다(이 화면이 직접 navigate
  * 하지 않음).
+ *
+ * 디자인: 브랜드 마크 + 한 줄 가치 제안 hero, 하단에 구글 버튼(멀티컬러 G)과
+ * 약관 안내, DEBUG 개발용 로그인. press 촉감(PressableScale).
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Config from 'react-native-config';
 import {
   GoogleSignin,
@@ -15,11 +19,14 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 
-import { AppText } from '../../components';
+import { AppText, Gradient, Icon, PressableScale } from '../../components';
+import { gradients } from '../../theme/tokens';
+import { useThemeColors } from '../../theme/ThemeProvider';
 import { devLogin, googleLogin } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 
 export default function LoginScreen(): React.JSX.Element {
+  const c = useThemeColors();
   const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -75,58 +82,79 @@ export default function LoginScreen(): React.JSX.Element {
   }
 
   return (
-    <View className="flex-1 bg-surface">
-      <View className="flex-[2] items-center justify-center gap-sm">
-        <AppText variant="display" className="text-text-strong">
-          일본어 한자 보카
-        </AppText>
-        <AppText variant="body" className="text-text-weak">
-          퀴즈 풀고 캐시 받자
-        </AppText>
+    <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
+      {/* Hero */}
+      <View className="flex-[2] items-center justify-center gap-xl px-2xl">
+        <View
+          className="overflow-hidden rounded-2xl"
+          style={{
+            width: 92,
+            height: 92,
+            shadowColor: c.brand,
+            shadowOpacity: 0.35,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 8,
+          }}>
+          <Gradient colors={gradients.brand} direction="diagonal" />
+          <View className="flex-1 items-center justify-center">
+            <Icon name="book" size={48} color="#FFFFFF" strokeWidth={2.2} />
+          </View>
+        </View>
+        <View className="items-center gap-sm">
+          <AppText variant="display" className="text-text-primary">
+            일본어 한자 보카
+          </AppText>
+          <AppText variant="body" className="text-text-secondary">
+            퀴즈 풀고 캐시 받자 🪙
+          </AppText>
+        </View>
       </View>
 
+      {/* 액션 */}
       <View className="flex-1 items-center justify-start gap-md px-2xl">
-        <Pressable
+        <PressableScale
           onPress={handleGoogleLogin}
           disabled={loading}
-          className="w-full flex-row items-center justify-center gap-sm rounded-pill bg-bg py-lg active:opacity-80"
+          className="w-full flex-row items-center justify-center rounded-md bg-bg-primary"
           style={{
-            shadowColor: '#191F28',
-            shadowOpacity: 0.08,
+            height: 54,
+            gap: 8,
+            borderWidth: 1,
+            borderColor: c['border-secondary'],
+            shadowColor: '#0B1220',
+            shadowOpacity: 0.06,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 2 },
             elevation: 2,
           }}>
           {loading ? (
-            <ActivityIndicator color="#4285F4" />
+            <ActivityIndicator color={c.brand} />
           ) : (
             <>
-              <View className="h-5 w-5 items-center justify-center rounded-pill bg-brand-soft">
-                <AppText style={{ fontSize: 12, fontWeight: '700' }} className="text-brand">
-                  G
-                </AppText>
-              </View>
-              <AppText variant="body" className="text-text-strong">
+              <Icon name="google" size={20} />
+              <AppText variant="label" className="text-text-primary" style={{ fontSize: 16 }}>
                 구글로 시작하기
               </AppText>
             </>
           )}
-        </Pressable>
-        <AppText variant="caption" className="text-text-weak">
+        </PressableScale>
+        <AppText variant="caption" className="text-text-tertiary text-center">
           로그인하면 이용약관에 동의하는 것으로 간주됩니다
         </AppText>
 
         {__DEV__ && (
-          <Pressable
+          <PressableScale
             onPress={handleDevLogin}
             disabled={loading}
-            className="mt-md w-full items-center justify-center rounded-pill border border-border py-md active:opacity-80">
-            <AppText variant="caption" className="text-text-weak">
+            className="mt-sm w-full items-center justify-center rounded-md"
+            style={{ height: 48, borderWidth: 1, borderColor: c['border-tertiary'] }}>
+            <AppText variant="caption" className="text-text-tertiary">
               개발용 로그인 (DEBUG)
             </AppText>
-          </Pressable>
+          </PressableScale>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

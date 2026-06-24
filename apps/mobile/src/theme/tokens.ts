@@ -93,6 +93,7 @@ const lightSemantic = {
   // 브랜드 (민트)
   brand: brand[400],
   'brand-active': brand[500], // 눌림
+  'brand-strong': brand[600], // 그라데이션 끝/진한 강조
   'brand-subtle': brand[50], // 옅은 민트 틴트
   'brand-subtle-active': brand[100],
   'on-brand': gray[0], // 민트 면 위 텍스트(흰색)
@@ -136,6 +137,7 @@ const darkSemantic = {
   // 브랜드 — 다크에선 밝은 민트
   brand: brand[300],
   'brand-active': brand[200],
+  'brand-strong': brand[400],
   'brand-subtle': '#10403E',
   'brand-subtle-active': '#155753',
   'on-brand': gray[900], // 밝은 민트 면 위는 어두운 텍스트
@@ -209,11 +211,12 @@ export const colors = {
  * ──────────────────────────────────────────────────────────────────────── */
 export const radius = {
   none: 0,
-  xs: 4,
-  sm: 8, // 인풋/태그
-  md: 12, // 버튼 기본
-  lg: 16, // 카드 기본
-  xl: 20,
+  xs: 6,
+  sm: 10, // 인풋/태그/작은 칩
+  md: 14, // 버튼 기본
+  lg: 18, // 카드 기본
+  xl: 24, // 큰 카드/바텀시트
+  '2xl': 28,
   full: 9999,
   pill: 9999, // = full (백워드 호환)
 } as const;
@@ -233,32 +236,57 @@ export const spacing = {
 } as const;
 
 /**
- * 그림자 — 배민식(약간 무게감). sm/md/lg 3단계.
- * 면은 보더로도 구분하되, 카드·떠 있는 요소에 단계별 그림자.
+ * 그림자 — 부드럽고 크게 퍼지는, 프리미엄 톤. xs/sm/md/lg 4단계.
+ *
+ * 원칙: "진하게 좁은" 그림자(개발자 기본값)가 아니라 "옅게 넓게 퍼지는" 그림자.
+ *  - opacity는 낮게(0.05~0.14), radius는 크게(6~36) → 공기처럼 떠 보임.
+ *  - color는 순검정 대신 약간 푸른 잉크(#0B1220)로 살짝 차갑고 깨끗하게.
+ *  - elevation(Android)은 과하지 않게 유지(2~10) — 카드가 무거워 보이지 않도록.
+ * 면 구분은 그림자 + 0.5px 보더를 함께 써서 라이트/다크 양쪽에서 또렷하게.
  */
+const SHADOW_INK = '#0B1220';
 export const shadow = {
-  sm: { color: primitives.black, opacity: 0.08, radius: 4, offsetY: 1, elevation: 2 },
-  md: { color: primitives.black, opacity: 0.1, radius: 12, offsetY: 4, elevation: 6 },
-  lg: { color: primitives.black, opacity: 0.12, radius: 20, offsetY: 8, elevation: 12 },
+  xs: { color: SHADOW_INK, opacity: 0.05, radius: 6, offsetY: 1, elevation: 1 },
+  sm: { color: SHADOW_INK, opacity: 0.07, radius: 14, offsetY: 3, elevation: 2 },
+  md: { color: SHADOW_INK, opacity: 0.1, radius: 24, offsetY: 8, elevation: 5 },
+  lg: { color: SHADOW_INK, opacity: 0.14, radius: 36, offsetY: 14, elevation: 10 },
 } as const;
 
 /**
- * 타이포 — 폰트: Pretendard (Regular 400 / Medium 500 / Bold 700).
+ * 그라데이션 페어 — hero(캐시 잔액 카드 등)용. react-native-svg LinearGradient로 렌더.
+ * 단색보다 깊이감이 살아 프리미엄하게 보인다. 민트 brand 계열로 절제해서 사용.
+ */
+export const gradients = {
+  brand: ['#2FC9C3', '#1AA6A0'] as [string, string], // 밝은 민트 → 깊은 민트
+  brandSoft: ['#E9FBFA', '#D2F4F2'] as [string, string],
+} as const;
+
+/** 모달/바텀시트 스크림(반투명 검정). 라이트/다크 공통. */
+export const scrim = 'rgba(15, 18, 22, 0.55)';
+
+/**
+ * 타이포 — 폰트: Pretendard (Regular 400 / Medium 500 / SemiBold 600 / Bold 700).
  * 배민 한나체는 브랜드 전용이라 미적용.
+ *
+ * ⚠️ Android는 weight가 아니라 fontFamily(PostScript 이름)로 굵기를 고른다.
+ *    그래서 굵기마다 별도 패밀리를 둔다. 4종 .otf가 android assets/fonts에 링크돼 있음.
+ *    위계의 핵심 무기는 SemiBold(헤딩)와 Bold(타이틀·숫자)의 대비다.
  */
 export const fontFamily = {
   regular: 'Pretendard-Regular',
   medium: 'Pretendard-Medium',
+  semibold: 'Pretendard-SemiBold',
   bold: 'Pretendard-Bold',
 } as const;
 
 export const fontWeight = {
   regular: '400',
   medium: '500',
+  semibold: '600',
   bold: '700',
 } as const;
 
-/** 사이즈 스케일(배민식 넉넉한 간격). lineHeight 는 절대값(px). */
+/** 사이즈 스케일. lineHeight 는 절대값(px). */
 export const fontSize = {
   xs: 12,
   sm: 13,
@@ -268,26 +296,41 @@ export const fontSize = {
   '2xl': 24,
   '3xl': 28,
   '4xl': 34,
+  '5xl': 42, // hero(캐시 잔액 등 큰 숫자)
 } as const;
 
 export const lineHeight = {
-  xs: 17, // 12 * 1.4
-  sm: 18, // 13 * 1.4
-  md: 22, // 15 * 1.5
-  lg: 26, // 17 * 1.5
-  xl: 28, // 20 * 1.4
-  '2xl': 32, // 24 * 1.3
-  '3xl': 34, // 28 * 1.2
-  '4xl': 41, // 34 * 1.2
+  xs: 17,
+  sm: 18,
+  md: 22,
+  lg: 26,
+  xl: 28,
+  '2xl': 32,
+  '3xl': 34,
+  '4xl': 41,
+  '5xl': 46,
 } as const;
 
-/** 의미 단위 타이포 변형(AppText variant). 위 스케일을 매핑. */
+/**
+ * 의미 단위 타이포 변형(AppText variant).
+ *
+ * 위계 전략 — 크기뿐 아니라 "굵기"로 층을 나눈다:
+ *  · hero/display/title → Bold (시선이 가장 먼저 닿는 곳, 숫자·타이틀)
+ *  · heading/subheading/label → SemiBold (구조를 잡되 과하지 않게)
+ *  · body/caption → Regular (읽는 텍스트는 가볍게)
+ *  · micro → Medium (작아도 또렷하게)
+ * 자간(letterSpacing)은 큰 글자일수록 음수로 조여 또렷하고 단단하게.
+ */
 export const typography = {
-  display: { fontSize: fontSize['3xl'], lineHeight: lineHeight['3xl'], fontFamily: fontFamily.bold, letterSpacing: -0.4 }, // 큰 숫자(캐시 잔액)
-  title: { fontSize: fontSize.xl, lineHeight: lineHeight.xl, fontFamily: fontFamily.bold, letterSpacing: -0.3 },
-  heading: { fontSize: fontSize.lg, lineHeight: lineHeight.lg, fontFamily: fontFamily.bold, letterSpacing: -0.2 },
-  body: { fontSize: fontSize.md, lineHeight: lineHeight.md, fontFamily: fontFamily.regular, letterSpacing: -0.2 },
-  caption: { fontSize: fontSize.sm, lineHeight: lineHeight.sm, fontFamily: fontFamily.regular, letterSpacing: -0.1 },
+  hero: { fontSize: 42, lineHeight: 46, fontFamily: fontFamily.bold, letterSpacing: -1.0 },
+  display: { fontSize: 28, lineHeight: 34, fontFamily: fontFamily.bold, letterSpacing: -0.6 },
+  title: { fontSize: 22, lineHeight: 30, fontFamily: fontFamily.bold, letterSpacing: -0.5 },
+  heading: { fontSize: 18, lineHeight: 24, fontFamily: fontFamily.semibold, letterSpacing: -0.3 },
+  subheading: { fontSize: 16, lineHeight: 22, fontFamily: fontFamily.semibold, letterSpacing: -0.2 },
+  body: { fontSize: 15, lineHeight: 23, fontFamily: fontFamily.regular, letterSpacing: -0.2 },
+  label: { fontSize: 14, lineHeight: 18, fontFamily: fontFamily.semibold, letterSpacing: -0.1 },
+  caption: { fontSize: 13, lineHeight: 18, fontFamily: fontFamily.regular, letterSpacing: 0 },
+  micro: { fontSize: 11, lineHeight: 15, fontFamily: fontFamily.medium, letterSpacing: 0 },
 } as const;
 
 /** React Native 스타일로 변환된 그림자 헬퍼. */
@@ -315,6 +358,8 @@ export const tokens = {
   radius,
   spacing,
   shadow,
+  gradients,
+  scrim,
   fontFamily,
   fontWeight,
   fontSize,

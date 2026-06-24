@@ -5,15 +5,18 @@
  * 광고를 띄우되, 광고가 미로드/실패/닫힘이면 블로킹 없이 바로 개봉한다.
  * 개봉 보상(캐시)은 서버가 확정하며, 등급별 연출을 보여준 뒤 다음 상자로
  * 넘어가고 마지막이면 홈으로 돌아간다.
+ *
+ * 디자인: 큰 상자를 탭하면 부드럽게 보상이 드러나는 연출. 등급별 색으로 강약(잭팟=옐로).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -23,8 +26,8 @@ import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AppText, Button } from '../../components';
-import { colors } from '../../theme/tokens';
+import { AppText, Button, Icon, PressableScale, Tag } from '../../components';
+import { useThemeColors } from '../../theme/ThemeProvider';
 import { openBox, type OpenBoxResult } from '../../api/boxes';
 import type { BoxGrade } from '../../api/hooks';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
@@ -32,16 +35,17 @@ import type { MainStackScreenProps } from '../../navigation/types';
 
 const AD_EVERY = 3; // 상자 N개당 광고 1회.
 
-const GRADE_COLOR: Record<BoxGrade, string> = {
-  normal: colors.textWeak,
-  rare: colors.brand,
-  jackpot: colors.warning,
+const GRADE_LABEL: Record<BoxGrade, string> = {
+  normal: '일반',
+  rare: '레어',
+  jackpot: '잭팟',
 };
 
 export default function BoxOpenScreen({
   route,
   navigation,
 }: MainStackScreenProps<'BoxOpen'>): React.JSX.Element {
+  const c = useThemeColors();
   const { boxIds } = route.params;
   const queryClient = useQueryClient();
   const { showThen } = useRewardedAd(Config.ADMOB_REWARDED_BOX_ID || TestIds.REWARDED);
@@ -63,6 +67,17 @@ export default function BoxOpenScreen({
   const boxId = boxIds[currentIndex];
   const isLast = currentIndex >= boxIds.length - 1;
   const remaining = boxIds.length - currentIndex;
+
+  // idle 상태에서 상자가 살짝 들썩이며 "눌러보세요"를 유도.
+  const wobble = useSharedValue(0);
+  useEffect(() => {
+    if (phase === 'idle') {
+      wobble.value = withRepeat(withSequence(withTiming(-1, { duration: 900 }), withTiming(1, { duration: 900 })), -1, true);
+    } else {
+      wobble.value = withTiming(0, { duration: 200 });
+    }
+  }, [phase, wobble]);
+  const wobbleStyle = useAnimatedStyle(() => ({ transform: [{ translateY: wobble.value * 4 }, { rotate: `${wobble.value * 2}deg` }] }));
 
   const goHome = useCallback(() => {
     navigation.navigate('BottomTab', { screen: 'Home' });
@@ -127,15 +142,13 @@ export default function BoxOpenScreen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
       {/* 상단 */}
-      <View className="items-center px-xl py-lg">
-        <AppText variant="title" className="text-text-strong">
+      <View className="items-center gap-xs px-xl py-lg">
+        <AppText variant="title" className="text-text-primary">
           상자 개봉
         </AppText>
-        <AppText variant="caption" className="text-text-weak">
-          남은 상자 {Math.max(0, remaining)}개
-        </AppText>
+        <Tag label={`남은 상자 ${Math.max(0, remaining)}개`} variant="neutral" />
       </View>
 
       {/* 중앙 상자 카드 */}
@@ -143,22 +156,23 @@ export default function BoxOpenScreen({
         {phase === 'opened' && result ? (
           <RewardReveal result={result} />
         ) : (
-          <Pressable
+          <PressableScale
             onPress={handleTap}
             disabled={phase !== 'idle'}
-            className="items-center justify-center rounded-xl bg-surface"
-            style={{ width: 220, height: 220 }}>
+            pressedScale={0.95}
+            className="items-center justify-center rounded-xl bg-bg-primary"
+            style={{ width: 240, height: 240, borderWidth: 1, borderColor: c['border-tertiary'] }}>
             {phase === 'opening' ? (
-              <ActivityIndicator color={colors.brand} />
+              <ActivityIndicator color={c.brand} />
             ) : (
-              <>
-                <AppText style={{ fontSize: 80 }}>🎁</AppText>
-                <AppText variant="body" className="mt-md text-text">
+              <Animated.View className="items-center" style={wobbleStyle}>
+                <Icon name="gift" size={96} color={c.brand} strokeWidth={1.6} />
+                <AppText variant="subheading" className="mt-lg text-text-secondary">
                   탭해서 열기
                 </AppText>
-              </>
+              </Animated.View>
             )}
-          </Pressable>
+          </PressableScale>
         )}
       </View>
 
@@ -174,8 +188,9 @@ export default function BoxOpenScreen({
   );
 }
 
-/** 개봉 결과 연출 — 등급별 텍스트 + 캐시 금액 애니메이션, jackpot 파티클. */
+/** 개봉 결과 연출 — 등급별 색 + 캐시 금액 애니메이션, jackpot 파티클. */
 function RewardReveal({ result }: { result: OpenBoxResult }): React.JSX.Element {
+  const c = useThemeColors();
   const scale = useSharedValue(0.6);
 
   useEffect(() => {
@@ -185,42 +200,47 @@ function RewardReveal({ result }: { result: OpenBoxResult }): React.JSX.Element 
   const amountStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const { grade, reward_cash } = result;
-  const label =
-    grade === 'jackpot'
-      ? `🎊 ${reward_cash}C 잭팟!!`
-      : grade === 'rare'
-        ? `✨ ${reward_cash}C 레어!`
-        : `💰 ${reward_cash}C`;
+  const gradeColor: Record<BoxGrade, string> = {
+    normal: c['text-secondary'],
+    rare: c.brand,
+    jackpot: c.amber,
+  };
+  const gradeTagVariant = grade === 'jackpot' ? 'amber' : grade === 'rare' ? 'brand' : 'neutral';
 
   return (
     <Animated.View entering={FadeInUp} className="items-center gap-md">
       {grade === 'jackpot' && <JackpotParticles />}
-      <Animated.View style={amountStyle}>
-        <AppText variant="display" style={{ color: GRADE_COLOR[grade] }}>
-          {label}
+      <Tag label={GRADE_LABEL[grade]} variant={gradeTagVariant} leftIcon={grade === 'normal' ? 'gift' : 'sparkles'} />
+      <Animated.View style={amountStyle} className="flex-row items-end" >
+        <Icon name="coin" size={34} color={c.amber} />
+        <AppText variant="hero" style={{ color: gradeColor[grade], marginLeft: 8 }}>
+          {reward_cash.toLocaleString()}
+        </AppText>
+        <AppText variant="title" style={{ color: gradeColor[grade], marginBottom: 6, marginLeft: 2 }}>
+          C
         </AppText>
       </Animated.View>
-      <AppText variant="caption" className="text-text-weak">
+      <AppText variant="caption" className="text-text-tertiary">
         잔액 {result.balance_after.toLocaleString()}C
       </AppText>
     </Animated.View>
   );
 }
 
-/** lottie 없이 이모지로 대체한 잭팟 파티클. */
+/** lottie 없이 이모지로 대체한 잭팟 파티클(축하 연출이라 이모지 유지). */
 function JackpotParticles(): React.JSX.Element {
   const particles = ['🎉', '✨', '🎊', '⭐', '💫', '🎉', '✨', '⭐'];
   return (
-    <View className="absolute" style={{ width: 260, height: 120 }} pointerEvents="none">
+    <View className="absolute" style={{ width: 280, height: 140 }} pointerEvents="none">
       {particles.map((emoji, i) => (
         <Animated.Text
           key={i}
           entering={FadeIn.delay(i * 60)}
           style={{
             position: 'absolute',
-            left: (i * 32) % 240,
-            top: (i % 2) * 70,
-            fontSize: 22,
+            left: (i * 34) % 260,
+            top: (i % 2) * 80,
+            fontSize: 24,
           }}>
           {emoji}
         </Animated.Text>

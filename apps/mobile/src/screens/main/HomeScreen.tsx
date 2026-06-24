@@ -1,22 +1,32 @@
 /**
- * 홈 화면 — 인사말+캐시뱃지, 출석 스트릭 카드, 오늘의 학습 현황(2칸),
- * 단어·한자 학습 진입 카드, 상자 인벤토리, 하단 배너 광고.
+ * 홈 화면 — 인사말, 캐시 잔액 hero(그라데이션), 출석 스트릭, 오늘의 학습 현황,
+ * 단어·한자 학습 진입, 상자 인벤토리, 하단 배너 광고.
  *
- * Arco풍: 뉴트럴 그레이 베이스(bg-secondary) + 단색 블루 포인트, 면+0.5px 보더로 구분.
- * 색은 semantic 토큰 className, 인라인 색은 useThemeColors() 사용.
+ * 디자인 원칙: 화면을 열면 시선이 "캐시 잔액 hero"에 먼저 닿고(=핵심 보상), 그다음
+ * 출석→학습으로 자연스럽게 흐른다. 섹션은 SectionHeader로 위계를 통일하고, 카드/칩/
+ * 아이콘은 공용 컴포넌트로. 색은 기능적으로만(민트=액션, 옐로=캐시, 회색=중립).
  *
- * 에러는 각 훅의 isError를 명시적으로 보지 않고 ?? 기본값으로 조용히 fallback한다 —
+ * 에러는 각 훅의 isError를 보지 않고 ?? 기본값으로 조용히 fallback한다 —
  * 홈은 어떤 API가 실패해도 크래시 없이 항상 떠 있어야 한다.
  */
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 
-import { AppText, Button, Card, CashBadge } from '../../components';
-import { spacing } from '../../theme/tokens';
+import {
+  AppText,
+  Button,
+  Card,
+  Gradient,
+  Icon,
+  PressableScale,
+  SectionHeader,
+  Tag,
+} from '../../components';
+import { gradients, spacing, yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   useAttendance,
@@ -28,6 +38,7 @@ import {
   type BoxGrade,
 } from '../../api/hooks';
 import type { BottomTabScreenPropsFor } from '../../navigation/types';
+import type { IconName } from '../../components';
 
 const GRADE_LABEL: Record<BoxGrade, string> = {
   normal: '일반',
@@ -35,44 +46,58 @@ const GRADE_LABEL: Record<BoxGrade, string> = {
   jackpot: '잭팟',
 };
 
-/** 학습 현황 통계 1칸. */
-function StatTile({ label, value }: { label: string; value: string }) {
+/** 학습 현황 통계 1칸 — 아이콘 + 큰 값 + 라벨. */
+function StatTile({ icon, label, value, accent }: { icon: IconName; label: string; value: string; accent: string }) {
   return (
-    <Card className="flex-1 gap-xs">
-      <AppText variant="caption" className="text-text-tertiary">
-        {label}
-      </AppText>
-      <AppText variant="title" className="text-text-primary">
-        {value}
-      </AppText>
+    <Card variant="flat" className="flex-1 gap-md">
+      <View
+        className="items-center justify-center rounded-full"
+        style={{ width: 36, height: 36, backgroundColor: `${accent}1A` }}>
+        <Icon name={icon} size={20} color={accent} />
+      </View>
+      <View className="gap-xs">
+        <AppText variant="title" className="text-text-primary">
+          {value}
+        </AppText>
+        <AppText variant="caption" className="text-text-tertiary">
+          {label}
+        </AppText>
+      </View>
     </Card>
   );
 }
 
-/** 단어/한자 학습 진입 카드. */
+/** 단어/한자 학습 진입 카드 — 아이콘 배지 + 제목 + 설명. */
 function ModeCard({
-  emoji,
+  icon,
   title,
   desc,
   onPress,
 }: {
-  emoji: string;
+  icon: IconName;
   title: string;
   desc: string;
   onPress: () => void;
 }) {
+  const c = useThemeColors();
   return (
-    <Pressable className="flex-1 active:scale-[0.98]" onPress={onPress}>
-      <Card className="gap-sm">
-        <AppText style={{ fontSize: 28 }}>{emoji}</AppText>
-        <AppText variant="heading" className="text-text-primary">
-          {title}
-        </AppText>
-        <AppText variant="caption" className="text-text-tertiary">
-          {desc}
-        </AppText>
+    <View className="flex-1">
+      <Card onPress={onPress} className="gap-md">
+        <View
+          className="items-center justify-center rounded-md"
+          style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
+          <Icon name={icon} size={24} color={c.brand} />
+        </View>
+        <View className="gap-xs">
+          <AppText variant="subheading" className="text-text-primary">
+            {title}
+          </AppText>
+          <AppText variant="caption" className="text-text-tertiary">
+            {desc}
+          </AppText>
+        </View>
       </Card>
-    </Pressable>
+    </View>
   );
 }
 
@@ -95,100 +120,146 @@ export default function HomeScreen(): React.JSX.Element {
     jackpot: c.amber,
   };
 
+  const balance = wallet.data?.balance ?? 0;
+  const totalEarned = wallet.data?.total_earned ?? 0;
+  const streak = attendance.data?.streak_count ?? 0;
+  const checkedIn = attendance.data?.checked_in ?? false;
+
   return (
-    <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing['2xl'] }}>
-        <View className="gap-2xl px-xl pt-xl">
-          {/* 1. 인사말 + 캐시 뱃지 */}
-          <View className="flex-row items-center justify-between">
-            <AppText variant="title" className="text-text-primary">
-              안녕하세요, {me.data?.nickname ?? '게스트'}님 👋
-            </AppText>
-            <CashBadge amount={`${(wallet.data?.balance ?? 0).toLocaleString()} C`} />
+    <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing['3xl'] }}>
+        <View className="gap-2xl px-xl pt-md">
+          {/* 1. 인사말 */}
+          <View className="flex-row items-center justify-between pt-sm">
+            <View>
+              <AppText variant="caption" className="text-text-tertiary">
+                안녕하세요 👋
+              </AppText>
+              <AppText variant="title" className="text-text-primary">
+                {me.data?.nickname ?? '게스트'}님
+              </AppText>
+            </View>
           </View>
 
-          {/* 2. 출석 스트릭 카드 */}
+          {/* 2. 캐시 잔액 hero — 시선이 가장 먼저 닿는 곳 */}
+          <PressableScale onPress={() => navigation.navigate('Wallet')} pressedScale={0.98}>
+            <View
+              className="overflow-hidden rounded-xl p-xl"
+              style={{
+                shadowColor: c.brand,
+                shadowOpacity: 0.32,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 10 },
+                elevation: 6,
+              }}>
+              <Gradient colors={gradients.brand} direction="diagonal" />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center" style={{ gap: 6 }}>
+                  <Icon name="coin" size={18} color={yellow[400]} />
+                  <AppText variant="label" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                    내 캐시
+                  </AppText>
+                </View>
+                <View className="flex-row items-center" style={{ gap: 2 }}>
+                  <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                    지갑
+                  </AppText>
+                  <Icon name="chevron-right" size={16} color="rgba(255,255,255,0.92)" strokeWidth={2.4} />
+                </View>
+              </View>
+              <View className="mt-md flex-row items-end" style={{ gap: 4 }}>
+                <AppText variant="hero" className="text-on-brand">
+                  {balance.toLocaleString()}
+                </AppText>
+                <AppText variant="title" className="text-on-brand" style={{ marginBottom: 6, opacity: 0.9 }}>
+                  C
+                </AppText>
+              </View>
+              <View
+                className="mt-md self-start rounded-full px-md py-xs"
+                style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
+                <AppText variant="micro" className="text-on-brand" style={{ fontSize: 12 }}>
+                  누적 {totalEarned.toLocaleString()}C 적립
+                </AppText>
+              </View>
+            </View>
+          </PressableScale>
+
+          {/* 3. 출석 스트릭 카드 */}
           <Card className="gap-md">
             <View className="flex-row items-center justify-between">
               <AppText variant="heading" className="text-text-primary">
                 출석 체크
               </AppText>
-              <View className="rounded-pill bg-amber-subtle px-md py-xs">
-                <AppText variant="caption" className="text-amber">
-                  🔥 {attendance.data?.streak_count ?? 0}일 연속
-                </AppText>
-              </View>
+              <Tag label={`${streak}일 연속`} variant="amber" leftIcon="flame" />
             </View>
             {attendance.isLoading ? (
               <ActivityIndicator color={c.brand} />
-            ) : attendance.data?.checked_in ? (
-              <AppText variant="body" className="text-brand">
-                ✅ 오늘 출석 완료! (+{attendance.data.bonus_cash}C)
-              </AppText>
+            ) : checkedIn ? (
+              <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Icon name="check-circle" size={20} color={c.brand} />
+                <AppText variant="body" className="text-brand">
+                  오늘 출석 완료! (+{attendance.data?.bonus_cash ?? 0}C)
+                </AppText>
+              </View>
             ) : (
               <View className="gap-md">
                 <AppText variant="body" className="text-text-secondary">
                   오늘 출석하고 보너스 캐시를 받아보세요.
                 </AppText>
-                <Button
-                  title="출석 체크"
-                  onPress={() => checkIn.mutate()}
-                  disabled={checkIn.isPending}
-                />
+                <Button title="출석 체크" leftIcon="check" onPress={() => checkIn.mutate()} loading={checkIn.isPending} />
               </View>
             )}
           </Card>
 
-          {/* 3. 오늘의 학습 현황 (2칸) */}
+          {/* 4. 오늘의 학습 현황 */}
           <View className="gap-md">
-            <AppText variant="heading" className="text-text-primary">
-              오늘의 학습 현황
-            </AppText>
+            <SectionHeader title="오늘의 학습 현황" />
             {daily.isLoading ? (
-              <ActivityIndicator color={c.brand} />
+              <Card variant="flat">
+                <ActivityIndicator color={c.brand} />
+              </Card>
             ) : (
               <View className="flex-row" style={{ gap: spacing.md }}>
                 <StatTile
+                  icon="check-circle"
                   label="푼 문제 / 정답"
                   value={`${daily.data?.quiz_count ?? 0} / ${daily.data?.correct_count ?? 0}`}
+                  accent={c.brand}
                 />
-                <StatTile label="획득한 상자" value={`${daily.data?.boxes_earned ?? 0}개`} />
+                <StatTile
+                  icon="gift"
+                  label="획득한 상자"
+                  value={`${daily.data?.boxes_earned ?? 0}개`}
+                  accent={c.amber}
+                />
               </View>
             )}
           </View>
 
-          {/* 4. 단어 / 한자 학습 진입 */}
+          {/* 5. 학습 시작하기 */}
           <View className="gap-md">
-            <AppText variant="heading" className="text-text-primary">
-              학습 시작하기
-            </AppText>
+            <SectionHeader title="학습 시작하기" />
             <View className="flex-row" style={{ gap: spacing.md }}>
-              <ModeCard
-                emoji="📝"
-                title="단어 퀴즈"
-                desc="뜻 ↔ 단어 4지선다"
-                onPress={() => navigation.navigate('Quiz')}
-              />
-              <ModeCard
-                emoji="🈶"
-                title="한자 퀴즈"
-                desc="한자 ↔ 음훈독·뜻"
-                onPress={() => navigation.navigate('Quiz')}
-              />
+              <ModeCard icon="book" title="단어 퀴즈" desc="뜻 ↔ 단어 4지선다" onPress={() => navigation.navigate('Quiz')} />
+              <ModeCard icon="pencil" title="한자 퀴즈" desc="한자 ↔ 음훈독·뜻" onPress={() => navigation.navigate('Quiz')} />
             </View>
           </View>
 
-          {/* 5. 상자 인벤토리 */}
+          {/* 6. 상자 인벤토리 */}
           <View className="gap-md">
-            <AppText variant="heading" className="text-text-primary">
-              상자 인벤토리
-            </AppText>
+            <SectionHeader title="상자 인벤토리" />
             {boxes.isLoading ? (
-              <ActivityIndicator color={c.brand} />
+              <Card variant="flat">
+                <ActivityIndicator color={c.brand} />
+              </Card>
             ) : !boxes.data || boxes.data.length === 0 ? (
-              <AppText variant="caption" className="text-text-tertiary">
-                퀴즈를 풀어 상자를 획득하세요!
-              </AppText>
+              <Card variant="flat" className="items-center gap-sm py-2xl">
+                <Icon name="gift" size={28} color={c['text-tertiary']} />
+                <AppText variant="caption" className="text-text-tertiary">
+                  퀴즈를 풀어 상자를 획득하세요!
+                </AppText>
+              </Card>
             ) : (
               <FlatList
                 horizontal
@@ -197,19 +268,16 @@ export default function HomeScreen(): React.JSX.Element {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: spacing.md }}
                 renderItem={({ item }) => (
-                  <Pressable
+                  <PressableScale
                     onPress={() => navigation.navigate('BoxOpen', { boxIds: [item.id] })}
-                    className="items-center justify-center rounded-lg active:scale-[0.98]"
-                    style={{
-                      width: 88,
-                      height: 88,
-                      backgroundColor: `${gradeColor[item.grade]}1F`,
-                    }}>
-                    <AppText style={{ fontSize: 28 }}>🎁</AppText>
-                    <AppText variant="caption" style={{ color: gradeColor[item.grade] }}>
+                    pressedScale={0.96}
+                    className="items-center justify-center rounded-lg"
+                    style={{ width: 92, height: 92, gap: 6, backgroundColor: `${gradeColor[item.grade]}1A` }}>
+                    <Icon name="gift" size={30} color={gradeColor[item.grade]} />
+                    <AppText variant="micro" style={{ color: gradeColor[item.grade], fontSize: 12 }}>
                       {GRADE_LABEL[item.grade]}
                     </AppText>
-                  </Pressable>
+                  </PressableScale>
                 )}
               />
             )}
@@ -217,9 +285,11 @@ export default function HomeScreen(): React.JSX.Element {
         </View>
       </ScrollView>
 
-      {/* 6. 하단 배너 광고 — 로드 실패 시 영역 자체를 숨김 */}
+      {/* 7. 하단 배너 광고 — 로드 실패 시 영역 자체를 숨김 */}
       {!adFailed && (
-        <View className="items-center bg-bg-primary border-border-tertiary" style={{ borderTopWidth: 0.5 }}>
+        <View
+          className="items-center bg-bg-primary border-border-tertiary"
+          style={{ borderTopWidth: 0.5 }}>
           <BannerAd
             unitId={Config.ADMOB_BANNER_HOME_ID || TestIds.BANNER}
             size={BannerAdSize.BANNER}

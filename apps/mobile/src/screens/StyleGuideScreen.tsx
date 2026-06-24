@@ -1,24 +1,33 @@
 /**
- * StyleGuideScreen — 디자인 토큰/컴포넌트 확인용 데모 화면.
+ * StyleGuideScreen — 디자인 시스템 쇼케이스(합격 기준 화면).
  *
- * 배달의민족(배시시) 테마: 민트 brand + 옐로 포인트 + 따뜻한 그레이.
- * 다크 모드는 시스템 설정을 따라가므로, 기기 테마를 바꾸면 라이트/다크 양쪽을 확인할 수 있다.
- * 색은 semantic 토큰 className, 인라인 색은 useThemeColors()/primitives로 적용.
+ * 배달의민족(배시시) 테마: 민트 brand + 옐로 포인트 + 따뜻한 그레이 + Pretendard.
+ * 토큰/컴포넌트가 실제로 어떻게 조립되는지 한눈에 본다. 기기 테마를 바꾸면
+ * 라이트/다크 양쪽을 확인할 수 있다(semantic 토큰이 한 곳에서 전환됨).
  */
 import React, { useState } from 'react';
 import { ScrollView, StatusBar, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText, Button, Card, CashBadge } from '../components';
-import { brand, gray, hairline, spacing, typography, yellow } from '../theme/tokens';
+import {
+  AppText,
+  Button,
+  Card,
+  CashBadge,
+  Gradient,
+  Icon,
+  ProgressBar,
+  SectionHeader,
+  Tag,
+  type IconName,
+} from '../components';
+import { brand, gradients, gray, hairline, spacing, typography, yellow } from '../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../theme/ThemeProvider';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="mb-3xl">
-      <AppText variant="heading" className="text-text-primary mb-md">
-        {title}
-      </AppText>
+    <View className="gap-md">
+      <SectionHeader title={title} />
       {children}
     </View>
   );
@@ -29,16 +38,10 @@ function Swatch({ name, color }: { name: string; color: string }) {
   return (
     <View className="items-center" style={{ width: 52 }}>
       <View
-        className="rounded-sm"
-        style={{
-          width: 44,
-          height: 44,
-          backgroundColor: color,
-          borderWidth: hairline,
-          borderColor: c['border-secondary'],
-        }}
+        className="rounded-md"
+        style={{ width: 46, height: 46, backgroundColor: color, borderWidth: hairline, borderColor: c['border-secondary'] }}
       />
-      <AppText variant="caption" className="text-text-tertiary mt-xs" style={{ fontSize: 11 }}>
+      <AppText variant="micro" className="text-text-tertiary mt-xs">
         {name}
       </AppText>
     </View>
@@ -55,6 +58,12 @@ function SwatchRow({ entries }: { entries: [string, string][] }) {
   );
 }
 
+const ALL_ICONS: IconName[] = [
+  'home', 'wallet', 'settings', 'flame', 'gift', 'check', 'check-circle', 'close',
+  'chevron-right', 'chevron-down', 'coin', 'book', 'pencil', 'sparkles', 'user',
+  'document', 'shield', 'logout', 'arrow-up-right', 'arrow-down-left',
+];
+
 export default function StyleGuideScreen() {
   const [text, setText] = useState('');
   const scheme = useColorSchemeMode();
@@ -62,149 +71,153 @@ export default function StyleGuideScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c['bg-secondary'] }} edges={['top']}>
-      <StatusBar
-        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={c['bg-secondary']}
-      />
+      <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={c['bg-secondary']} />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing['6xl'] }}
+        contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing['6xl'], gap: spacing['3xl'] }}
         showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="mb-2xl">
-          <View className="self-start rounded-full bg-brand-subtle px-md py-xs">
-            <AppText variant="caption" className="text-brand">
-              JapaVoca · 디자인 시스템
-            </AppText>
-          </View>
-          <AppText variant="display" className="text-text-primary mt-md">
+        <View className="gap-sm">
+          <Tag label="JapaVoca · 디자인 시스템" variant="brand" leftIcon="sparkles" />
+          <AppText variant="display" className="text-text-primary mt-sm">
             배달의민족 스타일 가이드
           </AppText>
-          <AppText variant="caption" className="text-text-tertiary mt-xs">
+          <AppText variant="caption" className="text-text-tertiary">
             민트 brand · 옐로 포인트 · 따뜻한 그레이 · Pretendard · 현재 모드: {scheme}
           </AppText>
         </View>
 
-        {/* 색 팔레트 */}
-        <Section title="Brand (민트)">
-          <SwatchRow
-            entries={(['50', '100', '200', '300', '400', '500', '600'] as const).map((k) => [
-              k,
-              brand[k],
-            ])}
-          />
-        </Section>
-
-        <Section title="Yellow (포인트)">
-          <SwatchRow
-            entries={(['300', '400', '500'] as const).map((k) => [k, yellow[k]])}
-          />
-        </Section>
-
-        <Section title="Neutral (따뜻한 그레이)">
-          <SwatchRow
-            entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map(
-              (k) => [k, gray[k]],
-            )}
-          />
-        </Section>
-
-        <Section title="Semantic">
-          <SwatchRow
-            entries={[
-              ['success', c.success],
-              ['warning', c.warning],
-              ['danger', c.danger],
-              ['info', c.info],
-            ]}
-          />
-        </Section>
-
-        {/* 캐시 잔액 카드 (브랜드 면) */}
-        <Section title="캐시 잔액">
-          <View className="bg-brand rounded-lg p-xl">
-            <AppText variant="caption" className="text-on-brand" style={{ opacity: 0.85 }}>
-              내 캐시
-            </AppText>
-            <View className="flex-row items-end mt-sm">
-              <AppText variant="display" className="text-on-brand">
-                12,840
-              </AppText>
-              <AppText
-                variant="title"
-                className="text-on-brand"
-                style={{ marginLeft: 4, marginBottom: 3, opacity: 0.85 }}>
-                C
+        {/* 캐시 잔액 hero */}
+        <View
+          className="overflow-hidden rounded-xl p-xl"
+          style={{ shadowColor: c.brand, shadowOpacity: 0.32, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}>
+          <Gradient colors={gradients.brand} direction="diagonal" />
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <Icon name="coin" size={18} color={yellow[400]} />
+              <AppText variant="label" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                내 캐시
               </AppText>
             </View>
-            <View
-              className="self-start rounded-full px-md py-sm mt-lg"
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-              <AppText variant="caption" className="text-on-brand">
-                오늘 +320C 적립
+            <View className="flex-row items-center" style={{ gap: 2 }}>
+              <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                지갑
               </AppText>
+              <Icon name="chevron-right" size={16} color="rgba(255,255,255,0.92)" strokeWidth={2.4} />
             </View>
           </View>
-        </Section>
+          <View className="mt-md flex-row items-end" style={{ gap: 4 }}>
+            <AppText variant="hero" className="text-on-brand">
+              12,840
+            </AppText>
+            <AppText variant="title" className="text-on-brand" style={{ marginBottom: 6, opacity: 0.9 }}>
+              C
+            </AppText>
+          </View>
+          <View className="mt-md self-start rounded-full px-md py-xs" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
+            <AppText variant="micro" className="text-on-brand" style={{ fontSize: 12 }}>
+              오늘 +320C 적립
+            </AppText>
+          </View>
+        </View>
 
-        {/* 타이포 */}
+        {/* 타이포그래피 */}
         <Section title="타이포그래피">
-          <Card>
-            <AppText variant="display" className="text-text-primary">
-              Display 28
-            </AppText>
-            <AppText variant="title" className="text-text-primary mt-sm">
-              Title 20
-            </AppText>
-            <AppText variant="heading" className="text-text-primary mt-sm">
-              Heading 17
-            </AppText>
-            <AppText variant="body" className="text-text-secondary mt-sm">
-              Body 15 — 본문은 text-secondary로 차분하게.
-            </AppText>
-            <AppText variant="caption" className="text-text-tertiary mt-sm">
-              Caption 13 — 보조 정보는 text-tertiary.
-            </AppText>
+          <Card className="gap-sm">
+            <AppText variant="hero" className="text-text-primary">Hero 42</AppText>
+            <AppText variant="display" className="text-text-primary">Display 28</AppText>
+            <AppText variant="title" className="text-text-primary">Title 22</AppText>
+            <AppText variant="heading" className="text-text-primary">Heading 18 · SemiBold</AppText>
+            <AppText variant="subheading" className="text-text-primary">Subheading 16 · SemiBold</AppText>
+            <AppText variant="body" className="text-text-secondary">Body 15 — 본문은 secondary로 차분하게 읽힌다.</AppText>
+            <AppText variant="label" className="text-text-primary">Label 14 · SemiBold (버튼·탭·칩)</AppText>
+            <AppText variant="caption" className="text-text-tertiary">Caption 13 — 보조 정보.</AppText>
+            <AppText variant="micro" className="text-text-tertiary">Micro 11 — 가장 작은 라벨.</AppText>
           </Card>
         </Section>
 
         {/* 버튼 */}
         <Section title="버튼">
           <View style={{ gap: spacing.md }}>
-            <Button title="기본 버튼 (Primary)" variant="filled" />
-            <Button title="서브 버튼 (Soft)" variant="soft" />
-            <Button title="아웃라인 (Secondary)" variant="outline" />
-            <Button title="비활성 버튼" variant="filled" disabled />
+            <Button title="기본 버튼 (Primary)" variant="filled" leftIcon="check" />
+            <View className="flex-row" style={{ gap: spacing.md }}>
+              <Button title="Soft" variant="soft" className="flex-1" />
+              <Button title="Outline" variant="outline" className="flex-1" />
+              <Button title="Ghost" variant="ghost" className="flex-1" />
+            </View>
+            <View className="flex-row items-center" style={{ gap: spacing.md }}>
+              <Button title="Small" size="sm" />
+              <Button title="로딩 중" loading />
+              <Button title="비활성" disabled />
+            </View>
           </View>
         </Section>
 
         {/* 카드 */}
-        <Section title="카드">
-          <Card>
-            <AppText variant="heading" className="text-text-primary">
-              오늘의 학습
-            </AppText>
-            <AppText variant="body" className="text-text-secondary mt-xs">
-              한자 단어 12개 복습 예정이에요. 지금 시작해볼까요?
-            </AppText>
-            <View className="flex-row mt-md" style={{ gap: spacing.sm }}>
-              <View className="rounded-full bg-success-subtle px-md py-sm">
-                <AppText variant="caption" className="text-success">
-                  정답 +10
-                </AppText>
-              </View>
-              <View className="rounded-full bg-danger-subtle px-md py-sm">
-                <AppText variant="caption" className="text-danger">
-                  오답
-                </AppText>
-              </View>
-              <View className="rounded-full bg-amber-subtle px-md py-sm">
-                <AppText variant="caption" className="text-amber">
-                  잭팟
-                </AppText>
-              </View>
+        <Section title="카드 위계">
+          <View style={{ gap: spacing.md }}>
+            <Card variant="default">
+              <AppText variant="subheading" className="text-text-primary">Default</AppText>
+              <AppText variant="caption" className="text-text-tertiary mt-xs">기본 카드 — 옅은 그림자로 살짝 떠 있음.</AppText>
+            </Card>
+            <Card variant="elevated">
+              <AppText variant="subheading" className="text-text-primary">Elevated</AppText>
+              <AppText variant="caption" className="text-text-tertiary mt-xs">강조 카드 — 더 띄워서 시선을 끈다.</AppText>
+            </Card>
+            <Card variant="flat">
+              <AppText variant="subheading" className="text-text-primary">Flat</AppText>
+              <AppText variant="caption" className="text-text-tertiary mt-xs">그림자 없이 보더만 — 조용한 면.</AppText>
+            </Card>
+            <Card onPress={() => {}}>
+              <AppText variant="subheading" className="text-text-primary">Pressable</AppText>
+              <AppText variant="caption" className="text-text-tertiary mt-xs">눌러보세요 — 살짝 들어갑니다.</AppText>
+            </Card>
+          </View>
+        </Section>
+
+        {/* 칩 */}
+        <Section title="태그 / 칩">
+          <View className="flex-row flex-wrap" style={{ gap: spacing.sm }}>
+            <Tag label="5일 연속" variant="amber" leftIcon="flame" />
+            <Tag label="N5" variant="brand" />
+            <Tag label="정답" variant="success" leftIcon="check" />
+            <Tag label="오답" variant="danger" leftIcon="close" />
+            <Tag label="일반" variant="neutral" leftIcon="gift" />
+          </View>
+        </Section>
+
+        {/* 진행감 */}
+        <Section title="진행 바">
+          <View className="gap-md">
+            <ProgressBar progress={0.25} />
+            <ProgressBar progress={0.6} />
+            <ProgressBar progress={0.9} />
+          </View>
+        </Section>
+
+        {/* 아이콘셋 */}
+        <Section title="아이콘셋 (SVG)">
+          <Card variant="flat">
+            <View className="flex-row flex-wrap" style={{ gap: spacing.xl }}>
+              {ALL_ICONS.map((name) => (
+                <View key={name} className="items-center" style={{ width: 56, gap: 4 }}>
+                  <Icon name={name} size={24} color={c['text-primary']} />
+                  <AppText variant="micro" className="text-text-tertiary" numberOfLines={1}>
+                    {name}
+                  </AppText>
+                </View>
+              ))}
             </View>
           </Card>
+        </Section>
+
+        {/* 캐시 뱃지 */}
+        <Section title="캐시 뱃지">
+          <View className="flex-row" style={{ gap: spacing.sm }}>
+            <CashBadge amount="12,840 C" />
+            <CashBadge amount="+1,000" />
+            <CashBadge amount="브랜드" variant="brand" />
+          </View>
         </Section>
 
         {/* 입력창 */}
@@ -214,18 +227,30 @@ export default function StyleGuideScreen() {
             onChangeText={setText}
             placeholder="닉네임을 입력하세요"
             placeholderTextColor={c['text-tertiary']}
-            className="bg-bg-primary border-border-secondary rounded-sm px-lg py-md text-text-primary"
-            style={[typography.body, { borderWidth: hairline }]}
+            className="bg-bg-primary border-border-secondary rounded-md px-lg text-text-primary"
+            style={[typography.body, { borderWidth: hairline, height: 52 }]}
           />
         </Section>
 
-        {/* 캐시 뱃지 (pill) */}
-        <Section title="캐시 뱃지">
-          <View className="flex-row" style={{ gap: spacing.sm }}>
-            <CashBadge amount="+320" />
-            <CashBadge amount="+1,000" />
-            <CashBadge amount="브랜드" variant="brand" />
-          </View>
+        {/* 색 팔레트 */}
+        <Section title="Brand (민트)">
+          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600'] as const).map((k) => [k, brand[k]])} />
+        </Section>
+        <Section title="Yellow (포인트)">
+          <SwatchRow entries={(['300', '400', '500'] as const).map((k) => [k, yellow[k]])} />
+        </Section>
+        <Section title="Neutral (따뜻한 그레이)">
+          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, gray[k]])} />
+        </Section>
+        <Section title="Semantic">
+          <SwatchRow
+            entries={[
+              ['success', c.success],
+              ['warning', c.warning],
+              ['danger', c.danger],
+              ['info', c.info],
+            ]}
+          />
         </Section>
       </ScrollView>
     </SafeAreaView>
