@@ -2,8 +2,8 @@
  * JapaVoca 앱 진입점.
  *
  * Provider 구성(바깥→안):
- *   GestureHandlerRootView → SafeAreaProvider → QueryClientProvider
- *   → AuthProvider → NavigationContainer → RootNavigator
+ *   GestureHandlerRootView → SafeAreaProvider → ThemeProvider
+ *   → QueryClientProvider → AuthProvider → NavigationContainer → RootNavigator
  *
  * 디자인 시스템은 디자인 토큰(src/theme/tokens.ts 단일 소스) + NativeWind 기반.
  * 공용 UI(Button/Card/CashBadge/AppText)는 src/components/에 NativeWind로 구현.
@@ -21,6 +21,7 @@ import mobileAds from 'react-native-google-mobile-ads';
 
 import { queryClient } from './src/api/queryClient';
 import { AuthProvider } from './src/store/AuthContext';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 import RootNavigator from './src/navigation/RootNavigator';
 
 function App(): React.JSX.Element {
@@ -33,13 +34,15 @@ function App(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <NavigationContainer>
-              <RootNavigator />
-            </NavigationContainer>
-          </AuthProvider>
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <NavigationContainer>
+                <RootNavigator />
+              </NavigationContainer>
+            </AuthProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
