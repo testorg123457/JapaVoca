@@ -7,12 +7,13 @@
   - 불변식: wallet.balance == Σ(earn.amount) − Σ(use.amount).
 """
 import random
+from datetime import timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import CashBox, Ledger, Wallet
+from .models import Attendance, CashBox, Daily, Ledger, Wallet
 
 # 개봉 시 등급별 캐시 보상 범위.
 BOX_REWARD_RANGE = {
@@ -132,3 +133,91 @@ def wallet_is_consistent(user) -> bool:
     earned = agg.filter(direction=Ledger.Direction.EARN).aggregate(s=Sum('amount'))['s'] or 0
     used = agg.filter(direction=Ledger.Direction.USE).aggregate(s=Sum('amount'))['s'] or 0
     return wallet.balance == earned - used
+
+
+def list_unopened_boxes(user):
+    """미개봉 상자 목록(최신순)."""
+    return CashBox.objects.filter(
+        user=user, status=CashBox.Status.UNOPENED,
+    ).order_by('-created_at')
+
+
+# 출석 보너스 — 7일 주기로 반복(japavoca-plan.md 3.5: 1일 기본 / 2~6일 점증 / 7일 대형).
+# streak_count 자체는 누적(연속 출석 N일째 표시용)이고, 보너스 금액만 7일 주기로 순환한다.
+ATTENDANCE_CYCLE_LENGTH = 7
+BASE_ATTENDANCE_BONUS = 10
+STREAK_BONUS_BY_CYCLE_DAY = {2: 5, 3: 10, 4: 15, 5: 20, 6: 30, 7: 50}
+
+
+class AlreadyCheckedIn(CashError):
+    """오늘 이미 출석 체크함."""
+
+
+def get_today_attendance(user) -> dict:
+    """오늘 출석 여부 + 최신 스트릭 조회. 부수효과 없음(체크인은 check_in() 으로만)."""
+    today = timezone.localdate()
+    latest = Attendance.objects.filter(user=user).order_by('-date').first()
+    if latest is None:
+        return {'checked_in': False, 'streak_count': 0, 'bonus_cash': 0}
+    checked_in = latest.date == today
+    return {
+        'checked_in': checked_in,
+        'streak_count': latest.streak_count,
+        'bonus_cash': latest.bonus_cash if checked_in else 0,
+    }
+
+
+@transaction.atomic
+def check_in(user) -> Attendance:
+    """출석 체크 — streak 계산 + 보너스 캐시 적립(원장 기록 포함)을 원자적으로 처리.
+
+    하루 1회만 허용(Attendance.user+date unique 제약). 이미 체크인했으면 AlreadyCheckedIn.
+    적립은 reason=ATTENDANCE(기본분) / reason=STREAK(연속출석 가산분)로 나눠 원장에 남긴다.
+    """
+    today = timezone.localdate()
+    yesterday = today - timedelta(days=1)
+
+    previous = Attendance.objects.filter(user=user, date=yesterday).first()
+    streak_count = previous.streak_count + 1 if previous else 1
+    day_in_cycle = (streak_count - 1) % ATTENDANCE_CYCLE_LENGTH + 1
+    streak_bonus = STREAK_BONUS_BY_CYCLE_DAY.get(day_in_cycle, 0)
+    total_bonus = BASE_ATTENDANCE_BONUS + streak_bonus
+    is_cycle_reward = day_in_cycle == ATTENDANCE_CYCLE_LENGTH
+
+    try:
+        attendance = Attendance.objects.create(
+            user=user, date=today, streak_count=streak_count,
+            bonus_cash=total_bonus, is_cycle_reward=is_cycle_reward,
+        )
+    except IntegrityError as exc:
+        raise AlreadyCheckedIn('오늘 이미 출석 체크했습니다.') from exc
+
+    earn(
+        user, BASE_ATTENDANCE_BONUS, Ledger.Reason.ATTENDANCE,
+        ref_type='attendance', ref_id=attendance.id,
+    )
+    if streak_bonus > 0:
+        earn(
+            user, streak_bonus, Ledger.Reason.STREAK,
+            ref_type='attendance', ref_id=attendance.id,
+        )
+
+    daily, _ = Daily.objects.get_or_create(user=user, date=today)
+    daily = Daily.objects.select_for_update().get(pk=daily.pk)
+    daily.attended = True
+    daily.cash_earned += total_bonus
+    daily.save(update_fields=['attended', 'cash_earned', 'updated_at'])
+
+    return attendance
+
+
+def get_today_daily(user) -> dict:
+    """오늘의 학습 현황(문제수/정답수/획득 상자수). 데이터 없으면 0."""
+    daily = Daily.objects.filter(user=user, date=timezone.localdate()).first()
+    if daily is None:
+        return {'quiz_count': 0, 'correct_count': 0, 'boxes_earned': 0}
+    return {
+        'quiz_count': daily.quiz_count,
+        'correct_count': daily.correct_count,
+        'boxes_earned': daily.boxes_earned,
+    }
