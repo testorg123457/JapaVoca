@@ -59,6 +59,11 @@ class AdRewardLog(models.Model):
     )
     ad_unit = models.CharField(max_length=100, help_text='AdMob 광고 유닛 ID')
     ssv_signature = models.TextField(help_text='AdMob SSV 검증 데이터')
+    # SSV 콜백 멱등성 키. 같은 transaction_id 재수신은 중복 처리하지 않는다.
+    transaction_id = models.CharField(
+        max_length=200, null=True, blank=True, unique=True,
+        help_text='AdMob SSV transaction_id(멱등성 키)',
+    )
     verified = models.BooleanField(default=False, help_text='검증 성공 여부')
     reward_context = models.CharField(max_length=10, choices=RewardContext.choices)
     ref_id = models.PositiveIntegerField(

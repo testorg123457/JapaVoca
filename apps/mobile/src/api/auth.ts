@@ -36,3 +36,15 @@ export async function googleLogin(
   );
   return response.data.tokens;
 }
+
+/**
+ * DEBUG 전용 dev 로그인. 구글 OAuth 없이 고정 테스트 유저로 JWT를 받는다.
+ * 백엔드 /api/auth/dev-login/ 은 DEBUG=False 면 404이므로 실 서비스에선 호출 불가.
+ * __DEV__ 빌드의 로그인 화면에서만 사용한다.
+ */
+export async function devLogin(): Promise<{ access: string; refresh: string }> {
+  const response = await axios.post<GoogleLoginResponse>(
+    `${Config.API_BASE_URL}/api/auth/dev-login/`,
+  );
+  return response.data.tokens;
+}

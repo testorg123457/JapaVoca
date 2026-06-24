@@ -9,6 +9,7 @@
 import random
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -93,12 +94,27 @@ class BoxAlreadyOpened(CashError):
     """이미 개봉된 상자."""
 
 
+class AdNotVerifiedForBox(CashError):
+    """광고 보상이 SSV 검증되지 않음 — 광고 개봉 거부."""
+
+
 @transaction.atomic
-def open_cash_box(user, box_id, *, ad_verified=False) -> tuple[CashBox, Ledger]:
+def open_cash_box(user, box_id, *, ad_verified=False, ad_log_id=None) -> tuple[CashBox, Ledger]:
     """캐시상자 개봉 — 보상 캐시 확정 + earn() 적립을 원자적으로 처리.
 
     광고 보고 개봉하는 상자는 ad_verified=True(SSV 검증 통과 후 호출).
+    실제 검증 모드(settings.ADMOB_SSV_VERIFY=True)에서 ad_log_id 가 주어지면
+    해당 AdRewardLog 가 verified=True 인지 확인한다. Mock 모드거나 ad_log_id 가
+    없으면 검증을 건너뛴다(지시서 B-2).
     """
+    if settings.ADMOB_SSV_VERIFY and ad_log_id is not None:
+        from exchange.models import AdRewardLog  # 순환 import 회피(지연).
+        verified = AdRewardLog.objects.filter(
+            id=ad_log_id, user=user, verified=True,
+        ).exists()
+        if not verified:
+            raise AdNotVerifiedForBox('광고 보상이 검증되지 않았습니다.')
+
     box = CashBox.objects.select_for_update().get(id=box_id, user=user)
     if box.status == CashBox.Status.OPENED:
         raise BoxAlreadyOpened('이미 개봉된 상자입니다.')

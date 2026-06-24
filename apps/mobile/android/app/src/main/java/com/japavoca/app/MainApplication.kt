@@ -17,6 +17,10 @@ class MainApplication : Application(), ReactApplication {
           // Packages that cannot be autolinked yet can be added manually here, for example:
           // add(MyReactNativePackage())
         },
+      // useDevSupport는 기본값이 react-android(AAR)의 BuildConfig.DEBUG라 릴리스로 빌드된
+      // AAR에선 항상 false → debug 빌드에서도 Metro를 안 거치고 assets 번들을 찾다 크래시.
+      // 앱 자신의 BuildConfig.DEBUG를 넘겨야 debug에서 Metro 개발 서버를 사용한다.
+      useDevSupport = BuildConfig.DEBUG,
     )
   }
 

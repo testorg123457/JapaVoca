@@ -16,7 +16,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 import { AppText } from '../../components';
-import { googleLogin } from '../../api/auth';
+import { devLogin, googleLogin } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 
 export default function LoginScreen(): React.JSX.Element {
@@ -53,6 +53,22 @@ export default function LoginScreen(): React.JSX.Element {
       signIn(access, refresh);
     } catch {
       Alert.alert('로그인 실패', '다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // DEBUG 전용 — 구글 OAuth 없이 테스트 유저로 로그인 (실 서비스 빌드엔 없음).
+  async function handleDevLogin() {
+    if (loading) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const { access, refresh } = await devLogin();
+      signIn(access, refresh);
+    } catch {
+      Alert.alert('Dev 로그인 실패', '백엔드(DEBUG)가 켜져 있는지 확인하세요.');
     } finally {
       setLoading(false);
     }
@@ -99,6 +115,17 @@ export default function LoginScreen(): React.JSX.Element {
         <AppText variant="caption" className="text-text-weak">
           로그인하면 이용약관에 동의하는 것으로 간주됩니다
         </AppText>
+
+        {__DEV__ && (
+          <Pressable
+            onPress={handleDevLogin}
+            disabled={loading}
+            className="mt-md w-full items-center justify-center rounded-pill border border-border py-md active:opacity-80">
+            <AppText variant="caption" className="text-text-weak">
+              개발용 로그인 (DEBUG)
+            </AppText>
+          </Pressable>
+        )}
       </View>
     </View>
   );

@@ -40,6 +40,11 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+# DEBUG에선 안드로이드 에뮬레이터가 호스트를 가리키는 10.0.2.2 를 자동 허용한다.
+# (없으면 앱→서버 요청이 ALLOWED_HOSTS 검사에서 400 Bad Request 로 막힌다.)
+if DEBUG and '10.0.2.2' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('10.0.2.2')
+
 
 # Application definition
 
@@ -210,3 +215,14 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # crontab(hour=3) 을 서버 로컬타임 기준으로 해석하도록 TIME_ZONE 과 맞춘다.
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = False
+
+
+# 기프티콘 교환 발급사 — URL 이 비어있으면(dev) exchange.providers 가 Mock 응답.
+GIFTICON_PROVIDER_URL = os.environ.get('GIFTICON_PROVIDER_URL', '')
+GIFTICON_PROVIDER_KEY = os.environ.get('GIFTICON_PROVIDER_KEY', '')
+
+
+# AdMob SSV(서버 보상 검증).
+# ADMOB_SSV_VERIFY=false(dev) 면 서명 검증을 건너뛰고 통과로 본다(Mock).
+ADMOB_APP_ID = os.environ.get('ADMOB_APP_ID', '')
+ADMOB_SSV_VERIFY = os.environ.get('ADMOB_SSV_VERIFY', 'false').lower() in ('1', 'true', 'yes')

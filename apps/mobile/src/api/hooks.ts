@@ -4,7 +4,12 @@
  * 백엔드 실제 응답(apps/server rewards/accounts 코드 직접 확인 기준)에 맞춘
  * 타입을 그대로 노출한다. 캐시 잔액/출석/일일현황은 모두 서버가 단일 진실원.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 
 import apiClient from './client';
@@ -26,12 +31,77 @@ export function useMe() {
   });
 }
 
-export type WalletResponse = { balance: number };
+export type ProfileUpdate = {
+  nickname?: string;
+  selected_jlpt_level?: string | null;
+};
+
+/** 프로필(닉네임/학습 급수) 수정. PATCH 응답(전체 프로필)으로 me 캐시를 갱신. */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: ProfileUpdate) =>
+      (await apiClient.patch<MeResponse>('/api/auth/me/', data)).data,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['me'], data);
+    },
+  });
+}
+
+export type WalletResponse = {
+  balance: number;
+  total_earned: number;
+  total_used: number;
+};
 
 export function useWallet() {
   return useQuery({
     queryKey: ['wallet'],
     queryFn: async () => (await apiClient.get<WalletResponse>('/api/rewards/wallet/')).data,
+  });
+}
+
+export type LedgerDirection = 'earn' | 'use';
+export type LedgerReason =
+  | 'quiz_box'
+  | 'attendance'
+  | 'streak'
+  | 'ad_bonus'
+  | 'exchange'
+  | 'admin_adjust';
+
+export type LedgerEntry = {
+  id: number;
+  direction: LedgerDirection;
+  amount: number;
+  reason: LedgerReason;
+  ref_type: string;
+  ref_id: number | null;
+  balance_after: number;
+  created_at: string;
+};
+
+export type LedgerPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: LedgerEntry[];
+};
+
+/** 거래 내역(원장) — direction 미지정 시 전체. 페이지네이션(무한 스크롤). */
+export function useLedger(direction?: LedgerDirection) {
+  return useInfiniteQuery({
+    queryKey: ['ledger', direction ?? 'all'],
+    queryFn: async ({ pageParam }) => {
+      const response = await apiClient.get<LedgerPage>('/api/rewards/ledger/', {
+        params: { page: pageParam, ...(direction ? { direction } : {}) },
+      });
+      return response.data;
+    },
+    initialPageParam: 1,
+    // next URL이 있으면 다음 페이지 번호(=지금까지 받은 페이지 수 + 1).
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.next ? allPages.length + 1 : undefined,
   });
 }
 
