@@ -1,25 +1,28 @@
-"""accounts 뷰 — 구글 로그인(JWT 발급) / 내 프로필."""
-from django.conf import settings
-from django.http import Http404
-from django.utils import timezone
+"""accounts 뷰 — 게스트/구글/카카오 로그인(JWT 발급) / 계정 연결 / 내 프로필."""
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
 from .serializers import (
     GoogleLoginSerializer,
+    GuestLoginSerializer,
     KakaoLoginSerializer,
+    LinkAccountSerializer,
     ProfileUpdateSerializer,
     UserSerializer,
 )
 from .services import (
+    AccountLinkError,
     GoogleAuthError,
+    GuestAuthError,
     KakaoAuthError,
+    login_as_guest,
     login_with_google,
     login_with_kakao,
+    upgrade_guest_with_google,
+    upgrade_guest_with_kakao,
 )
 
 
@@ -76,31 +79,63 @@ class KakaoLoginView(APIView):
         )
 
 
-class DevLoginView(APIView):
-    """POST /api/auth/dev-login/ — DEBUG 전용. 구글 OAuth 없이 고정 테스트 유저로 JWT 발급.
+class GuestLoginView(APIView):
+    """POST /api/auth/guest/ — 게스트 로그인. 기기별 guest_uid 로 게스트 유저 발급.
 
-    실 서비스(DEBUG=False)에선 URL 자체가 등록되지 않지만, 안전을 위해 뷰에서도
-    한 번 더 막는다. 캐시 정합성/어뷰징과 무관한 '로그인 우회'일 뿐, 정답 판정·캐시
-    지급은 여전히 서버에서 검증된다.
+    소셜 키 없이도 즉시 시작 가능. 게스트는 학습·적립은 되지만 기프티콘 교환은 막혀 있고
+    (어뷰징 방지), 설정에서 구글/카카오로 연결하면 같은 계정이 실계정으로 승격된다.
     """
 
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request):
-        if not settings.DEBUG:
-            raise Http404
-        user, created = User.objects.get_or_create(
-            google_uid='dev-test-user',
-            defaults={'email': 'dev@japavoca.test', 'nickname': '개발테스터'},
-        )
-        user.last_login_at = timezone.now()
-        user.save(update_fields=['last_login_at'])
+        serializer = GuestLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user, created = login_as_guest(serializer.validated_data['guest_uid'])
+        except GuestAuthError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(
             {
                 'tokens': _issue_tokens(user),
                 'user': UserSerializer(user).data,
                 'created': created,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LinkAccountView(APIView):
+    """POST /api/auth/link/ — 현재(게스트) 계정에 구글/카카오 연결.
+
+    반드시 현재 게스트 JWT 로 인증된 요청이어야 한다(새 로그인이 아니라 '승격').
+    충돌(이미 그 소셜 계정 존재) 시 기존 계정으로 로그인하고 게스트 진행분은 폐기한다
+    (switched=True). 충돌 없으면 같은 행을 승격해 진행상황을 보존한다(switched=False).
+    어느 경우든 응답의 새 토큰으로 교체해야 한다.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = LinkAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        provider = serializer.validated_data['provider']
+        token = serializer.validated_data['token']
+        try:
+            if provider == 'google':
+                user, switched = upgrade_guest_with_google(request.user, token)
+            else:
+                user, switched = upgrade_guest_with_kakao(request.user, token)
+        except (GoogleAuthError, KakaoAuthError) as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+        except AccountLinkError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                'tokens': _issue_tokens(user),
+                'user': UserSerializer(user).data,
+                'switched': switched,
             },
             status=status.HTTP_200_OK,
         )

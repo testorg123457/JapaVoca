@@ -1,11 +1,14 @@
-"""accounts 서비스 — 소셜 로그인(구글/카카오) 검증 / 유저 로그인 처리."""
+"""accounts 서비스 — 게스트/소셜 로그인(구글/카카오) 검증 / 유저 로그인·계정 연결 처리."""
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
 from .models import User
+
+GUEST_NICKNAME = '게스트'
 
 
 class GoogleAuthError(Exception):
@@ -14,6 +17,14 @@ class GoogleAuthError(Exception):
 
 class KakaoAuthError(Exception):
     """카카오 access token 검증 실패."""
+
+
+class GuestAuthError(Exception):
+    """게스트 로그인 실패."""
+
+
+class AccountLinkError(Exception):
+    """게스트 → 소셜 계정 연결 실패(이미 실계정이거나 지원하지 않는 연결)."""
 
 
 def verify_google_id_token(token: str) -> dict:
@@ -62,11 +73,11 @@ def login_with_google(token: str) -> tuple[User, bool]:
     return user, created
 
 
-def login_with_kakao(access_token: str) -> tuple[User, bool]:
-    """카카오 access token 으로 로그인. (user, created) 반환.
+def fetch_kakao_account(access_token: str) -> tuple[str, str, str]:
+    """카카오 access token 검증 + 사용자 정보 조회. (kakao_uid, email, nickname) 반환.
 
     클라(카카오 SDK)가 받은 access token 으로 kapi.kakao.com 의 사용자 정보를 조회해
-    검증한다(토큰이 유효해야 200). kakao_uid 로 유저를 get_or_create 한다.
+    검증한다(토큰이 유효해야 200).
     """
     try:
         resp = requests.get(
@@ -87,8 +98,14 @@ def login_with_kakao(access_token: str) -> tuple[User, bool]:
     profile = account.get('profile') or {}
     email = account.get('email') or ''
     nickname = profile.get('nickname') or ''
+    return kakao_uid, email, nickname
 
-    # email 은 unique·not-null. 미동의/충돌 시 합성 이메일로 폴백.
+
+def login_with_kakao(access_token: str) -> tuple[User, bool]:
+    """카카오 access token 으로 로그인. (user, created) 반환. kakao_uid 로 get_or_create."""
+    kakao_uid, email, nickname = fetch_kakao_account(access_token)
+
+    # email 은 unique. 미동의/충돌 시 합성 이메일로 폴백.
     if not email or User.objects.filter(email=email).exclude(kakao_uid=kakao_uid).exists():
         email = f'kakao_{kakao_uid}@kakao.local'
 
@@ -102,3 +119,84 @@ def login_with_kakao(access_token: str) -> tuple[User, bool]:
     user.last_login_at = timezone.now()
     user.save(update_fields=['last_login_at'])
     return user, created
+
+
+def login_as_guest(guest_uid: str) -> tuple[User, bool]:
+    """게스트 로그인 — 기기별 guest_uid 로 게스트 유저를 get_or_create. (user, created) 반환.
+
+    사람마다(기기마다) 독립 게스트 계정이 생성된다. 이메일/소셜 식별자 없이 guest_uid 로만 식별.
+    나중에 upgrade_guest_with_* 로 같은 행에 소셜 식별자를 붙여 실계정으로 승격할 수 있다.
+    """
+    if not guest_uid:
+        raise GuestAuthError('guest_uid 는 필수입니다.')
+    user, created = User.objects.get_or_create(
+        guest_uid=guest_uid,
+        defaults={'provider': User.Provider.GUEST, 'nickname': GUEST_NICKNAME, 'email': None},
+    )
+    if user.status == User.Status.BANNED:
+        raise GuestAuthError('차단된 계정입니다.')
+    user.last_login_at = timezone.now()
+    user.save(update_fields=['last_login_at'])
+    return user, created
+
+
+def _upgrade_or_switch(guest_user, *, provider_value, uid_field, uid_value, email, nickname):
+    """게스트를 소셜 계정으로 연결하는 공통 로직.
+
+    - 그 소셜 식별자로 이미 가입된 계정이 있으면 → 그 **기존 계정으로 로그인**(게스트 진행분 폐기),
+      (user=기존계정, switched=True) 반환. [충돌 정책: 기존계정 사용]
+    - 충돌이 없으면 → 현재 게스트 **같은 행을 그 자리에서 승격**(캐시·원장·스트릭 보존),
+      (user=게스트, switched=False) 반환.
+    - 현재 유저가 게스트가 아니면(이미 실계정) 식별자 덮어쓰기 위험이 있어 막는다.
+    """
+    existing = User.objects.filter(**{uid_field: uid_value}).first()
+    if existing is not None:
+        if existing.status == User.Status.BANNED:
+            raise AccountLinkError('차단된 계정입니다.')
+        existing.last_login_at = timezone.now()
+        existing.save(update_fields=['last_login_at'])
+        # 이미 본인 계정이면 전환 아님, 다른 기존 계정이면 전환(게스트 폐기).
+        return existing, existing.pk != guest_user.pk
+
+    if not guest_user.is_guest:
+        raise AccountLinkError('이미 연결된 계정입니다.')
+
+    setattr(guest_user, uid_field, uid_value)
+    guest_user.provider = provider_value
+    # 이메일은 비어있고 충돌 없을 때만 설정(unique 보호).
+    if email and not User.objects.filter(email=email).exclude(pk=guest_user.pk).exists():
+        guest_user.email = email
+    # 닉네임이 비었거나 기본 '게스트'면 소셜 닉네임으로 교체.
+    if nickname and (not guest_user.nickname or guest_user.nickname == GUEST_NICKNAME):
+        guest_user.nickname = nickname
+    guest_user.last_login_at = timezone.now()
+    guest_user.save()
+    return guest_user, False
+
+
+@transaction.atomic
+def upgrade_guest_with_google(guest_user, id_token: str) -> tuple[User, bool]:
+    """게스트를 구글 계정으로 연결. (user, switched) 반환."""
+    payload = verify_google_id_token(id_token)
+    return _upgrade_or_switch(
+        guest_user,
+        provider_value=User.Provider.GOOGLE,
+        uid_field='google_uid',
+        uid_value=payload['sub'],
+        email=payload.get('email') or '',
+        nickname=payload.get('name') or '',
+    )
+
+
+@transaction.atomic
+def upgrade_guest_with_kakao(guest_user, access_token: str) -> tuple[User, bool]:
+    """게스트를 카카오 계정으로 연결. (user, switched) 반환."""
+    kakao_uid, email, nickname = fetch_kakao_account(access_token)
+    return _upgrade_or_switch(
+        guest_user,
+        provider_value=User.Provider.KAKAO,
+        uid_field='kakao_uid',
+        uid_value=kakao_uid,
+        email=email,
+        nickname=nickname,
+    )

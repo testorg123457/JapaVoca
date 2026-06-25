@@ -7,7 +7,10 @@
  * 하지 않음).
  *
  * 디자인: 브랜드 마크 + 한 줄 가치 제안 hero, 하단에 구글 버튼(멀티컬러 G)과
- * 약관 안내, DEBUG 개발용 로그인. press 촉감(PressableScale).
+ * 약관 안내, 게스트로 시작하기. press 촉감(PressableScale).
+ *
+ * 게스트: 기기 UUID로 즉시 시작. 학습·적립은 되지만 교환은 막혀 있고(어뷰징 방지),
+ * 설정에서 구글/카카오 연결 시 같은 계정이 실계정으로 승격된다.
  */
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
@@ -22,8 +25,9 @@ import {
 import { AppText, Gradient, Icon, PressableScale } from '../../components';
 import { gradients, shadowStyle } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { devLogin, googleLogin } from '../../api/auth';
+import { googleLogin, guestLogin } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
+import { getOrCreateGuestUid } from '../../store/auth';
 
 export default function LoginScreen(): React.JSX.Element {
   const c = useThemeColors();
@@ -76,17 +80,17 @@ export default function LoginScreen(): React.JSX.Element {
     );
   }
 
-  // DEBUG 전용 — 구글 OAuth 없이 테스트 유저로 로그인 (실 서비스 빌드엔 없음).
-  async function handleDevLogin() {
+  // 게스트로 시작 — 기기 UUID로 게스트 계정 발급. 소셜 키 없이 즉시 시작 가능.
+  async function handleGuestLogin() {
     if (loading) {
       return;
     }
     setLoading(true);
     try {
-      const { access, refresh } = await devLogin();
+      const { access, refresh } = await guestLogin(getOrCreateGuestUid());
       signIn(access, refresh);
     } catch {
-      Alert.alert('Dev 로그인 실패', '백엔드(DEBUG)가 켜져 있는지 확인하세요.');
+      Alert.alert('게스트 시작 실패', '잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
@@ -159,17 +163,15 @@ export default function LoginScreen(): React.JSX.Element {
           로그인하면 이용약관에 동의하는 것으로 간주됩니다
         </AppText>
 
-        {__DEV__ && (
-          <PressableScale
-            onPress={handleDevLogin}
-            disabled={loading}
-            className="mt-sm w-full items-center justify-center rounded-md"
-            style={{ height: 48, borderWidth: 1, borderColor: c['border-tertiary'] }}>
-            <AppText variant="caption" className="text-text-tertiary">
-              개발용 로그인 (DEBUG)
-            </AppText>
-          </PressableScale>
-        )}
+        <PressableScale
+          onPress={handleGuestLogin}
+          disabled={loading}
+          className="mt-sm w-full items-center justify-center rounded-md"
+          style={{ height: 48, borderWidth: 1, borderColor: c['border-tertiary'] }}>
+          <AppText variant="label" className="text-text-secondary">
+            게스트로 시작하기
+          </AppText>
+        </PressableScale>
       </View>
     </SafeAreaView>
   );

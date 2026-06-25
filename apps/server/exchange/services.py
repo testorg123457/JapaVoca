@@ -31,6 +31,10 @@ class InvalidProduct(ExchangeError):
     """존재하지 않는 상품."""
 
 
+class GuestNotAllowed(ExchangeError):
+    """게스트는 교환 불가 — 구글/카카오 연결 후에만 허용(어뷰징 방지)."""
+
+
 class ExchangeIssueFailed(ExchangeError):
     """발급 실패(환불 완료). 실패한 GiftExchange 를 담아 전달한다."""
 
@@ -50,6 +54,11 @@ def request_exchange(
     하며, 교환 생성 시 그 로그를 소비 처리(ref_id 설정)해 1광고=1교환을 보장한다.
     Mock 모드(False)면 클라가 보낸 ad_verified 불리언만 본다(지시서 A-2).
     """
+    # 게스트는 출금(교환) 금지 — 재설치로 무한 생성 가능해 어뷰징에 취약하므로
+    # 실계정(구글/카카오) 연결 후에만 허용한다(CLAUDE.md 1인 1구글계정 원칙).
+    if user.is_guest:
+        raise GuestNotAllowed('게스트는 교환할 수 없어요. 구글/카카오 로그인 후 이용해주세요.')
+
     if not ad_verified:
         raise AdNotVerified('광고 시청이 필요합니다.')
 

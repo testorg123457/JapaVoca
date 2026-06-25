@@ -100,7 +100,7 @@ export function KanaQuiz({ visible, script, onClose }: KanaQuizProps): React.JSX
           <Pressable onPress={onClose} hitSlop={10} className="active:opacity-60">
             <Icon name="close" size={24} color={c['text-secondary']} />
           </Pressable>
-          <AppText variant="subheading" className="text-text-secondary">
+          <AppText variant="subheading" className="text-text-secondary" style={{ marginTop: 11 }}>
             {finished ? '완료' : `${Math.min(index + 1, QUESTION_COUNT)} / ${QUESTION_COUNT}`}
           </AppText>
           <View style={{ width: 24 }} />
@@ -162,8 +162,8 @@ export function KanaQuiz({ visible, script, onClose }: KanaQuizProps): React.JSX
               })}
             </View>
 
-            {/* 다음 */}
-            <View className="pb-2xl">
+            {/* 다음 — 하단 여백을 키워 버튼을 살짝 위로(누르기 쉽게) */}
+            <View style={{ paddingBottom: 80 }}>
               <Button
                 title={index === QUESTION_COUNT - 1 ? '결과 보기' : '다음'}
                 onPress={next}

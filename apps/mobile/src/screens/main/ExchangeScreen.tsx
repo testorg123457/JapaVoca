@@ -10,12 +10,15 @@ import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
-import { AppHeader, AppText, Icon, PressableScale } from '../../components';
+import { useNavigation } from '@react-navigation/native';
+
+import { AppHeader, AppText, Button, Icon, PressableScale } from '../../components';
 import { yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useWallet } from '../../api/hooks';
+import { useMe, useWallet } from '../../api/hooks';
 import { useProducts, useRequestExchange, type Product } from '../../api/exchange';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
+import type { MainStackScreenProps } from '../../navigation/types';
 
 /** 네트워크 재시도 멱등용 키(unique 문자열이면 충분). */
 function genIdempotencyKey(): string {
@@ -24,6 +27,8 @@ function genIdempotencyKey(): string {
 
 export default function ExchangeScreen(): React.JSX.Element {
   const c = useThemeColors();
+  const navigation = useNavigation<MainStackScreenProps<'Exchange'>['navigation']>();
+  const me = useMe();
   const wallet = useWallet();
   const products = useProducts();
   const requestExchange = useRequestExchange();
@@ -31,9 +36,17 @@ export default function ExchangeScreen(): React.JSX.Element {
   const lockRef = useRef(false);
 
   const balance = wallet.data?.balance ?? 0;
+  const isGuest = me.data?.is_guest ?? false;
 
   function handleSelect(product: Product) {
     if (lockRef.current) {
+      return;
+    }
+    if (isGuest) {
+      Alert.alert('게스트는 교환 불가', '구글/카카오 계정을 연결하면 교환할 수 있어요.', [
+        { text: '나중에', style: 'cancel' },
+        { text: '계정 연결', onPress: () => navigation.navigate('Settings') },
+      ]);
       return;
     }
     if (balance < product.price_cash) {
@@ -73,6 +86,28 @@ export default function ExchangeScreen(): React.JSX.Element {
         <AppText variant="caption" className="px-xl pt-md text-text-tertiary">
           상품을 선택하면 광고를 본 뒤 캐시로 교환돼요.
         </AppText>
+
+        {/* 게스트 안내 — 교환은 실계정 연결 후 가능 */}
+        {isGuest ? (
+          <View
+            className="mx-xl mt-md flex-row items-center rounded-lg px-lg py-md"
+            style={{ gap: 10, backgroundColor: c['amber-subtle'] }}>
+            <Icon name="lock" size={18} color={c.amber} />
+            <View className="flex-1">
+              <AppText variant="label" className="text-text-primary">
+                게스트는 교환할 수 없어요
+              </AppText>
+              <AppText variant="caption" className="text-text-secondary">
+                구글/카카오 계정을 연결하면 모은 캐시로 교환할 수 있어요.
+              </AppText>
+            </View>
+          </View>
+        ) : null}
+        {isGuest ? (
+          <View className="px-xl pt-md">
+            <Button title="계정 연결하러 가기" onPress={() => navigation.navigate('Settings')} />
+          </View>
+        ) : null}
 
         {products.isLoading ? (
           <ActivityIndicator className="mt-2xl" color={c.brand} />

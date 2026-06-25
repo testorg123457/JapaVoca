@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { AppHeader, AppText, Button, Icon, Tag } from '../../components';
+import { AppHeader, AppText, Button, Icon, ProgressBar, Tag } from '../../components';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useAttendance, useAttendanceMonth, useAttendanceStatus } from '../../api/hooks';
@@ -39,6 +39,12 @@ export default function AttendanceScreen(): React.JSX.Element {
 
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
   const todayDate = now.getDate();
+
+  // 주간 진척도 — 7일 연속 출석마다 +30C. streak를 7일 주기로 환산.
+  const WEEKLY_BONUS = 30;
+  const daysThisWeek = streak === 0 ? 0 : ((streak - 1) % 7) + 1;
+  const weeklyProgress = daysThisWeek / 7;
+  const daysToBonus = daysThisWeek === 0 ? 7 : 7 - daysThisWeek;
 
   // 달력 셀 구성.
   const startWeekday = new Date(year, month - 1, 1).getDay();
@@ -171,6 +177,27 @@ export default function AttendanceScreen(): React.JSX.Element {
               ))}
             </View>
           )}
+        </View>
+
+        {/* 주간 출석 진척도 — 7일 연속 시 +30C */}
+        <View className="gap-sm">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <Icon name="gift" size={16} color={c.amber} />
+              <AppText variant="label" className="text-text-secondary">
+                주간 연속 출석 보너스
+              </AppText>
+            </View>
+            <AppText variant="label" className="text-text-primary">
+              {daysThisWeek} / 7일
+            </AppText>
+          </View>
+          <ProgressBar progress={weeklyProgress} />
+          <AppText variant="caption" className="text-text-tertiary">
+            {daysToBonus === 7 && daysThisWeek === 7
+              ? `7일 연속 달성! +${WEEKLY_BONUS}C 적립`
+              : `${daysToBonus}일 더 연속 출석하면 +${WEEKLY_BONUS}C`}
+          </AppText>
         </View>
 
         {/* 오늘 미출석이면 체크 버튼 */}

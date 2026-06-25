@@ -162,7 +162,8 @@ def list_unopened_boxes(user):
 # streak_count 자체는 누적(연속 출석 N일째 표시용)이고, 보너스 금액만 7일 주기로 순환한다.
 ATTENDANCE_CYCLE_LENGTH = 7
 BASE_ATTENDANCE_BONUS = 10
-STREAK_BONUS_BY_CYCLE_DAY = {2: 5, 3: 10, 4: 15, 5: 20, 6: 30, 7: 50}
+# 7일차(주간 연속 출석 완성)는 +30C 고정 보너스. 2~6일차는 점증.
+STREAK_BONUS_BY_CYCLE_DAY = {2: 5, 3: 10, 4: 15, 5: 20, 6: 30, 7: 30}
 
 
 class AlreadyCheckedIn(CashError):

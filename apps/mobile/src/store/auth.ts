@@ -38,3 +38,27 @@ export function isLoggedIn(): boolean {
   const token = getAccessToken();
   return token !== null && token.length > 0;
 }
+
+// 게스트 기기 식별자 — 한 번 만들면 영속(재로그인해도 같은 게스트 계정으로).
+// 보안용이 아니라 "이 기기의 게스트"를 가리키는 불투명 ID라 간이 UUIDv4로 충분하다.
+const GUEST_UID_KEY = 'auth.guestUid';
+
+function uuidv4(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = Math.floor(Math.random() * 16);
+    // y 자리는 variant 비트(8~b)만 허용 — 비트연산 없이 동일 결과.
+    const v = ch === 'x' ? r : (r % 4) + 8;
+    return v.toString(16);
+  });
+}
+
+/** 이 기기의 게스트 UID를 반환(없으면 생성·영속). 게스트 로그인 요청에 사용한다. */
+export function getOrCreateGuestUid(): string {
+  const existing = storage.getString(GUEST_UID_KEY);
+  if (existing && existing.length > 0) {
+    return existing;
+  }
+  const fresh = uuidv4();
+  storage.set(GUEST_UID_KEY, fresh);
+  return fresh;
+}

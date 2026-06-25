@@ -18,10 +18,11 @@ export type JlptLevel = 'N1' | 'N2' | 'N3' | 'N4' | 'N5';
 
 export type MeResponse = {
   id: number;
-  provider: 'google' | 'kakao';
+  provider: 'guest' | 'google' | 'kakao';
   google_uid: string | null;
-  email: string;
+  email: string | null;
   nickname: string;
+  is_guest: boolean;
   selected_jlpt_level: string | null;
   jlpt_level_word: string | null;
   jlpt_level_kanji: string | null;

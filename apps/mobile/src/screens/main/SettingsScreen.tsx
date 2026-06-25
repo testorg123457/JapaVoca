@@ -5,13 +5,21 @@
  * 알림 화면, 로그아웃. 일부(계정/잠금화면)는 안내 스텁.
  * 비즈니스 로직은 기존 훅(useUpdateProfile/useAuth) 그대로 — 화면은 호출만.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import Config from 'react-native-config';
+import {
+  GoogleSignin,
+  isCancelledResponse,
+  isSuccessResponse,
+} from '@react-native-google-signin/google-signin';
 
 import { AppHeader, AppText, Icon, ListRow, ListSection, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, type ProfileUpdate } from '../../api/hooks';
+import { linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -60,11 +68,57 @@ export default function SettingsScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
   const updateProfile = useUpdateProfile();
-  const { signOut } = useAuth();
+  const { signIn, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const [levelTarget, setLevelTarget] = useState<LevelTarget>(null);
+  const [linking, setLinking] = useState(false);
+
+  useEffect(() => {
+    GoogleSignin.configure({ webClientId: Config.GOOGLE_WEB_CLIENT_ID });
+  }, []);
 
   const patch = (data: ProfileUpdate) =>
     updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
+
+  // 게스트 → 구글 연결. 구글 로그인으로 id_token을 받아 현재(게스트) JWT로 link 호출.
+  // 충돌(이미 가입된 구글) 시 서버가 기존 계정으로 전환(switched) → 새 토큰으로 교체 후
+  // 전체 캐시 무효화(계정이 바뀔 수 있으므로).
+  async function handleLinkGoogle() {
+    if (linking) {
+      return;
+    }
+    setLinking(true);
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      if (isCancelledResponse(response)) {
+        return;
+      }
+      if (!isSuccessResponse(response) || !response.data.idToken) {
+        throw new Error('no id token');
+      }
+      const { tokens, switched } = await linkAccount('google', response.data.idToken);
+      signIn(tokens.access, tokens.refresh);
+      await queryClient.invalidateQueries();
+      Alert.alert(
+        switched ? '기존 구글 계정으로 로그인' : '구글 연결 완료',
+        switched
+          ? '이미 가입된 구글 계정이 있어 그 계정으로 로그인했어요. (게스트 진행분은 합쳐지지 않아요)'
+          : '게스트 계정이 구글 계정으로 연결됐어요. 이제 기프티콘 교환도 가능해요.',
+      );
+    } catch {
+      Alert.alert('연결 실패', '구글 연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  function handleLinkKakao() {
+    Alert.alert(
+      '카카오 연결 준비 중',
+      '카카오 네이티브 SDK/앱키 설정 후 활성화됩니다. (백엔드는 이미 준비됨)',
+    );
+  }
 
   function selectLevel(level: string) {
     const target = levelTarget;
@@ -107,11 +161,34 @@ export default function SettingsScreen(): React.JSX.Element {
               {m?.nickname ?? '게스트'}
             </AppText>
             <AppText variant="caption" className="text-text-tertiary">
-              {m?.email ?? ''}
+              {m?.is_guest ? '게스트 계정 · 연결하면 교환 가능' : m?.email ?? ''}
             </AppText>
           </View>
-          <Tag label={m?.provider === 'kakao' ? 'Kakao' : 'Google'} variant="neutral" />
+          <Tag
+            label={m?.provider === 'kakao' ? 'Kakao' : m?.is_guest ? 'Guest' : 'Google'}
+            variant={m?.is_guest ? 'amber' : 'neutral'}
+          />
         </View>
+
+        {/* 계정 연결 — 게스트만. 구글/카카오 연결 시 같은 계정이 실계정으로 승격 */}
+        {m?.is_guest ? (
+          <ListSection title="계정 연결">
+            <ListRow
+              leftIcon="google"
+              title="구글로 연결"
+              value={linking ? '연결 중…' : undefined}
+              onPress={handleLinkGoogle}
+              showChevron
+            />
+            <ListRow
+              leftIcon="user"
+              title="카카오로 연결"
+              onPress={handleLinkKakao}
+              showChevron
+              last
+            />
+          </ListSection>
+        ) : null}
 
         {/* 학습 — 단어/한자 급수 별도 */}
         <ListSection title="학습 급수">

@@ -18,6 +18,7 @@ from .serializers import ExchangeRequestSerializer, GiftExchangeSerializer
 from .services import (
     AdNotVerified,
     ExchangeIssueFailed,
+    GuestNotAllowed,
     InvalidProduct,
     request_exchange,
 )
@@ -52,6 +53,8 @@ class RequestExchangeView(APIView):
                 idempotency_key=data.get('idempotency_key') or None,
                 ad_log_id=data.get('ad_log_id'),
             )
+        except GuestNotAllowed as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except AdNotVerified as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except InvalidProduct as exc:

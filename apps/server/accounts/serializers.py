@@ -7,10 +7,12 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     """유저 프로필 응답용."""
 
+    is_guest = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = User
         fields = (
-            'id', 'provider', 'google_uid', 'email', 'nickname',
+            'id', 'provider', 'google_uid', 'email', 'nickname', 'is_guest',
             'selected_jlpt_level', 'jlpt_level_word', 'jlpt_level_kanji',
             'push_enabled', 'push_quiz_reminder', 'push_marketing',
             'status', 'created_at',
@@ -28,6 +30,19 @@ class KakaoLoginSerializer(serializers.Serializer):
     """카카오 로그인 요청 — RN 카카오 SDK 가 받은 access token."""
 
     access_token = serializers.CharField()
+
+
+class GuestLoginSerializer(serializers.Serializer):
+    """게스트 로그인 요청 — 클라가 생성한 기기 식별자(UUID)."""
+
+    guest_uid = serializers.CharField(max_length=64)
+
+
+class LinkAccountSerializer(serializers.Serializer):
+    """게스트 → 소셜 계정 연결 요청 — provider + 해당 토큰(구글 id_token / 카카오 access token)."""
+
+    provider = serializers.ChoiceField(choices=['google', 'kakao'])
+    token = serializers.CharField()
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):

@@ -60,22 +60,29 @@ class User(AbstractBaseUser, PermissionsMixin):
         BANNED = 'banned', '차단'
 
     class Provider(models.TextChoices):
+        GUEST = 'guest', '게스트'
         GOOGLE = 'google', '구글'
         KAKAO = 'kakao', '카카오'
 
     # 소셜 식별자 — 멀티 프로바이더. 카카오 유저는 google_uid 가 없으므로 null 허용
     # (Postgres unique 는 NULL 다중 허용). 카카오는 kakao_uid 로 식별한다.
+    # 게스트는 셋 다 비고 기기별 guest_uid 로만 식별 → 나중에 소셜 연결 시 같은 행을 승격.
     google_uid = models.CharField(
         max_length=150, unique=True, null=True, blank=True, help_text='구글 OAuth 식별자',
     )
     kakao_uid = models.CharField(
         max_length=150, unique=True, null=True, blank=True, help_text='카카오 식별자',
     )
+    guest_uid = models.CharField(
+        max_length=64, unique=True, null=True, blank=True,
+        help_text='게스트 기기 식별자(클라가 생성한 UUID). 소셜 연결 후에도 보존(기기 연속성).',
+    )
     provider = models.CharField(
         max_length=10, choices=Provider.choices, default=Provider.GOOGLE,
         help_text='가입/로그인 제공자',
     )
-    email = models.EmailField(unique=True)
+    # 게스트는 이메일이 없으므로 null 허용(Postgres unique 는 NULL 다중 허용).
+    email = models.EmailField(unique=True, null=True, blank=True)
     nickname = models.CharField(max_length=50, blank=True)
     # 학습 급수: 온보딩에서 선택하므로 가입 직후엔 비어 있을 수 있어 null 허용.
     # selected_jlpt_level 은 하위호환(공통 기본). 출제는 단어/한자 별도 급수를 우선 사용한다.
@@ -115,5 +122,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name = '유저'
         verbose_name_plural = '유저'
 
+    @property
+    def is_guest(self) -> bool:
+        """게스트 계정 여부. 소셜 식별자가 하나도 없으면 게스트로 본다."""
+        return self.provider == self.Provider.GUEST or not (self.google_uid or self.kakao_uid)
+
     def __str__(self):
-        return f'{self.nickname or self.email} ({self.google_uid})'
+        return f'{self.nickname or self.email or self.guest_uid} ({self.provider})'
