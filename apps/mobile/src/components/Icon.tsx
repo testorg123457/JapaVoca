@@ -12,7 +12,7 @@
  *  - 이모지는 "보상 연출"처럼 콘텐츠성 표현에만 남기고, 구조/내비/상태에는 이 아이콘만.
  */
 import React from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 import { gray } from '../theme/tokens';
 
@@ -42,7 +42,8 @@ export type IconName =
   | 'bell'
   | 'lock'
   | 'mail'
-  | 'google';
+  | 'google'
+  | 'kakao';
 
 export interface IconProps {
   name: IconName;
@@ -248,6 +249,14 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
                 <Path d="M12 22 c2.7 0 5-0.9 6.6-2.4 l-3.2-2.5 c-.9.6-2 1-3.4 1 a5.9 5.9 0 0 1-5.5-4.1 H3.2 v2.6 A10 10 0 0 0 12 22z" fill="#34A853" />
                 <Path d="M6.5 14 a5.9 5.9 0 0 1 0-3.8 V7.6 H3.2 a10 10 0 0 0 0 9z" fill="#FBBC05" />
                 <Path d="M12 6.1 c1.5 0 2.8.5 3.9 1.5 l2.9-2.9 A10 10 0 0 0 3.2 7.6 l3.3 2.6 A5.9 5.9 0 0 1 12 6.1z" fill="#EA4335" />
+              </>
+            );
+          case 'kakao': // 카카오 브랜드 — 옐로 라운드 스퀘어 + 브라운 말풍선
+            return (
+              <>
+                <Rect x="2" y="2" width="20" height="20" rx="6" fill="#FEE500" />
+                <Ellipse cx="12" cy="10.6" rx="6.3" ry="5" fill="#3C1E1E" />
+                <Path d="M8.6 14 L6.8 17.6 L11 14.9 Z" fill="#3C1E1E" />
               </>
             );
           default:

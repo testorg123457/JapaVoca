@@ -25,7 +25,8 @@ import type { MainStackScreenProps } from '../../navigation/types';
 
 const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 const APP_VERSION = 'v0.0.1';
-const SUPPORT_MAIL = 'mailto:support@japavoca.app?subject=[JapaVoca]%20문의';
+const SUPPORT_EMAIL = '0211ilyoil@gmail.com';
+const SUPPORT_MAIL = `mailto:${SUPPORT_EMAIL}?subject=[JapaVoca]%20문의`;
 
 type LevelTarget = 'jlpt_level_word' | 'jlpt_level_kanji' | null;
 
@@ -137,7 +138,7 @@ export default function SettingsScreen(): React.JSX.Element {
 
   function openSupport() {
     Linking.openURL(SUPPORT_MAIL).catch(() =>
-      Alert.alert('문의하기', 'support@japavoca.app 로 문의해주세요.'),
+      Alert.alert('문의하기', `${SUPPORT_EMAIL} 로 문의해주세요.`),
     );
   }
 
@@ -181,7 +182,7 @@ export default function SettingsScreen(): React.JSX.Element {
               showChevron
             />
             <ListRow
-              leftIcon="user"
+              leftIcon="kakao"
               title="카카오로 연결"
               onPress={handleLinkKakao}
               showChevron

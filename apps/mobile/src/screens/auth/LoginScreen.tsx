@@ -80,8 +80,25 @@ export default function LoginScreen(): React.JSX.Element {
     );
   }
 
-  // 게스트로 시작 — 기기 UUID로 게스트 계정 발급. 소셜 키 없이 즉시 시작 가능.
-  async function handleGuestLogin() {
+  // 게스트로 시작 — 먼저 데이터 유실 경고를 띄우고, 확인 시에만 게스트 계정을 발급한다.
+  function handleGuestLogin() {
+    if (loading) {
+      return;
+    }
+    Alert.alert(
+      '게스트로 시작하기 전에',
+      '게스트는 이 기기에만 저장돼요.\n\n' +
+        '• 앱을 삭제하거나 기기를 바꾸면 모아둔 캐시·학습 기록·출석이 모두 사라질 수 있어요.\n' +
+        '• 게스트는 기프티콘 교환이 제한돼요.\n\n' +
+        '나중에 설정에서 구글·카카오 계정을 연결하면 지금까지의 기록을 그대로 안전하게 보관할 수 있어요.',
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '동의하고 시작', style: 'destructive', onPress: startGuest },
+      ],
+    );
+  }
+
+  async function startGuest() {
     if (loading) {
       return;
     }
@@ -166,9 +183,9 @@ export default function LoginScreen(): React.JSX.Element {
         <PressableScale
           onPress={handleGuestLogin}
           disabled={loading}
-          className="mt-sm w-full items-center justify-center rounded-md"
-          style={{ height: 48, borderWidth: 1, borderColor: c['border-tertiary'] }}>
-          <AppText variant="label" className="text-text-secondary">
+          className="mt-sm w-full items-center justify-center rounded-md bg-bg-tertiary"
+          style={{ height: 50, borderWidth: 1.5, borderColor: c['border-secondary'] }}>
+          <AppText variant="label" className="text-text-primary" style={{ fontSize: 15 }}>
             게스트로 시작하기
           </AppText>
         </PressableScale>
