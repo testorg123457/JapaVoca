@@ -80,7 +80,7 @@ export default function BoxOpenScreen({
   const wobbleStyle = useAnimatedStyle(() => ({ transform: [{ translateY: wobble.value * 4 }, { rotate: `${wobble.value * 2}deg` }] }));
 
   const goHome = useCallback(() => {
-    navigation.navigate('BottomTab', { screen: 'Home' });
+    navigation.navigate('Home');
   }, [navigation]);
 
   const doOpen = useCallback(

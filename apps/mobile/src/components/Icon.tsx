@@ -37,6 +37,11 @@ export type IconName =
   | 'logout'
   | 'arrow-up-right'
   | 'arrow-down-left'
+  | 'arrow-left'
+  | 'calendar'
+  | 'bell'
+  | 'lock'
+  | 'mail'
   | 'google';
 
 export interface IconProps {
@@ -199,6 +204,41 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
               <>
                 <Circle cx="12" cy="12" r="9" {...s} />
                 <Path d="M14.5 9.5 L9.5 14.5 M13.5 14.5 H9.5 V10.5" {...s} />
+              </>
+            );
+          case 'arrow-left': // 헤더 뒤로가기
+            return (
+              <>
+                <Path d="M11 6 L5 12 L11 18" {...s} />
+                <Path d="M5 12 H19" {...s} />
+              </>
+            );
+          case 'calendar':
+            return (
+              <>
+                <Rect x="3.5" y="5" width="17" height="15" rx="2.5" {...s} />
+                <Path d="M3.5 9.5 H20.5 M8 3.5 V6.5 M16 3.5 V6.5" {...s} />
+              </>
+            );
+          case 'bell':
+            return (
+              <>
+                <Path d="M6 16.5 V11 a6 6 0 0 1 12 0 V16.5 L19.5 18.5 H4.5z" {...s} />
+                <Path d="M9.8 18.5 a2.2 2.2 0 0 0 4.4 0" {...s} />
+              </>
+            );
+          case 'lock':
+            return (
+              <>
+                <Rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5" {...s} />
+                <Path d="M8 10.5 V8 a4 4 0 0 1 8 0 V10.5" {...s} />
+              </>
+            );
+          case 'mail':
+            return (
+              <>
+                <Rect x="3.5" y="5.5" width="17" height="13" rx="2.5" {...s} />
+                <Path d="M4.5 7.5 L12 13 L19.5 7.5" {...s} />
               </>
             );
           case 'google': // 멀티컬러 G (브랜드 가이드 색)

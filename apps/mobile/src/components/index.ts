@@ -1,5 +1,7 @@
 export { AppText } from './AppText';
 export type { AppTextProps } from './AppText';
+export { AppHeader } from './AppHeader';
+export type { AppHeaderProps } from './AppHeader';
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
 export { Card } from './Card';

@@ -21,13 +21,28 @@ export type AuthStackParamList = {
 };
 
 export type MainStackParamList = {
-  BottomTab: NavigatorScreenParams<BottomTabParamList>;
+  /** 단일 스크롤 메인. 구 BottomTab 대체. */
+  Home: undefined;
   Quiz: undefined;
   BoxOpen: { boxIds: number[] };
-  /** DEBUG 전용 — 디자인 시스템 쇼케이스(설정에서 진입). */
+  /** 히라가나/가타카나 학습. */
+  Kana: undefined;
+  /** 출석체크(달력/스트릭). */
+  Attendance: undefined;
+  /** 설정(헤더 우측 버튼으로 진입). */
+  Settings: undefined;
+  /** 기프티콘 교환. */
+  Exchange: undefined;
+  /** 캐시 적립/사용 내역(설정 > 내역). */
+  Ledger: undefined;
+  /** DEBUG 전용 — 디자인 시스템 쇼케이스. */
   StyleGuide: undefined;
 };
 
+/**
+ * @deprecated 하단 탭 제거됨(홈 단일 스크롤로 통합). 타입은 deprecated된
+ * WalletScreen/SettingsScreen의 컴파일 호환을 위해서만 남겨둔다.
+ */
 export type BottomTabParamList = {
   Home: undefined;
   Wallet: undefined;
@@ -41,6 +56,7 @@ export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
 export type MainStackScreenProps<T extends keyof MainStackParamList> =
   NativeStackScreenProps<MainStackParamList, T>;
 
+/** @deprecated 하단 탭 제거됨. deprecated 화면 컴파일 호환용. */
 export type BottomTabScreenPropsFor<T extends keyof BottomTabParamList> =
   CompositeScreenProps<
     BottomTabScreenProps<BottomTabParamList, T>,

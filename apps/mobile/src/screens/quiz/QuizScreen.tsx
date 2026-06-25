@@ -93,7 +93,7 @@ export default function QuizScreen({
   }, []);
 
   const goHome = useCallback(() => {
-    navigation.navigate('BottomTab', { screen: 'Home' });
+    navigation.navigate('Home');
   }, [navigation]);
 
   const handleExit = useCallback(() => {

@@ -1,16 +1,22 @@
 /**
- * 로그인 후 스택 — 하단 탭 + 그 위로 올라오는 퀴즈/상자 개봉.
+ * 로그인 후 스택 — 단일 스크롤 홈 + 그 위로 올라오는 퀴즈/상자 개봉.
  *
- * BottomTab 과 Quiz/BoxOpen 을 형제 스크린으로 두어, 퀴즈·상자 개봉이
- * 탭바를 덮는 전체화면으로 표시되게 한다(탭바 숨김 처리 불필요).
+ * 하단 탭(BottomTab)을 제거하고 Home 을 메인으로 둔다. 지갑/설정은 홈의 섹션으로
+ * 흡수됐다. Home 과 Quiz/BoxOpen 을 형제 스크린으로 두어 퀴즈·상자 개봉이
+ * 홈을 덮는 전체화면으로 표시된다.
  */
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { MainStackParamList } from './types';
-import BottomTabNavigator from './BottomTabNavigator';
+import HomeScreen from '../screens/main/HomeScreen';
 import QuizScreen from '../screens/quiz/QuizScreen';
 import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
+import KanaScreen from '../screens/main/KanaScreen';
+import AttendanceScreen from '../screens/main/AttendanceScreen';
+import SettingsScreen from '../screens/main/SettingsScreen';
+import ExchangeScreen from '../screens/main/ExchangeScreen';
+import LedgerScreen from '../screens/main/LedgerScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -18,7 +24,7 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 export default function MainStack(): React.JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="BottomTab" component={BottomTabNavigator} />
+      <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen
         name="Quiz"
         component={QuizScreen}
@@ -29,6 +35,11 @@ export default function MainStack(): React.JSX.Element {
         component={BoxOpenScreen}
         options={{ presentation: 'fullScreenModal' }}
       />
+      <Stack.Screen name="Kana" component={KanaScreen} />
+      <Stack.Screen name="Attendance" component={AttendanceScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Exchange" component={ExchangeScreen} />
+      <Stack.Screen name="Ledger" component={LedgerScreen} />
       {__DEV__ && (
         <Stack.Screen
           name="StyleGuide"
