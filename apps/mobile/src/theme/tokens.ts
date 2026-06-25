@@ -1,14 +1,15 @@
 /**
  * Design tokens — single source of truth.
  *
- * "배달의민족(배시시)" 풍 디자인 시스템 기반(라이브러리 미사용 — 토큰·스타일만 차용).
- * - 포인트: 배민 민트 brand-400 `#2AC1BC` (버튼/활성탭/강조).
- * - 보조: 옐로 yellow-400 `#FFCE00` (배지/캐시/리워드 강조).
- * - 뉴트럴: 배민 특유의 따뜻한 그레이(#F8F8F8 배경 → #191919 텍스트).
- * - 적당히 둥근 라운드(버튼 12 / 카드 16), 약간 무게감 있는 그림자, Pretendard.
+ * 라이브러리 미사용 — 토큰·스타일만 직접 정의.
+ * - Primary: Vermilion vermilion-500 `#E8432D` (CTA/버튼/활성탭). Coral vermilion-400 `#FF6B50`은 보조 강조.
+ * - 캐시/리워드 전용: 옐로 yellow-400 `#FFCE00`.
+ * - 텍스트: Ink gray-900 `#1A1A1A` 기본 — 메인색을 글자색으로 쓰지 않는다.
+ * - 뉴트럴: 핑크 틴트 없는 그레이(#FFFFFF 흰 배경 → #1A1A1A Ink 텍스트).
+ * - 적당히 둥근 라운드(버튼 14 / 카드 18), 옅고 넓게 퍼지는 그림자, Pretendard.
  *
  * 구조는 2-tier:
- *   1) primitives — 색 스케일 자체(brand/yellow/gray + danger/info). 모드 무관 고정.
+ *   1) primitives — 색 스케일 자체(vermilion/yellow/gray + green/blue). 모드 무관 고정.
  *   2) semantic   — primitive를 역할에 매핑(light/dark 두 세트). 컴포넌트는 이것만 참조.
  *
  * 다크 모드는 semantic 매핑 한 곳(여기)만 바꾸면 전체가 따라온다.
@@ -26,46 +27,55 @@
  * 1) PRIMITIVES — 색 스케일 (모드 무관 고정)
  * ──────────────────────────────────────────────────────────────────────── */
 
-/** 배민 민트 (Primary). 400이 메인 포인트. */
-export const brand = {
-  50: '#E6FAF9',
-  100: '#B3F0ED',
-  200: '#80E6E1',
-  300: '#4DD9D3',
-  400: '#2AC1BC', // 메인 포인트(버튼/활성탭/강조)
-  500: '#1DA8A3', // 눌린 상태/진한 강조
-  600: '#0F8A85',
+/**
+ * Vermilion (Primary). 500이 메인 CTA, 400은 Coral(보조 강조).
+ * 9 stops(800 생략) 풀 램프.
+ */
+export const vermilion = {
+  50: '#FFF0ED',
+  100: '#FFD5CC',
+  200: '#FFB3A3',
+  300: '#FF8870',
+  400: '#FF6B50', // Coral — 보조 강조
+  500: '#E8432D', // Primary — 메인 CTA/버튼/활성 탭
+  600: '#C23320', // Pressed
+  700: '#8F2012',
+  900: '#5C1108',
 } as const;
 
-/** 옐로 (Secondary) — 배지/캐시/리워드 강조. */
+/** Cash Yellow — 캐시/리워드 전용 액센트. 글자용은 600(#B38F00). */
 export const yellow = {
-  300: '#FFE566',
-  400: '#FFCE00', // 캐시/리워드 메인
-  500: '#E6B800',
+  50: '#FFFBE6',
+  100: '#FFF3B0',
+  200: '#FFE566',
+  400: '#FFCE00', // 캐시/리워드/상자 메인
+  500: '#E6B800', // Pressed
+  600: '#B38F00', // 옐로 배경 없을 때 텍스트용
+  700: '#7A6100',
 } as const;
 
-/** 따뜻한 뉴트럴 그레이. 0=흰색 … 900=기본 텍스트. */
+/** 뉴트럴 그레이(핑크 틴트 없음). 0/50=흰색(앱 배경) … 900=Ink(기본 텍스트). */
 export const gray = {
   0: '#FFFFFF',
-  50: '#F8F8F8', // 앱 기본 배경
-  100: '#F0F0F0',
-  200: '#E0E0E0',
-  300: '#C8C8C8',
-  400: '#ABABAB',
-  500: '#888888',
-  600: '#666666',
-  700: '#444444',
-  800: '#2C2C2C',
-  900: '#191919', // 기본 텍스트
+  50: '#FFFFFF', // 앱 기본 배경 — 순백
+  100: '#F2F2F4', // 미묘한 구분 면/칩 배경
+  200: '#E5E5E8', // 보더
+  300: '#D2D2D6',
+  400: '#A8A8AE',
+  500: '#7E7E85',
+  600: '#5C5C62',
+  700: '#45454A',
+  800: '#2A2A2E',
+  900: '#1A1A1A', // Ink — 기본 텍스트
 } as const;
 
 export const primitives = {
-  brand,
+  vermilion,
   yellow,
   gray,
   // 단색 기능색(스케일 불필요) — 500=메인, 50=옅은 배경
-  red: { 50: '#FFF0F0', 500: '#FF585D' }, // danger
-  blue: { 50: '#EBF4FF', 500: '#4A90E2' }, // info
+  green: { 50: '#E6F9EE', 500: '#2AC171' }, // success
+  blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info
   white: '#FFFFFF',
   black: '#000000',
 } as const;
@@ -80,28 +90,32 @@ type SemanticSet = Record<string, string>;
 
 const lightSemantic = {
   // 배경
-  'bg-primary': gray[0], // 메인 면(흰색)
-  'bg-secondary': gray[50], // 앱 기본 배경
+  'bg-primary': gray[0], // 메인 면(흰색 카드)
+  'bg-secondary': gray[50], // 앱 기본 배경(Warm White)
   'bg-tertiary': gray[100], // 미묘한 구분 면
-  // 텍스트
-  'text-primary': gray[900],
+  // 텍스트 — Ink/그레이만. 메인색(vermilion)을 글자색으로 쓰지 않는다.
+  'text-primary': gray[900], // Ink
   'text-secondary': gray[600],
   'text-tertiary': gray[500],
   // 보더
   'border-tertiary': gray[100],
   'border-secondary': gray[200],
-  // 브랜드 (민트)
-  brand: brand[400],
-  'brand-active': brand[500], // 눌림
-  'brand-strong': brand[600], // 그라데이션 끝/진한 강조
-  'brand-subtle': brand[50], // 옅은 민트 틴트
-  'brand-subtle-active': brand[100],
-  'on-brand': gray[0], // 민트 면 위 텍스트(흰색)
+  // 브랜드 (Vermilion) — 주액션/활성/선택에만
+  brand: vermilion[500], // Primary CTA
+  'brand-active': vermilion[600], // 눌림
+  'brand-strong': vermilion[700], // 그라데이션 끝/진한 강조
+  'brand-subtle': vermilion[50], // 옅은 vermilion 틴트
+  'brand-subtle-active': vermilion[100],
+  'on-brand': gray[0], // vermilion 면 위 텍스트(흰색)
+  // 보조 강조 (Coral) — primary와 구분되는 두 번째 포인트
+  coral: vermilion[400],
+  'coral-subtle': '#FFE7E0',
   // 기능색
   amber: yellow[400], // 캐시/리워드/출석 강조
-  'amber-subtle': '#FFFBE6',
-  danger: primitives.red[500],
-  'danger-subtle': primitives.red[50],
+  'amber-subtle': yellow[50],
+  'amber-strong': yellow[600], // 옅은 배경 없이 캐시를 글자로 쓸 때
+  danger: vermilion[500], // = Primary 재사용
+  'danger-subtle': vermilion[50],
   info: primitives.blue[500],
   'info-subtle': primitives.blue[50],
 
@@ -112,54 +126,58 @@ const lightSemantic = {
   'text-strong': gray[900],
   text: gray[600],
   'text-weak': gray[500],
-  'brand-dark': brand[600],
-  'brand-soft': brand[50],
-  success: brand[400], // 배시시: 성공 = 브랜드 민트 계열
-  'success-subtle': brand[50],
+  'brand-dark': vermilion[700],
+  'brand-soft': vermilion[50],
+  success: primitives.green[500], // 성공/적립(+) = 그린
+  'success-subtle': primitives.green[50],
   warning: yellow[400],
-  'warning-subtle': '#FFFBE6',
+  'warning-subtle': yellow[50],
   gold: yellow[400], // 코인/캐시 표현
-  'gold-subtle': '#FFFBE6',
+  'gold-subtle': yellow[50],
 } as const satisfies SemanticSet;
 
 const darkSemantic = {
-  // 배경 — 다크 그레이
-  'bg-primary': '#1F1F1F',
-  'bg-secondary': '#191919',
-  'bg-tertiary': '#2C2C2C',
+  // 배경 — 따뜻한 다크
+  'bg-primary': '#241F1E',
+  'bg-secondary': '#1A1716',
+  'bg-tertiary': '#332B29',
   // 텍스트
   'text-primary': gray[100],
   'text-secondary': gray[400],
   'text-tertiary': gray[500],
   // 보더
-  'border-tertiary': '#2C2C2C',
-  'border-secondary': '#444444',
-  // 브랜드 — 다크에선 밝은 민트
-  brand: brand[300],
-  'brand-active': brand[200],
-  'brand-strong': brand[400],
-  'brand-subtle': '#10403E',
-  'brand-subtle-active': '#155753',
-  'on-brand': gray[900], // 밝은 민트 면 위는 어두운 텍스트
+  'border-tertiary': '#332B29',
+  'border-secondary': '#4A4442',
+  // 브랜드 — 다크에선 밝은 Coral 계열
+  brand: vermilion[400],
+  'brand-active': vermilion[300],
+  'brand-strong': vermilion[500],
+  'brand-subtle': '#3A1A14',
+  'brand-subtle-active': '#4D241C',
+  'on-brand': gray[0], // vermilion 면 위는 흰 텍스트
+  // 보조 강조 (Coral)
+  coral: vermilion[300],
+  'coral-subtle': '#4A241C',
   // 기능색
   amber: yellow[400],
   'amber-subtle': '#3A330F',
-  danger: '#FF7176',
-  'danger-subtle': '#3A1B1C',
+  'amber-strong': yellow[200],
+  danger: vermilion[400],
+  'danger-subtle': '#3A1A14',
   info: '#6AA6E8',
-  'info-subtle': '#11243A',
+  'info-subtle': '#16243A',
 
   /* ── 백워드 호환 별칭 ── */
-  bg: '#191919',
-  surface: '#1F1F1F',
-  border: '#444444',
+  bg: '#1A1716',
+  surface: '#241F1E',
+  border: '#4A4442',
   'text-strong': gray[100],
   text: gray[400],
   'text-weak': gray[500],
-  'brand-dark': brand[200],
-  'brand-soft': '#10403E',
-  success: brand[300],
-  'success-subtle': '#10403E',
+  'brand-dark': vermilion[300],
+  'brand-soft': '#3A1A14',
+  success: '#3FD487',
+  'success-subtle': '#143524',
   warning: yellow[400],
   'warning-subtle': '#3A330F',
   gold: yellow[400],
@@ -257,8 +275,8 @@ export const shadow = {
  * 단색보다 깊이감이 살아 프리미엄하게 보인다. 민트 brand 계열로 절제해서 사용.
  */
 export const gradients = {
-  brand: ['#2FC9C3', '#1AA6A0'] as [string, string], // 밝은 민트 → 깊은 민트
-  brandSoft: ['#E9FBFA', '#D2F4F2'] as [string, string],
+  brand: ['#FF6B50', '#E8432D'] as [string, string], // Coral → Vermilion (캐시 hero)
+  brandSoft: ['#FFF0ED', '#FFD5CC'] as [string, string],
 } as const;
 
 /** 모달/바텀시트 스크림(반투명 검정). 라이트/다크 공통. */
@@ -322,14 +340,14 @@ export const lineHeight = {
  * 자간(letterSpacing)은 큰 글자일수록 음수로 조여 또렷하고 단단하게.
  */
 export const typography = {
-  hero: { fontSize: 42, lineHeight: 46, fontFamily: fontFamily.bold, letterSpacing: -1.0 },
-  display: { fontSize: 28, lineHeight: 34, fontFamily: fontFamily.bold, letterSpacing: -0.6 },
-  title: { fontSize: 22, lineHeight: 30, fontFamily: fontFamily.bold, letterSpacing: -0.5 },
-  heading: { fontSize: 18, lineHeight: 24, fontFamily: fontFamily.semibold, letterSpacing: -0.3 },
-  subheading: { fontSize: 16, lineHeight: 22, fontFamily: fontFamily.semibold, letterSpacing: -0.2 },
-  body: { fontSize: 15, lineHeight: 23, fontFamily: fontFamily.regular, letterSpacing: -0.2 },
-  label: { fontSize: 14, lineHeight: 18, fontFamily: fontFamily.semibold, letterSpacing: -0.1 },
-  caption: { fontSize: 13, lineHeight: 18, fontFamily: fontFamily.regular, letterSpacing: 0 },
+  hero: { fontSize: 34, lineHeight: 40, fontFamily: fontFamily.bold, letterSpacing: -0.8 },
+  display: { fontSize: 26, lineHeight: 32, fontFamily: fontFamily.bold, letterSpacing: -0.6 },
+  title: { fontSize: 19, lineHeight: 26, fontFamily: fontFamily.bold, letterSpacing: -0.4 },
+  heading: { fontSize: 16, lineHeight: 22, fontFamily: fontFamily.semibold, letterSpacing: -0.3 },
+  subheading: { fontSize: 15, lineHeight: 20, fontFamily: fontFamily.semibold, letterSpacing: -0.2 },
+  body: { fontSize: 14, lineHeight: 21, fontFamily: fontFamily.regular, letterSpacing: -0.1 },
+  label: { fontSize: 13, lineHeight: 17, fontFamily: fontFamily.semibold, letterSpacing: -0.1 },
+  caption: { fontSize: 12, lineHeight: 16, fontFamily: fontFamily.regular, letterSpacing: 0 },
   micro: { fontSize: 11, lineHeight: 15, fontFamily: fontFamily.medium, letterSpacing: 0 },
 } as const;
 
@@ -350,7 +368,7 @@ export const hairline = 0.5;
 
 export const tokens = {
   primitives,
-  brand,
+  vermilion,
   yellow,
   gray,
   semantic,

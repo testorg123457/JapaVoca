@@ -5,14 +5,15 @@
  * 로그아웃은 AuthContext.signOut(토큰 삭제 + 상태 전환)으로 RootNavigator가
  * AuthStack 으로 리셋되게 한다(이 화면이 직접 네비게이션하지 않음).
  *
- * 디자인: 아바타가 있는 프로필 카드 + 아이콘/쉐브론이 달린 설정 리스트 행 + 바텀시트.
+ * 디자인(알라미식): 박스 카드 대신 풀폭 흰 면 + 헤어라인 구분선 리스트(ListSection/
+ * ListRow). 진입 항목엔 `>`, 값 표시형엔 값만. 로그아웃은 하단 단독·텍스트 위주로 절제.
  */
 import React, { useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { AppText, Card, Icon, Tag, type IconName } from '../../components';
+import { AppText, Icon, ListRow, ListSection, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
@@ -26,63 +27,6 @@ const PRIVACY_URL = 'https://japavoca.app/privacy';
 
 function openLink(url: string) {
   Linking.openURL(url).catch(() => Alert.alert('오류', '링크를 열 수 없어요.'));
-}
-
-/** 섹션 제목(작은 라벨). */
-function GroupLabel({ children }: { children: string }) {
-  return (
-    <AppText variant="caption" className="text-text-tertiary ml-xs">
-      {children}
-    </AppText>
-  );
-}
-
-/** 설정 리스트 행 — 좌측 아이콘 + 라벨 + 우측(값/쉐브론). */
-function Row({
-  icon,
-  label,
-  value,
-  onPress,
-  showChevron = true,
-  danger = false,
-  isLast = false,
-}: {
-  icon?: IconName;
-  label: string;
-  value?: string;
-  onPress?: () => void;
-  showChevron?: boolean;
-  danger?: boolean;
-  isLast?: boolean;
-}) {
-  const c = useThemeColors();
-  const labelColor = danger ? 'text-danger' : 'text-text-primary';
-  const iconColor = danger ? c.danger : c['text-secondary'];
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      className={`flex-row items-center justify-between py-lg ${onPress ? 'active:opacity-60' : ''} ${
-        isLast ? '' : 'border-b border-border-tertiary'
-      }`}>
-      <View className="flex-row items-center" style={{ gap: 12 }}>
-        {icon ? <Icon name={icon} size={20} color={iconColor} /> : null}
-        <AppText variant="body" className={labelColor}>
-          {label}
-        </AppText>
-      </View>
-      <View className="flex-row items-center" style={{ gap: 4 }}>
-        {value ? (
-          <AppText variant="body" className="text-text-tertiary">
-            {value}
-          </AppText>
-        ) : null}
-        {showChevron && onPress ? (
-          <Icon name="chevron-right" size={18} color={c['text-tertiary']} strokeWidth={2.2} />
-        ) : null}
-      </View>
-    </Pressable>
-  );
 }
 
 export default function SettingsScreen(): React.JSX.Element {
@@ -112,13 +56,15 @@ export default function SettingsScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top']}>
-      <ScrollView contentContainerClassName="gap-2xl px-xl py-2xl" showsVerticalScrollIndicator={false}>
-        {/* 프로필 */}
-        <Card className="flex-row items-center" style={{ gap: 14 }}>
+      <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
+        {/* 프로필 — 풀폭 흰 면(과한 라운드/그림자 없이) */}
+        <View
+          className="flex-row items-center border-y border-border-tertiary bg-bg-primary px-xl py-lg"
+          style={{ gap: 14 }}>
           <View
             className="items-center justify-center rounded-full"
-            style={{ width: 56, height: 56, backgroundColor: c['brand-subtle'] }}>
-            <Icon name="user" size={30} color={c.brand} />
+            style={{ width: 52, height: 52, backgroundColor: c['bg-tertiary'] }}>
+            <Icon name="user" size={28} color={c['text-secondary']} />
           </View>
           <View className="flex-1 gap-xs">
             <AppText variant="title" className="text-text-primary">
@@ -129,53 +75,40 @@ export default function SettingsScreen(): React.JSX.Element {
             </AppText>
           </View>
           <Tag label="Google" variant="neutral" />
-        </Card>
+        </View>
 
         {/* 학습 설정 */}
-        <View className="gap-md">
-          <GroupLabel>학습 설정</GroupLabel>
-          <Card variant="flat" className="py-sm">
-            <Row
-              icon="book"
-              label="JLPT 급수"
-              value={me.data?.selected_jlpt_level ?? '미설정'}
-              onPress={() => setLevelModal(true)}
-              isLast
-            />
-          </Card>
-        </View>
+        <ListSection title="학습 설정">
+          <ListRow
+            title="JLPT 급수"
+            value={me.data?.selected_jlpt_level ?? '미설정'}
+            onPress={() => setLevelModal(true)}
+            last
+          />
+        </ListSection>
 
         {/* 앱 정보 */}
-        <View className="gap-md">
-          <GroupLabel>앱 정보</GroupLabel>
-          <Card variant="flat" className="py-sm">
-            <Row icon="shield" label="버전" value={APP_VERSION} showChevron={false} />
-            <Row icon="document" label="이용약관" onPress={() => openLink(TERMS_URL)} />
-            <Row icon="document" label="개인정보처리방침" onPress={() => openLink(PRIVACY_URL)} isLast />
-          </Card>
-        </View>
+        <ListSection title="앱 정보">
+          <ListRow title="버전" value={APP_VERSION} showChevron={false} />
+          <ListRow title="이용약관" onPress={() => openLink(TERMS_URL)} />
+          <ListRow title="개인정보처리방침" onPress={() => openLink(PRIVACY_URL)} last />
+        </ListSection>
 
         {/* 개발자 (DEBUG 전용) */}
         {__DEV__ && (
-          <View className="gap-md">
-            <GroupLabel>개발자</GroupLabel>
-            <Card variant="flat" className="py-sm">
-              <Row
-                icon="sparkles"
-                label="디자인 시스템"
-                onPress={() => navigation.navigate('StyleGuide')}
-                isLast
-              />
-            </Card>
-          </View>
+          <ListSection title="개발자">
+            <ListRow title="디자인 시스템" onPress={() => navigation.navigate('StyleGuide')} last />
+          </ListSection>
         )}
 
-        {/* 로그아웃 */}
-        <View className="gap-md">
-          <Card variant="flat" className="py-sm">
-            <Row icon="logout" label="로그아웃" onPress={confirmLogout} showChevron={false} danger isLast />
-          </Card>
-        </View>
+        {/* 로그아웃 — 하단 단독, 텍스트 위주로 절제(danger는 텍스트에만) */}
+        <Pressable
+          onPress={confirmLogout}
+          className="items-center py-lg active:opacity-60">
+          <AppText variant="label" className="text-danger">
+            로그아웃
+          </AppText>
+        </Pressable>
       </ScrollView>
 
       {/* 급수 선택 바텀시트 */}

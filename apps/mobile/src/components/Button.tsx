@@ -28,7 +28,7 @@ const SIZE: Record<Size, { height: number; fontSize: number; radius: string; px:
 };
 
 const BOX: Record<Variant, string> = {
-  filled: 'bg-brand',
+  filled: 'bg-brand active:bg-brand-active', // 눌림 = vermilion-600
   soft: 'bg-brand-subtle',
   outline: 'bg-bg-primary border border-brand',
   ghost: 'bg-transparent',
@@ -67,7 +67,7 @@ export function Button({
   // 색: filled는 흰 텍스트/아이콘, 그 외는 브랜드색.
   const contentColor = variant === 'filled' ? c['on-brand'] : c.brand;
   // disabled 면/텍스트 — 중립색으로 또렷하게.
-  const disabledBox = variant === 'filled' ? 'bg-bg-tertiary' : 'bg-transparent border border-border-secondary';
+  const disabledBox = variant === 'filled' ? 'bg-gray-300' : 'bg-transparent border border-border-secondary';
   const disabledText = c['text-tertiary'];
 
   return (

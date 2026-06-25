@@ -209,8 +209,8 @@ export default function QuizScreen({
       <View className="flex-row items-center justify-between px-xl py-md">
         <Pressable
           onPress={confirmExit}
-          hitSlop={12}
-          className="h-9 w-9 items-center justify-center rounded-full active:opacity-60">
+          hitSlop={8}
+          className="h-11 w-11 items-center justify-center rounded-full active:opacity-60">
           <Icon name="close" size={24} color={c['text-secondary']} />
         </Pressable>
         <Tag label={`정답 ${sessionCorrect}`} variant="brand" leftIcon="check" />

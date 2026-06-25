@@ -1,6 +1,7 @@
 /**
  * 홈 화면 — 인사말, 캐시 잔액 hero(그라데이션), 출석 스트릭, 오늘의 학습 현황,
- * 단어·한자 학습 진입, 상자 인벤토리, 하단 배너 광고.
+ * 단어·한자 학습 진입, 상자 인벤토리.
+ * (배너 광고는 BottomTabNavigator의 전역 배너로 이동 — 모든 메인 화면 공통.)
  *
  * 디자인 원칙: 화면을 열면 시선이 "캐시 잔액 hero"에 먼저 닿고(=핵심 보상), 그다음
  * 출석→학습으로 자연스럽게 흐른다. 섹션은 SectionHeader로 위계를 통일하고, 카드/칩/
@@ -9,12 +10,10 @@
  * 에러는 각 훅의 isError를 보지 않고 ?? 기본값으로 조용히 fallback한다 —
  * 홈은 어떤 API가 실패해도 크래시 없이 항상 떠 있어야 한다.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, FlatList, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
-import Config from 'react-native-config';
 
 import {
   AppText,
@@ -26,7 +25,7 @@ import {
   SectionHeader,
   Tag,
 } from '../../components';
-import { gradients, spacing, yellow } from '../../theme/tokens';
+import { gradients, hairline, spacing, yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   useAttendance,
@@ -46,13 +45,13 @@ const GRADE_LABEL: Record<BoxGrade, string> = {
   jackpot: '잭팟',
 };
 
-/** 학습 현황 통계 1칸 — 아이콘 + 큰 값 + 라벨. */
-function StatTile({ icon, label, value, accent }: { icon: IconName; label: string; value: string; accent: string }) {
+/** 학습 현황 통계 1칸 — 카드 박스 없이 아이콘 + 값 + 라벨 인라인. */
+function StatItem({ icon, label, value, accent }: { icon: IconName; label: string; value: string; accent: string }) {
   return (
-    <Card variant="flat" className="flex-1 gap-md">
+    <View className="flex-1 flex-row items-center" style={{ gap: 10 }}>
       <View
         className="items-center justify-center rounded-full"
-        style={{ width: 36, height: 36, backgroundColor: `${accent}1A` }}>
+        style={{ width: 38, height: 38, backgroundColor: `${accent}1A` }}>
         <Icon name={icon} size={20} color={accent} />
       </View>
       <View className="gap-xs">
@@ -63,7 +62,7 @@ function StatTile({ icon, label, value, accent }: { icon: IconName; label: strin
           {label}
         </AppText>
       </View>
-    </Card>
+    </View>
   );
 }
 
@@ -73,20 +72,24 @@ function ModeCard({
   title,
   desc,
   onPress,
+  accent,
+  accentBg,
 }: {
   icon: IconName;
   title: string;
   desc: string;
   onPress: () => void;
+  /** 아이콘색 — 카테고리별로 다르게(단어=vermilion, 한자=coral). */
+  accent: string;
+  accentBg: string;
 }) {
-  const c = useThemeColors();
   return (
     <View className="flex-1">
       <Card onPress={onPress} className="gap-md">
         <View
           className="items-center justify-center rounded-md"
-          style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
-          <Icon name={icon} size={24} color={c.brand} />
+          style={{ width: 44, height: 44, backgroundColor: accentBg }}>
+          <Icon name={icon} size={24} color={accent} />
         </View>
         <View className="gap-xs">
           <AppText variant="subheading" className="text-text-primary">
@@ -112,8 +115,6 @@ export default function HomeScreen(): React.JSX.Element {
   const attendance = useAttendanceStatus();
   const checkIn = useAttendance();
 
-  const [adFailed, setAdFailed] = useState(false);
-
   const gradeColor: Record<BoxGrade, string> = {
     normal: c['text-tertiary'],
     rare: c.brand,
@@ -128,7 +129,7 @@ export default function HomeScreen(): React.JSX.Element {
   return (
     <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing['3xl'] }}>
-        <View className="gap-2xl px-xl pt-md">
+        <View className="gap-xl px-xl pt-md">
           {/* 1. 인사말 */}
           <View className="flex-row items-center justify-between pt-sm">
             <View>
@@ -197,8 +198,8 @@ export default function HomeScreen(): React.JSX.Element {
               <ActivityIndicator color={c.brand} />
             ) : checkedIn ? (
               <View className="flex-row items-center" style={{ gap: 8 }}>
-                <Icon name="check-circle" size={20} color={c.brand} />
-                <AppText variant="body" className="text-brand">
+                <Icon name="check-circle" size={20} color={c.success} />
+                <AppText variant="body" className="text-text-secondary">
                   오늘 출석 완료! (+{attendance.data?.bonus_cash ?? 0}C)
                 </AppText>
               </View>
@@ -212,22 +213,21 @@ export default function HomeScreen(): React.JSX.Element {
             )}
           </Card>
 
-          {/* 4. 오늘의 학습 현황 */}
+          {/* 4. 오늘의 학습 현황 — 카드 박스 대신 구분선 인라인 통계 */}
           <View className="gap-md">
             <SectionHeader title="오늘의 학습 현황" />
             {daily.isLoading ? (
-              <Card variant="flat">
-                <ActivityIndicator color={c.brand} />
-              </Card>
+              <ActivityIndicator className="self-start" color={c.brand} />
             ) : (
-              <View className="flex-row" style={{ gap: spacing.md }}>
-                <StatTile
+              <View className="flex-row items-center py-xs">
+                <StatItem
                   icon="check-circle"
                   label="푼 문제 / 정답"
                   value={`${daily.data?.quiz_count ?? 0} / ${daily.data?.correct_count ?? 0}`}
-                  accent={c.brand}
+                  accent={c.success}
                 />
-                <StatTile
+                <View className="self-stretch" style={{ width: hairline, backgroundColor: c['border-secondary'] }} />
+                <StatItem
                   icon="gift"
                   label="획득한 상자"
                   value={`${daily.data?.boxes_earned ?? 0}개`}
@@ -241,8 +241,22 @@ export default function HomeScreen(): React.JSX.Element {
           <View className="gap-md">
             <SectionHeader title="학습 시작하기" />
             <View className="flex-row" style={{ gap: spacing.md }}>
-              <ModeCard icon="book" title="단어 퀴즈" desc="뜻 ↔ 단어 4지선다" onPress={() => navigation.navigate('Quiz')} />
-              <ModeCard icon="pencil" title="한자 퀴즈" desc="한자 ↔ 음훈독·뜻" onPress={() => navigation.navigate('Quiz')} />
+              <ModeCard
+                icon="book"
+                title="단어 퀴즈"
+                desc="뜻 ↔ 단어 4지선다"
+                onPress={() => navigation.navigate('Quiz')}
+                accent={c.brand}
+                accentBg={c['brand-subtle']}
+              />
+              <ModeCard
+                icon="pencil"
+                title="한자 퀴즈"
+                desc="한자 ↔ 음훈독·뜻"
+                onPress={() => navigation.navigate('Quiz')}
+                accent={c.coral}
+                accentBg={c['coral-subtle']}
+              />
             </View>
           </View>
 
@@ -284,19 +298,6 @@ export default function HomeScreen(): React.JSX.Element {
           </View>
         </View>
       </ScrollView>
-
-      {/* 7. 하단 배너 광고 — 로드 실패 시 영역 자체를 숨김 */}
-      {!adFailed && (
-        <View
-          className="items-center bg-bg-primary border-border-tertiary"
-          style={{ borderTopWidth: 0.5 }}>
-          <BannerAd
-            unitId={Config.ADMOB_BANNER_HOME_ID || TestIds.BANNER}
-            size={BannerAdSize.BANNER}
-            onAdFailedToLoad={() => setAdFailed(true)}
-          />
-        </View>
-      )}
     </SafeAreaView>
   );
 }

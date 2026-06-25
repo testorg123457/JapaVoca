@@ -1,7 +1,7 @@
 /**
  * StyleGuideScreen — 디자인 시스템 쇼케이스(합격 기준 화면).
  *
- * 배달의민족(배시시) 테마: 민트 brand + 옐로 포인트 + 따뜻한 그레이 + Pretendard.
+ * Vermilion 테마: Primary vermilion + Cash 옐로 + 따뜻한 그레이(Ink 텍스트) + Pretendard.
  * 토큰/컴포넌트가 실제로 어떻게 조립되는지 한눈에 본다. 기기 테마를 바꾸면
  * 라이트/다크 양쪽을 확인할 수 있다(semantic 토큰이 한 곳에서 전환됨).
  */
@@ -21,7 +21,7 @@ import {
   Tag,
   type IconName,
 } from '../components';
-import { brand, gradients, gray, hairline, spacing, typography, yellow } from '../theme/tokens';
+import { gradients, gray, hairline, spacing, typography, vermilion, yellow } from '../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../theme/ThemeProvider';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -80,10 +80,10 @@ export default function StyleGuideScreen() {
         <View className="gap-sm">
           <Tag label="JapaVoca · 디자인 시스템" variant="brand" leftIcon="sparkles" />
           <AppText variant="display" className="text-text-primary mt-sm">
-            배달의민족 스타일 가이드
+            Vermilion 스타일 가이드
           </AppText>
           <AppText variant="caption" className="text-text-tertiary">
-            민트 brand · 옐로 포인트 · 따뜻한 그레이 · Pretendard · 현재 모드: {scheme}
+            Vermilion Primary · Cash 옐로 · Ink 텍스트 · 흰 배경 · Pretendard · 현재 모드: {scheme}
           </AppText>
         </View>
 
@@ -124,14 +124,14 @@ export default function StyleGuideScreen() {
         {/* 타이포그래피 */}
         <Section title="타이포그래피">
           <Card className="gap-sm">
-            <AppText variant="hero" className="text-text-primary">Hero 42</AppText>
-            <AppText variant="display" className="text-text-primary">Display 28</AppText>
-            <AppText variant="title" className="text-text-primary">Title 22</AppText>
-            <AppText variant="heading" className="text-text-primary">Heading 18 · SemiBold</AppText>
-            <AppText variant="subheading" className="text-text-primary">Subheading 16 · SemiBold</AppText>
-            <AppText variant="body" className="text-text-secondary">Body 15 — 본문은 secondary로 차분하게 읽힌다.</AppText>
-            <AppText variant="label" className="text-text-primary">Label 14 · SemiBold (버튼·탭·칩)</AppText>
-            <AppText variant="caption" className="text-text-tertiary">Caption 13 — 보조 정보.</AppText>
+            <AppText variant="hero" className="text-text-primary">Hero 34</AppText>
+            <AppText variant="display" className="text-text-primary">Display 26</AppText>
+            <AppText variant="title" className="text-text-primary">Title 19</AppText>
+            <AppText variant="heading" className="text-text-primary">Heading 16 · SemiBold</AppText>
+            <AppText variant="subheading" className="text-text-primary">Subheading 15 · SemiBold</AppText>
+            <AppText variant="body" className="text-text-secondary">Body 14 — 본문은 secondary로 차분하게 읽힌다.</AppText>
+            <AppText variant="label" className="text-text-primary">Label 13 · SemiBold (버튼·탭·칩)</AppText>
+            <AppText variant="caption" className="text-text-tertiary">Caption 12 — 보조 정보.</AppText>
             <AppText variant="micro" className="text-text-tertiary">Micro 11 — 가장 작은 라벨.</AppText>
           </Card>
         </Section>
@@ -215,8 +215,7 @@ export default function StyleGuideScreen() {
         <Section title="캐시 뱃지">
           <View className="flex-row" style={{ gap: spacing.sm }}>
             <CashBadge amount="12,840 C" />
-            <CashBadge amount="+1,000" />
-            <CashBadge amount="브랜드" variant="brand" />
+            <CashBadge amount="+1,000" variant="earn" />
           </View>
         </Section>
 
@@ -232,15 +231,26 @@ export default function StyleGuideScreen() {
           />
         </Section>
 
+        {/* 글자색 (Ink/그레이 — 메인색을 글자색으로 쓰지 않는다) */}
+        <Section title="글자색">
+          <Card className="gap-sm">
+            <AppText variant="subheading" className="text-text-primary">Primary — Ink #1A1A1A (기본)</AppText>
+            <AppText variant="subheading" className="text-text-secondary">Secondary — gray-600 #666060</AppText>
+            <AppText variant="subheading" className="text-text-tertiary">Caption — gray-500 #8A8280</AppText>
+            <AppText variant="subheading" className="text-brand">Brand — vermilion-500 (강조에만)</AppText>
+            <AppText variant="subheading" style={{ color: yellow[600] }}>Cash — yellow-600 #B38F00 (캐시 글자)</AppText>
+          </Card>
+        </Section>
+
         {/* 색 팔레트 */}
-        <Section title="Brand (민트)">
-          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600'] as const).map((k) => [k, brand[k]])} />
+        <Section title="Vermilion (Primary · 9단계)">
+          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, vermilion[k]])} />
         </Section>
-        <Section title="Yellow (포인트)">
-          <SwatchRow entries={(['300', '400', '500'] as const).map((k) => [k, yellow[k]])} />
+        <Section title="Cash Yellow (7단계)">
+          <SwatchRow entries={(['50', '100', '200', '400', '500', '600', '700'] as const).map((k) => [k, yellow[k]])} />
         </Section>
-        <Section title="Neutral (따뜻한 그레이)">
-          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, gray[k]])} />
+        <Section title="Neutral (뉴트럴 그레이 · 10단계)">
+          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'] as const).map((k) => [k, gray[k]])} />
         </Section>
         <Section title="Semantic">
           <SwatchRow

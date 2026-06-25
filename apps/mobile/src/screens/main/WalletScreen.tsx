@@ -14,7 +14,7 @@ import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
-import { AppText, Button, Card, Gradient, Icon } from '../../components';
+import { AppText, Button, Gradient, Icon } from '../../components';
 import { gradients, yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
@@ -262,9 +262,9 @@ export default function WalletScreen(): React.JSX.Element {
 function LedgerRow({ entry }: { entry: LedgerEntry }): React.JSX.Element {
   const c = useThemeColors();
   const isEarn = entry.direction === 'earn';
-  const accent = isEarn ? c.success : c.amber;
+  const accent = isEarn ? c.success : c.danger;
   return (
-    <Card variant="flat" className="mx-xl mb-sm flex-row items-center justify-between">
+    <View className="flex-row items-center justify-between border-b border-border-tertiary bg-bg-primary px-xl py-md">
       <View className="flex-row items-center" style={{ gap: 12 }}>
         <View
           className="items-center justify-center rounded-full"
@@ -284,6 +284,6 @@ function LedgerRow({ entry }: { entry: LedgerEntry }): React.JSX.Element {
         {isEarn ? '+' : '-'}
         {entry.amount.toLocaleString()}C
       </AppText>
-    </Card>
+    </View>
   );
 }
