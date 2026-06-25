@@ -20,7 +20,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 import { AppText, Gradient, Icon, PressableScale } from '../../components';
-import { gradients } from '../../theme/tokens';
+import { gradients, shadowStyle } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { devLogin, googleLogin } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
@@ -84,7 +84,7 @@ export default function LoginScreen(): React.JSX.Element {
   return (
     <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
       {/* Hero */}
-      <View className="flex-[2] items-center justify-center gap-xl px-2xl">
+      <View className="flex-[3] items-center justify-center gap-xl px-2xl">
         <View
           className="overflow-hidden rounded-2xl"
           style={{
@@ -112,7 +112,7 @@ export default function LoginScreen(): React.JSX.Element {
       </View>
 
       {/* 액션 */}
-      <View className="flex-1 items-center justify-start gap-md px-2xl">
+      <View className="flex-[2] items-center justify-start gap-md px-2xl">
         <PressableScale
           onPress={handleGoogleLogin}
           disabled={loading}
@@ -122,11 +122,7 @@ export default function LoginScreen(): React.JSX.Element {
             gap: 8,
             borderWidth: 1,
             borderColor: c['border-secondary'],
-            shadowColor: '#0B1220',
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
+            ...shadowStyle('sm'),
           }}>
           {loading ? (
             <ActivityIndicator color={c.brand} />

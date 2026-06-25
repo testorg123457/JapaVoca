@@ -14,6 +14,8 @@
 import React from 'react';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
+import { gray } from '../theme/tokens';
+
 export type IconName =
   | 'home'
   | 'wallet'
@@ -54,7 +56,7 @@ const STROKE = (color: string, strokeWidth: number) => ({
   strokeLinejoin: 'round' as const,
 });
 
-export function Icon({ name, size = 24, color = '#191919', strokeWidth = 2 }: IconProps) {
+export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: IconProps) {
   const s = STROKE(color, strokeWidth);
   const fill = { fill: color };
 
