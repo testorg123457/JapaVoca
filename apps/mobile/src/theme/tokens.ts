@@ -123,8 +123,8 @@ const lightSemantic = {
   'brand-subtle': vermilion[50], // 옅은 vermilion 틴트
   'brand-subtle-active': vermilion[100],
   'on-brand': gray[0], // 브랜드(민트) 면 위 텍스트(흰색)
-  // 앱 상단 헤더 — 의도적으로 버밀리온(브랜드 민트와 구분되는 조합)
-  header: red[500], // #E8432D
+  // 앱 상단 헤더 — 포레스트 민트(브랜드와 통일)
+  header: vermilion[500], // #1F9660
   'on-header': gray[0], // 헤더 위 텍스트/아이콘(흰색)
   // 보조 강조 (밝은 민트) — primary(민트)와 같은 계열의 두 번째 포인트
   coral: vermilion[400],
@@ -174,8 +174,8 @@ const darkSemantic = {
   'brand-subtle': '#3A1A14',
   'brand-subtle-active': '#4D241C',
   'on-brand': gray[0], // 브랜드 면 위는 흰 텍스트
-  // 앱 상단 헤더 — 버밀리온(다크에서도 동일 유지)
-  header: red[500],
+  // 앱 상단 헤더 — 포레스트 민트(다크에서도 동일 유지)
+  header: vermilion[500],
   'on-header': gray[0],
   // 보조 강조 (밝은 민트)
   coral: vermilion[300],

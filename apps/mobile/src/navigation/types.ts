@@ -35,6 +35,10 @@ export type MainStackParamList = {
   Exchange: undefined;
   /** 캐시 적립/사용 내역(설정 > 내역). */
   Ledger: undefined;
+  /** 구매(기프티콘 교환) 내역(설정 > 구매 내역). */
+  ExchangeHistory: undefined;
+  /** 인앱 알림 목록. */
+  Notifications: undefined;
   /** DEBUG 전용 — 디자인 시스템 쇼케이스. */
   StyleGuide: undefined;
 };

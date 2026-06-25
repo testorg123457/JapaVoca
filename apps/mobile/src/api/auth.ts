@@ -38,6 +38,21 @@ export async function googleLogin(
 }
 
 /**
+ * 카카오 로그인. 클라 카카오 SDK가 받은 access token을 서버로 보내면 서버가
+ * kapi.kakao.com으로 검증 후 JWT를 발급한다. (구글과 동일하게 raw axios — 401 우회)
+ * ⚠️ 클라 카카오 SDK/네이티브 앱키 설정이 선결조건(03-구현순서-선결조건.md).
+ */
+export async function kakaoLogin(
+  accessToken: string,
+): Promise<{ access: string; refresh: string }> {
+  const response = await axios.post<GoogleLoginResponse>(
+    `${Config.API_BASE_URL}/api/auth/kakao/`,
+    { access_token: accessToken },
+  );
+  return response.data.tokens;
+}
+
+/**
  * DEBUG 전용 dev 로그인. 구글 OAuth 없이 고정 테스트 유저로 JWT를 받는다.
  * 백엔드 /api/auth/dev-login/ 은 DEBUG=False 면 404이므로 실 서비스에선 호출 불가.
  * __DEV__ 빌드의 로그인 화면에서만 사용한다.

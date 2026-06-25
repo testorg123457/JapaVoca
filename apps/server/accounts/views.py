@@ -9,8 +9,18 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
-from .serializers import GoogleLoginSerializer, ProfileUpdateSerializer, UserSerializer
-from .services import GoogleAuthError, login_with_google
+from .serializers import (
+    GoogleLoginSerializer,
+    KakaoLoginSerializer,
+    ProfileUpdateSerializer,
+    UserSerializer,
+)
+from .services import (
+    GoogleAuthError,
+    KakaoAuthError,
+    login_with_google,
+    login_with_kakao,
+)
 
 
 def _issue_tokens(user):
@@ -30,6 +40,30 @@ class GoogleLoginView(APIView):
         try:
             user, created = login_with_google(serializer.validated_data['id_token'])
         except GoogleAuthError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        return Response(
+            {
+                'tokens': _issue_tokens(user),
+                'user': UserSerializer(user).data,
+                'created': created,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class KakaoLoginView(APIView):
+    """POST /api/auth/kakao/ — 카카오 access token 으로 로그인, JWT 발급."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = KakaoLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user, created = login_with_kakao(serializer.validated_data['access_token'])
+        except KakaoAuthError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
 
         return Response(

@@ -65,6 +65,17 @@ export default function LoginScreen(): React.JSX.Element {
     }
   }
 
+  // 카카오 로그인 — 백엔드(/api/auth/kakao/)는 준비됨. 클라 카카오 SDK + 네이티브
+  // 앱키 설정이 선결조건(docs/계획 폴더/03-구현순서-선결조건.md)이라, SDK 연결 전까지는
+  // 안내만 한다. SDK 도입 후: const token = await KakaoLogin.login(); 의 accessToken을
+  // api/auth.kakaoLogin(token) 으로 보내 signIn(access, refresh) 하면 된다.
+  function handleKakaoLogin() {
+    Alert.alert(
+      '카카오 로그인 준비 중',
+      '카카오 네이티브 SDK/앱키 설정 후 활성화됩니다. (백엔드는 이미 준비됨)',
+    );
+  }
+
   // DEBUG 전용 — 구글 OAuth 없이 테스트 유저로 로그인 (실 서비스 빌드엔 없음).
   async function handleDevLogin() {
     if (loading) {
@@ -134,6 +145,15 @@ export default function LoginScreen(): React.JSX.Element {
               </AppText>
             </>
           )}
+        </PressableScale>
+        <PressableScale
+          onPress={handleKakaoLogin}
+          disabled={loading}
+          className="w-full flex-row items-center justify-center rounded-md"
+          style={{ height: 54, gap: 8, backgroundColor: '#FEE500', ...shadowStyle('sm') }}>
+          <AppText variant="label" style={{ fontSize: 16, color: '#191600' }}>
+            카카오로 시작하기
+          </AppText>
         </PressableScale>
         <AppText variant="caption" className="text-text-tertiary text-center">
           로그인하면 이용약관에 동의하는 것으로 간주됩니다

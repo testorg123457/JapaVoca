@@ -1,4 +1,5 @@
-"""accounts 서비스 — 구글 ID 토큰 검증 / 유저 로그인 처리."""
+"""accounts 서비스 — 소셜 로그인(구글/카카오) 검증 / 유저 로그인 처리."""
+import requests
 from django.conf import settings
 from django.utils import timezone
 from google.auth.transport import requests as google_requests
@@ -9,6 +10,10 @@ from .models import User
 
 class GoogleAuthError(Exception):
     """구글 ID 토큰 검증 실패."""
+
+
+class KakaoAuthError(Exception):
+    """카카오 access token 검증 실패."""
 
 
 def verify_google_id_token(token: str) -> dict:
@@ -54,4 +59,46 @@ def login_with_google(token: str) -> tuple[User, bool]:
         user.email = email
     user.last_login_at = timezone.now()
     user.save(update_fields=['email', 'last_login_at'])
+    return user, created
+
+
+def login_with_kakao(access_token: str) -> tuple[User, bool]:
+    """카카오 access token 으로 로그인. (user, created) 반환.
+
+    클라(카카오 SDK)가 받은 access token 으로 kapi.kakao.com 의 사용자 정보를 조회해
+    검증한다(토큰이 유효해야 200). kakao_uid 로 유저를 get_or_create 한다.
+    """
+    try:
+        resp = requests.get(
+            f'{settings.KAKAO_API_BASE}/v2/user/me',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        raise KakaoAuthError(f'카카오 서버 통신 실패: {exc}') from exc
+    if resp.status_code != 200:
+        raise KakaoAuthError('유효하지 않은 카카오 토큰입니다.')
+
+    data = resp.json()
+    kakao_uid = str(data.get('id') or '')
+    if not kakao_uid:
+        raise KakaoAuthError('카카오 사용자 id 가 없습니다.')
+    account = data.get('kakao_account') or {}
+    profile = account.get('profile') or {}
+    email = account.get('email') or ''
+    nickname = profile.get('nickname') or ''
+
+    # email 은 unique·not-null. 미동의/충돌 시 합성 이메일로 폴백.
+    if not email or User.objects.filter(email=email).exclude(kakao_uid=kakao_uid).exists():
+        email = f'kakao_{kakao_uid}@kakao.local'
+
+    user, created = User.objects.get_or_create(
+        kakao_uid=kakao_uid,
+        defaults={'provider': User.Provider.KAKAO, 'email': email, 'nickname': nickname},
+    )
+    if user.status == User.Status.BANNED:
+        raise KakaoAuthError('차단된 계정입니다.')
+
+    user.last_login_at = timezone.now()
+    user.save(update_fields=['last_login_at'])
     return user, created

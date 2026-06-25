@@ -59,14 +59,42 @@ class User(AbstractBaseUser, PermissionsMixin):
         FLAGGED = 'flagged', '의심(어뷰징)'
         BANNED = 'banned', '차단'
 
-    google_uid = models.CharField(max_length=150, unique=True, help_text='구글 OAuth 식별자')
+    class Provider(models.TextChoices):
+        GOOGLE = 'google', '구글'
+        KAKAO = 'kakao', '카카오'
+
+    # 소셜 식별자 — 멀티 프로바이더. 카카오 유저는 google_uid 가 없으므로 null 허용
+    # (Postgres unique 는 NULL 다중 허용). 카카오는 kakao_uid 로 식별한다.
+    google_uid = models.CharField(
+        max_length=150, unique=True, null=True, blank=True, help_text='구글 OAuth 식별자',
+    )
+    kakao_uid = models.CharField(
+        max_length=150, unique=True, null=True, blank=True, help_text='카카오 식별자',
+    )
+    provider = models.CharField(
+        max_length=10, choices=Provider.choices, default=Provider.GOOGLE,
+        help_text='가입/로그인 제공자',
+    )
     email = models.EmailField(unique=True)
     nickname = models.CharField(max_length=50, blank=True)
     # 학습 급수: 온보딩에서 선택하므로 가입 직후엔 비어 있을 수 있어 null 허용.
+    # selected_jlpt_level 은 하위호환(공통 기본). 출제는 단어/한자 별도 급수를 우선 사용한다.
     selected_jlpt_level = models.CharField(
         max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
-        help_text='학습 급수(N1~N5)',
+        help_text='(하위호환) 공통 학습 급수',
     )
+    jlpt_level_word = models.CharField(
+        max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
+        help_text='단어 학습 급수(N1~N5)',
+    )
+    jlpt_level_kanji = models.CharField(
+        max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
+        help_text='한자 학습 급수(N1~N5)',
+    )
+    # 푸시 알림 환경설정.
+    push_enabled = models.BooleanField(default=True, help_text='전체 푸시 수신')
+    push_quiz_reminder = models.BooleanField(default=True, help_text='학습 리마인더 푸시')
+    push_marketing = models.BooleanField(default=False, help_text='마케팅/이벤트 푸시(동의 기반)')
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE,
     )

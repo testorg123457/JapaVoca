@@ -17,6 +17,8 @@ import AttendanceScreen from '../screens/main/AttendanceScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import ExchangeScreen from '../screens/main/ExchangeScreen';
 import LedgerScreen from '../screens/main/LedgerScreen';
+import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
+import NotificationsScreen from '../screens/main/NotificationsScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -40,6 +42,8 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Exchange" component={ExchangeScreen} />
       <Stack.Screen name="Ledger" component={LedgerScreen} />
+      <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
       {__DEV__ && (
         <Stack.Screen
           name="StyleGuide"

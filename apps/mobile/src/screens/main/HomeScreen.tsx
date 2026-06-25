@@ -30,6 +30,7 @@ import {
 import { hairline, spacing, yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useAttendanceStatus, useBoxes, useWallet } from '../../api/hooks';
+import { useUnreadCount } from '../../api/notifications';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 /**
@@ -71,6 +72,7 @@ export default function HomeScreen(): React.JSX.Element {
   const wallet = useWallet();
   const boxes = useBoxes();
   const attendance = useAttendanceStatus();
+  const unread = useUnreadCount();
 
   const balance = wallet.data?.balance ?? 0;
   const boxCount = boxes.data?.length ?? 0;
@@ -107,12 +109,36 @@ export default function HomeScreen(): React.JSX.Element {
           </View>
         }
         right={
-          <Pressable
-            onPress={() => navigation.navigate('Settings')}
-            hitSlop={10}
-            className="active:opacity-60">
-            <Icon name="settings" size={22} color={c['on-header']} />
-          </Pressable>
+          <View className="flex-row items-center" style={{ gap: 18 }}>
+            <Pressable
+              onPress={() => navigation.navigate('Notifications')}
+              hitSlop={10}
+              className="active:opacity-60">
+              <Icon name="bell" size={22} color={c['on-header']} />
+              {(unread.data ?? 0) > 0 && (
+                <View
+                  className="absolute items-center justify-center rounded-full"
+                  style={{
+                    top: -5,
+                    right: -6,
+                    minWidth: 16,
+                    height: 16,
+                    paddingHorizontal: 3,
+                    backgroundColor: c.amber,
+                  }}>
+                  <AppText variant="micro" style={{ color: c['text-primary'], fontSize: 10 }}>
+                    {(unread.data ?? 0) > 99 ? '99+' : unread.data}
+                  </AppText>
+                </View>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('Settings')}
+              hitSlop={10}
+              className="active:opacity-60">
+              <Icon name="settings" size={22} color={c['on-header']} />
+            </Pressable>
+          </View>
         }
       />
 

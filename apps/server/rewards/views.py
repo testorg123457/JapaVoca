@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CashBox, Ledger, Wallet
+from .models import Attendance, CashBox, Daily, Ledger, Wallet
 from .serializers import LedgerSerializer
 from .services import (
     AdNotVerifiedForBox,
@@ -117,6 +117,60 @@ class AttendanceTodayView(APIView):
             'checked_in': True,
             'streak_count': attendance.streak_count,
             'bonus_cash': attendance.bonus_cash,
+        })
+
+
+class AttendanceMonthView(APIView):
+    """GET /api/rewards/attendance/month/?year=YYYY&month=M — 월별 출석/학습량.
+
+    Attendance(출석/보너스)와 Daily(문제수/정답수)를 일자별로 합쳐 달력용 데이터를 준다.
+    둘 다 영구 보존 테이블이라 streak 추정이 아닌 정확한 값이다. 읽기 전용(캐시 무관).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.utils import timezone
+        today = timezone.localdate()
+        try:
+            year = int(request.query_params.get('year', today.year))
+            month = int(request.query_params.get('month', today.month))
+        except (TypeError, ValueError):
+            return Response({'detail': 'year/month 는 정수여야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (1 <= month <= 12):
+            return Response({'detail': 'month 는 1~12 입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        att = {
+            a.date.isoformat(): a
+            for a in Attendance.objects.filter(
+                user=request.user, date__year=year, date__month=month,
+            )
+        }
+        dailies = {
+            d.date.isoformat(): d
+            for d in Daily.objects.filter(
+                user=request.user, date__year=year, date__month=month,
+            )
+        }
+        # 합집합 날짜를 정렬해 반환.
+        days = []
+        for key in sorted(set(att) | set(dailies)):
+            a = att.get(key)
+            d = dailies.get(key)
+            days.append({
+                'date': key,
+                'attended': bool(a) or (d.attended if d else False),
+                'streak_count': a.streak_count if a else 0,
+                'bonus_cash': a.bonus_cash if a else 0,
+                'quiz_count': d.quiz_count if d else 0,
+                'correct_count': d.correct_count if d else 0,
+            })
+        latest = get_today_attendance(request.user)
+        return Response({
+            'year': year,
+            'month': month,
+            'streak_count': latest.get('streak_count', 0),
+            'days': days,
         })
 
 

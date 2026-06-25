@@ -96,8 +96,13 @@ def _pick_item_id(user, item_type):
     seen = SrsState.objects.filter(user=user, item_type=item_type).values_list('item_id', flat=True)
     model = Word if item_type == ItemType.WORD else Kanji
     qs = model.objects.exclude(id__in=seen)
-    if user.selected_jlpt_level:
-        leveled = qs.filter(jlpt_level=user.selected_jlpt_level)
+    # 단어/한자 급수를 별도로 사용. 미설정이면 하위호환 공통(selected_jlpt_level)로 폴백.
+    if item_type == ItemType.KANJI:
+        level = user.jlpt_level_kanji or user.selected_jlpt_level
+    else:
+        level = user.jlpt_level_word or user.selected_jlpt_level
+    if level:
+        leveled = qs.filter(jlpt_level=level)
         if leveled.exists():
             qs = leveled
     obj_id = qs.order_by('?').values_list('id', flat=True).first()

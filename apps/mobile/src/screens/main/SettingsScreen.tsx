@@ -1,28 +1,58 @@
 /**
- * SettingsScreen — 설정 (헤더 우측 버튼으로 진입).
+ * SettingsScreen — 설정.
  *
- * 박스 카드 대신 행(row)+구분선 리스트(ListSection/ListRow). 각 항목: 아이콘 + 라벨 + 화살표.
- * 난이도(급수)·내역은 실제 동작(기존 훅 연결), 나머지(알림/계정/잠금화면/문의)는 일단 진입/안내만.
- *
- * 급수 변경 PATCH /api/auth/me, 로그아웃 AuthContext.signOut(토큰 삭제 + AuthStack 리셋).
- * 비즈니스 로직은 기존 훅 그대로 — 화면은 호출만.
+ * 행+구분선 리스트(카드 X). 실제 동작: 단어/한자 급수(별도), 푸시 토글, 캐시/구매 내역,
+ * 알림 화면, 로그아웃. 일부(계정/잠금화면)는 안내 스텁.
+ * 비즈니스 로직은 기존 훅(useUpdateProfile/useAuth) 그대로 — 화면은 호출만.
  */
 import React, { useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { AppHeader, AppText, Icon, ListRow, ListSection, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile } from '../../api/hooks';
+import { useMe, useUpdateProfile, type ProfileUpdate } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 const APP_VERSION = 'v0.0.1';
-const SUPPORT_MAIL = 'mailto:support@japavoca.app';
+const SUPPORT_MAIL = 'mailto:support@japavoca.app?subject=[JapaVoca]%20문의';
+
+type LevelTarget = 'jlpt_level_word' | 'jlpt_level_kanji' | null;
 
 function comingSoon() {
   Alert.alert('준비 중', '곧 제공될 기능이에요.');
+}
+
+/** 우측에 스위치가 있는 설정 행(ListRow 레이아웃과 동일 톤). */
+function ToggleRow({
+  title,
+  value,
+  onValueChange,
+  last,
+}: {
+  title: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  last?: boolean;
+}) {
+  const c = useThemeColors();
+  return (
+    <View
+      className={`flex-row items-center justify-between px-xl py-md ${last ? '' : 'border-b border-border-tertiary'}`}
+      style={{ minHeight: 56 }}>
+      <AppText variant="subheading" className="text-text-primary">
+        {title}
+      </AppText>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: c['border-secondary'], true: c.brand }}
+        thumbColor={c['bg-primary']}
+      />
+    </View>
+  );
 }
 
 export default function SettingsScreen(): React.JSX.Element {
@@ -31,15 +61,16 @@ export default function SettingsScreen(): React.JSX.Element {
   const me = useMe();
   const updateProfile = useUpdateProfile();
   const { signOut } = useAuth();
-  const [levelModal, setLevelModal] = useState(false);
+  const [levelTarget, setLevelTarget] = useState<LevelTarget>(null);
+
+  const patch = (data: ProfileUpdate) =>
+    updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
 
   function selectLevel(level: string) {
-    setLevelModal(false);
-    if (level !== me.data?.selected_jlpt_level) {
-      updateProfile.mutate(
-        { selected_jlpt_level: level },
-        { onError: () => Alert.alert('오류', '급수 변경에 실패했어요.') },
-      );
+    const target = levelTarget;
+    setLevelTarget(null);
+    if (target) {
+      patch({ [target]: level });
     }
   }
 
@@ -51,14 +82,18 @@ export default function SettingsScreen(): React.JSX.Element {
   }
 
   function openSupport() {
-    Linking.openURL(SUPPORT_MAIL).catch(() => Alert.alert('문의하기', 'support@japavoca.app 로 문의해주세요.'));
+    Linking.openURL(SUPPORT_MAIL).catch(() =>
+      Alert.alert('문의하기', 'support@japavoca.app 로 문의해주세요.'),
+    );
   }
+
+  const m = me.data;
 
   return (
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="설정" showBack />
       <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
-        {/* 프로필 — 풀폭 흰 면 */}
+        {/* 프로필 */}
         <View
           className="flex-row items-center border-y border-border-tertiary bg-bg-primary px-xl py-lg"
           style={{ gap: 14 }}>
@@ -69,40 +104,63 @@ export default function SettingsScreen(): React.JSX.Element {
           </View>
           <View className="flex-1 gap-xs">
             <AppText variant="title" className="text-text-primary">
-              {me.data?.nickname ?? '게스트'}
+              {m?.nickname ?? '게스트'}
             </AppText>
             <AppText variant="caption" className="text-text-tertiary">
-              {me.data?.email ?? ''}
+              {m?.email ?? ''}
             </AppText>
           </View>
-          <Tag label="Google" variant="neutral" />
+          <Tag label={m?.provider === 'kakao' ? 'Kakao' : 'Google'} variant="neutral" />
         </View>
 
-        {/* 학습 */}
-        <ListSection title="학습">
+        {/* 학습 — 단어/한자 급수 별도 */}
+        <ListSection title="학습 급수">
           <ListRow
             leftIcon="book"
-            title="난이도 설정 (JLPT 급수)"
-            value={me.data?.selected_jlpt_level ?? '미설정'}
-            onPress={() => setLevelModal(true)}
+            title="단어 급수"
+            value={m?.jlpt_level_word ?? '미설정'}
+            onPress={() => setLevelTarget('jlpt_level_word')}
+            showChevron
+          />
+          <ListRow
+            leftIcon="pencil"
+            title="한자 급수"
+            value={m?.jlpt_level_kanji ?? '미설정'}
+            onPress={() => setLevelTarget('jlpt_level_kanji')}
             showChevron
             last
           />
         </ListSection>
 
-        {/* 캐시 */}
-        <ListSection title="캐시">
-          <ListRow
-            leftIcon="wallet"
-            title="캐시 내역"
-            onPress={() => navigation.navigate('Ledger')}
+        {/* 캐시 · 내역 */}
+        <ListSection title="캐시 · 내역">
+          <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
+          <ListRow leftIcon="gift" title="구매 내역" onPress={() => navigation.navigate('ExchangeHistory')} last />
+        </ListSection>
+
+        {/* 알림 */}
+        <ListSection title="알림">
+          <ListRow leftIcon="bell" title="알림 보기" onPress={() => navigation.navigate('Notifications')} />
+          <ToggleRow
+            title="푸시 알림"
+            value={m?.push_enabled ?? true}
+            onValueChange={(v) => patch({ push_enabled: v })}
+          />
+          <ToggleRow
+            title="학습 리마인더"
+            value={m?.push_quiz_reminder ?? true}
+            onValueChange={(v) => patch({ push_quiz_reminder: v })}
+          />
+          <ToggleRow
+            title="마케팅 · 이벤트 알림"
+            value={m?.push_marketing ?? false}
+            onValueChange={(v) => patch({ push_marketing: v })}
             last
           />
         </ListSection>
 
-        {/* 알림 · 계정 */}
-        <ListSection title="알림 · 계정">
-          <ListRow leftIcon="bell" title="알림" onPress={comingSoon} />
+        {/* 계정 */}
+        <ListSection title="계정">
           <ListRow leftIcon="user" title="계정 설정" onPress={comingSoon} />
           <ListRow leftIcon="lock" title="잠금화면 설정" onPress={comingSoon} last />
         </ListSection>
@@ -124,25 +182,27 @@ export default function SettingsScreen(): React.JSX.Element {
         </Pressable>
       </ScrollView>
 
-      {/* 급수 선택 바텀시트 */}
+      {/* 급수 선택 바텀시트 (단어/한자 공용) */}
       <Modal
-        visible={levelModal}
+        visible={levelTarget !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setLevelModal(false)}>
+        onRequestClose={() => setLevelTarget(null)}>
         <Pressable
           className="flex-1 justify-end"
           style={{ backgroundColor: 'rgba(15,18,22,0.55)' }}
-          onPress={() => setLevelModal(false)}>
+          onPress={() => setLevelTarget(null)}>
           <Pressable className="rounded-t-xl bg-bg-primary px-xl pb-3xl pt-lg" onPress={() => {}}>
             <View className="mb-lg items-center">
               <View className="h-1 w-10 rounded-full bg-bg-tertiary" />
             </View>
             <AppText variant="title" className="mb-md text-text-primary">
-              JLPT 급수 선택
+              {levelTarget === 'jlpt_level_kanji' ? '한자' : '단어'} 급수 선택
             </AppText>
             {JLPT_LEVELS.map((level, i) => {
-              const active = level === me.data?.selected_jlpt_level;
+              const current =
+                levelTarget === 'jlpt_level_kanji' ? m?.jlpt_level_kanji : m?.jlpt_level_word;
+              const active = level === current;
               return (
                 <Pressable
                   key={level}

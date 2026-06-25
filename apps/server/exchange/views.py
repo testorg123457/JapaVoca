@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from rewards.services import InsufficientBalance
+from notifications.models import Notification
+from notifications.services import notify
 
 from .models import AdRewardLog, GiftExchange
 from .products import list_products
@@ -58,6 +60,12 @@ class RequestExchangeView(APIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except ExchangeIssueFailed as exc:
             # 발급 실패(환불 완료) — 클라가 실패 사실과 환불을 알 수 있게 내역 동봉.
+            notify(
+                request.user, Notification.Type.EXCHANGE,
+                '기프티콘 교환 실패',
+                f'{exc.gift.product_code} 교환에 실패해 캐시가 환불됐어요.',
+                data={'screen': 'Exchange'}, push=True,
+            )
             return Response(
                 {
                     'detail': str(exc),
@@ -65,6 +73,12 @@ class RequestExchangeView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        notify(
+            request.user, Notification.Type.EXCHANGE,
+            '기프티콘 교환 완료',
+            f'{gift.product_code} 교환이 완료됐어요. ({gift.cash_cost:,}C 사용)',
+            data={'screen': 'Exchange'}, push=True,
+        )
         return Response(GiftExchangeSerializer(gift).data, status=status.HTTP_200_OK)
 
 

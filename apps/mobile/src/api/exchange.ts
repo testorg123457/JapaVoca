@@ -60,6 +60,7 @@ export function useRequestExchange() {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
       queryClient.invalidateQueries({ queryKey: ['ledger'] });
       queryClient.invalidateQueries({ queryKey: ['exchange', 'history'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 교환 알림 생성됨
     },
   });
 }

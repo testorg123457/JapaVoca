@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'learning',
     'rewards',
     'exchange',
+    'notifications',
 
     # Celery Beat (DB 기반 주기 스케줄러)
     'django_celery_beat',
@@ -207,6 +208,13 @@ else:
 # Google OAuth — RN 클라이언트가 보낸 ID 토큰 검증 시 audience 로 사용.
 # 비어있으면(dev) audience 검사를 건너뛴다.
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+
+# 카카오 로그인 — 서버는 클라가 보낸 access token 으로 kapi.kakao.com 을 호출해 검증한다.
+# (access token 검증만으로 충분해 별도 시크릿은 불필요. 클라 SDK 는 네이티브 앱키 필요.)
+KAKAO_API_BASE = os.environ.get('KAKAO_API_BASE', 'https://kapi.kakao.com')
+
+# 푸시(FCM) — 크리덴셜(firebase-admin + 서비스계정)이 준비되면 True 로. 현재는 stub.
+FCM_ENABLED = os.environ.get('FCM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 
 
 # Celery — 주기 배치(QuizLog 7일 삭제 등). 브로커는 Redis.

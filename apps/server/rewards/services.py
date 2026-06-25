@@ -224,6 +224,26 @@ def check_in(user) -> Attendance:
     daily.cash_earned += total_bonus
     daily.save(update_fields=['attended', 'cash_earned', 'updated_at'])
 
+    # 인앱 알림은 캐시 트랜잭션 커밋 이후에 생성(실패해도 캐시에 영향 없게).
+    def _notify():
+        from notifications.models import Notification
+        from notifications.services import notify
+        if is_cycle_reward:
+            notify(
+                user, Notification.Type.STREAK,
+                f'{streak_count}일 연속 출석 보너스!',
+                f'연속 출석 보너스로 +{total_bonus}C 적립됐어요.',
+                data={'screen': 'Attendance'}, push=True,
+            )
+        else:
+            notify(
+                user, Notification.Type.ATTENDANCE,
+                '오늘 출석 완료!',
+                f'출석 보너스 +{total_bonus}C 적립됐어요.',
+                data={'screen': 'Attendance'}, push=True,
+            )
+
+    transaction.on_commit(_notify)
     return attendance
 
 

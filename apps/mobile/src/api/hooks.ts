@@ -14,12 +14,20 @@ import type { AxiosError } from 'axios';
 
 import apiClient from './client';
 
+export type JlptLevel = 'N1' | 'N2' | 'N3' | 'N4' | 'N5';
+
 export type MeResponse = {
   id: number;
-  google_uid: string;
+  provider: 'google' | 'kakao';
+  google_uid: string | null;
   email: string;
   nickname: string;
   selected_jlpt_level: string | null;
+  jlpt_level_word: string | null;
+  jlpt_level_kanji: string | null;
+  push_enabled: boolean;
+  push_quiz_reminder: boolean;
+  push_marketing: boolean;
   status: string;
   created_at: string;
 };
@@ -34,6 +42,11 @@ export function useMe() {
 export type ProfileUpdate = {
   nickname?: string;
   selected_jlpt_level?: string | null;
+  jlpt_level_word?: string | null;
+  jlpt_level_kanji?: string | null;
+  push_enabled?: boolean;
+  push_quiz_reminder?: boolean;
+  push_marketing?: boolean;
 };
 
 /** 프로필(닉네임/학습 급수) 수정. PATCH 응답(전체 프로필)으로 me 캐시를 갱신. */
@@ -139,8 +152,9 @@ export function useAttendance() {
       (await apiClient.post<AttendanceStatus>('/api/rewards/attendance/today/')).data,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance', 'today'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] }); // today + month 달력 갱신
       queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 출석 알림 생성됨
     },
     onError: (error: AxiosError<AttendanceStatus>) => {
       if (error.response?.status === 409 && error.response.data) {
@@ -160,5 +174,34 @@ export function useDailyToday() {
   return useQuery({
     queryKey: ['daily', 'today'],
     queryFn: async () => (await apiClient.get<DailyToday>('/api/rewards/daily/today/')).data,
+  });
+}
+
+export type AttendanceDay = {
+  date: string; // YYYY-MM-DD
+  attended: boolean;
+  streak_count: number;
+  bonus_cash: number;
+  quiz_count: number;
+  correct_count: number;
+};
+
+export type AttendanceMonth = {
+  year: number;
+  month: number;
+  streak_count: number;
+  days: AttendanceDay[];
+};
+
+/** 월별 출석/학습량(달력용). Attendance+Daily 정확 데이터(추정 아님). */
+export function useAttendanceMonth(year: number, month: number) {
+  return useQuery({
+    queryKey: ['attendance', 'month', year, month],
+    queryFn: async () =>
+      (
+        await apiClient.get<AttendanceMonth>('/api/rewards/attendance/month/', {
+          params: { year, month },
+        })
+      ).data,
   });
 }

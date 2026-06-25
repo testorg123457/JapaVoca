@@ -1,72 +1,72 @@
 /**
  * AttendanceScreen — 출석체크.
  *
- * ⚠️ 서버에 월별/이력 조회 API가 없다(attendance/today, daily/today 만 존재).
- * 백엔드를 임의로 추가하지 않고(프롬프트 지시), 가용 데이터로 구현한다:
- *  - 정확값: 연속 출석(streak_count), 오늘 출석 여부 (attendance/today).
- *  - 달력의 출석 표시: streak 기반 "추정"(오늘/어제부터 streak일 역산). 일별 퀴즈수는 이력 API가 없어 생략.
- *
- * 달력은 외부 라이브러리 없이 현재 월을 경량 자체 렌더. 미출석이면 출석 체크 버튼.
+ * 서버 월별 API(useAttendanceMonth)로 정확한 출석/일별 퀴즈수를 표시(추정 아님).
+ * 월 이동 가능. 외부 캘린더 라이브러리 없이 경량 자체 렌더. 오늘 미출석이면 체크 버튼.
  */
-import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { AppHeader, AppText, Button, Icon, Tag } from '../../components';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useAttendance, useAttendanceStatus } from '../../api/hooks';
+import { useAttendance, useAttendanceMonth, useAttendanceStatus } from '../../api/hooks';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 현재 월 + streak 기반 추정 출석일 집합으로 달력 셀 데이터 구성. */
-function buildMonth(streak: number, checkedIn: boolean) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const today = now.getDate();
-  const startWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // 추정: 마지막 출석일(오늘 출석했으면 오늘, 아니면 어제)부터 streak일 역산.
-  const lastDay = checkedIn ? today : today - 1;
-  const attended = new Set<number>();
-  for (let i = 0; i < streak; i++) {
-    const d = lastDay - i;
-    if (d >= 1) {
-      attended.add(d);
-    }
-  }
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < startWeekday; i++) {
-    cells.push(null);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(d);
-  }
-  // 7의 배수로 마지막 줄 채우기.
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-
-  const monthCount = Array.from(attended).filter((d) => d <= daysInMonth).length;
-  return { year, month, today, cells, attended, monthCount };
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
 }
 
 export default function AttendanceScreen(): React.JSX.Element {
   const c = useThemeColors();
-  const attendance = useAttendanceStatus();
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
+
+  const monthData = useAttendanceMonth(year, month);
+  const status = useAttendanceStatus();
   const checkIn = useAttendance();
 
-  const streak = attendance.data?.streak_count ?? 0;
-  const checkedIn = attendance.data?.checked_in ?? false;
-  const { year, month, today, cells, attended, monthCount } = buildMonth(streak, checkedIn);
+  const streak = monthData.data?.streak_count ?? status.data?.streak_count ?? 0;
+  const checkedIn = status.data?.checked_in ?? false;
+
+  // 일자별 출석/퀴즈수 맵.
+  const dayMap = new Map(
+    (monthData.data?.days ?? []).map((d) => [d.date, d]),
+  );
+  const attendedCount = (monthData.data?.days ?? []).filter((d) => d.attended).length;
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  const todayDate = now.getDate();
+
+  // 달력 셀 구성.
+  const startWeekday = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  function shiftMonth(delta: number) {
+    let m = month + delta;
+    let y = year;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    } else if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    setYear(y);
+    setMonth(m);
+  }
 
   return (
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="출석체크" showBack />
       <View className="flex-1 gap-2xl px-xl py-xl">
-        {/* 요약 — 카드 없이 텍스트 계층 */}
+        {/* 요약 */}
         <View className="gap-xs">
           <View className="flex-row items-center" style={{ gap: 6 }}>
             <Icon name="flame" size={18} color={c.amber} />
@@ -89,16 +89,26 @@ export default function AttendanceScreen(): React.JSX.Element {
               <Tag label="오늘 미출석" variant="neutral" />
             )}
             <AppText variant="caption" className="text-text-tertiary">
-              이번 달 {monthCount}일(연속 기준)
+              이번 달 {attendedCount}일 출석
             </AppText>
           </View>
         </View>
 
-        {/* 달력 — 현재 월 */}
+        {/* 달력 */}
         <View className="gap-md">
-          <AppText variant="heading" className="text-text-primary">
-            {year}년 {month + 1}월
-          </AppText>
+          <View className="flex-row items-center justify-between">
+            <Pressable onPress={() => shiftMonth(-1)} hitSlop={10} className="active:opacity-60">
+              <Icon name="arrow-left" size={22} color={c['text-secondary']} />
+            </Pressable>
+            <AppText variant="heading" className="text-text-primary">
+              {year}년 {month}월
+            </AppText>
+            <Pressable onPress={() => shiftMonth(1)} hitSlop={10} className="active:opacity-60">
+              <View style={{ transform: [{ scaleX: -1 }] }}>
+                <Icon name="arrow-left" size={22} color={c['text-secondary']} />
+              </View>
+            </Pressable>
+          </View>
 
           {/* 요일 헤더 */}
           <View className="flex-row">
@@ -111,57 +121,60 @@ export default function AttendanceScreen(): React.JSX.Element {
             ))}
           </View>
 
-          {/* 날짜 그리드 */}
-          <View style={{ borderTopWidth: hairline, borderTopColor: c['border-tertiary'] }}>
-            {Array.from({ length: cells.length / 7 }).map((_, week) => (
-              <View key={week} className="flex-row">
-                {cells.slice(week * 7, week * 7 + 7).map((day, i) => {
-                  const isToday = day === today;
-                  const isAttended = day !== null && attended.has(day);
-                  return (
-                    <View
-                      key={i}
-                      className="flex-1 items-center justify-center"
-                      style={{
-                        height: 44,
-                        borderBottomWidth: hairline,
-                        borderBottomColor: c['border-tertiary'],
-                      }}>
-                      {day !== null && (
-                        <View
-                          className="items-center justify-center rounded-full"
-                          style={{
-                            width: 32,
-                            height: 32,
-                            backgroundColor: isAttended ? c.brand : 'transparent',
-                            borderWidth: isToday && !isAttended ? 1.5 : 0,
-                            borderColor: c.brand,
-                          }}>
-                          <AppText
-                            variant="label"
-                            style={{
-                              color: isAttended ? c['on-brand'] : isToday ? c.brand : c['text-primary'],
-                            }}>
-                            {day}
-                          </AppText>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-
-          <AppText variant="caption" className="text-text-tertiary">
-            * 출석 표시는 연속 출석 기준 추정입니다(서버 월별 이력 API 도입 시 정확해집니다).
-          </AppText>
+          {monthData.isLoading ? (
+            <ActivityIndicator className="my-2xl" color={c.brand} />
+          ) : (
+            <View style={{ borderTopWidth: hairline, borderTopColor: c['border-tertiary'] }}>
+              {Array.from({ length: cells.length / 7 }).map((_, week) => (
+                <View key={week} className="flex-row">
+                  {cells.slice(week * 7, week * 7 + 7).map((day, i) => {
+                    const dateStr = day !== null ? `${year}-${pad(month)}-${pad(day)}` : '';
+                    const info = day !== null ? dayMap.get(dateStr) : undefined;
+                    const attended = !!info?.attended;
+                    const quiz = info?.quiz_count ?? 0;
+                    const isToday = isCurrentMonth && day === todayDate;
+                    return (
+                      <View
+                        key={i}
+                        className="flex-1 items-center justify-center"
+                        style={{ height: 52, borderBottomWidth: hairline, borderBottomColor: c['border-tertiary'] }}>
+                        {day !== null && (
+                          <View className="items-center" style={{ gap: 2 }}>
+                            <View
+                              className="items-center justify-center rounded-full"
+                              style={{
+                                width: 30,
+                                height: 30,
+                                backgroundColor: attended ? c.brand : 'transparent',
+                                borderWidth: isToday && !attended ? 1.5 : 0,
+                                borderColor: c.brand,
+                              }}>
+                              <AppText
+                                variant="label"
+                                style={{ color: attended ? c['on-brand'] : isToday ? c.brand : c['text-primary'] }}>
+                                {day}
+                              </AppText>
+                            </View>
+                            {quiz > 0 ? (
+                              <AppText variant="micro" className="text-text-tertiary" style={{ fontSize: 9 }}>
+                                {quiz}문제
+                              </AppText>
+                            ) : (
+                              <View style={{ height: 12 }} />
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* 오늘 미출석이면 체크 버튼 */}
-        {attendance.isLoading ? (
-          <ActivityIndicator color={c.brand} />
-        ) : !checkedIn ? (
+        {status.isLoading ? null : !checkedIn ? (
           <Button
             title="오늘 출석 체크"
             leftIcon="check"
