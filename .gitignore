@@ -37,3 +37,4 @@ staticfiles/
 
 # ---------- misc ----------
 *.tmp
+.superpowers/

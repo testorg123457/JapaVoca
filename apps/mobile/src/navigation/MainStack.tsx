@@ -19,6 +19,7 @@ import ExchangeScreen from '../screens/main/ExchangeScreen';
 import LedgerScreen from '../screens/main/LedgerScreen';
 import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
+import InquiryScreen from '../screens/main/InquiryScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -44,6 +45,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Ledger" component={LedgerScreen} />
       <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="Inquiry" component={InquiryScreen} />
       {__DEV__ && (
         <Stack.Screen
           name="StyleGuide"

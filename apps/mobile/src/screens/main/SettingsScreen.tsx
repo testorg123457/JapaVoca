@@ -6,7 +6,7 @@
  * 비즈니스 로직은 기존 훅(useUpdateProfile/useAuth) 그대로 — 화면은 호출만.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Switch, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Config from 'react-native-config';
@@ -18,15 +18,13 @@ import {
 
 import { AppHeader, AppText, Icon, ListRow, ListSection, StudySelector, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile, type ProfileUpdate } from '../../api/hooks';
+import { useMe, useUpdateProfile, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 const APP_VERSION = 'v0.0.1';
-const SUPPORT_EMAIL = '0211ilyoil@gmail.com';
-const SUPPORT_MAIL = `mailto:${SUPPORT_EMAIL}?subject=[JapaVoca]%20문의`;
 
 function comingSoon() {
   Alert.alert('준비 중', '곧 제공될 기능이에요.');
@@ -67,6 +65,8 @@ export default function SettingsScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
   const updateProfile = useUpdateProfile();
+  const unreadInquiry = useUnreadInquiryCount();
+  const hasUnreadInquiry = (unreadInquiry.data?.count ?? 0) > 0;
   const { signIn, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [linking, setLinking] = useState(false);
@@ -155,12 +155,6 @@ export default function SettingsScreen(): React.JSX.Element {
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', style: 'destructive', onPress: signOut },
     ]);
-  }
-
-  function openSupport() {
-    Linking.openURL(SUPPORT_MAIL).catch(() =>
-      Alert.alert('문의하기', `${SUPPORT_EMAIL} 로 문의해주세요.`),
-    );
   }
 
   return (
@@ -253,7 +247,7 @@ export default function SettingsScreen(): React.JSX.Element {
 
         {/* 지원 */}
         <ListSection title="지원">
-          <ListRow leftIcon="mail" title="문의하기" onPress={openSupport} />
+          <ListRow leftIcon="mail" title="문의하기" onPress={() => navigation.navigate('Inquiry')} rightDot={hasUnreadInquiry} />
           <ListRow title="버전" value={APP_VERSION} showChevron={false} />
           {__DEV__ ? (
             <ListRow title="디자인 시스템" onPress={() => navigation.navigate('StyleGuide')} last />

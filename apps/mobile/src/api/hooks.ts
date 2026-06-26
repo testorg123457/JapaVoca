@@ -13,6 +13,9 @@ import {
 import type { AxiosError } from 'axios';
 
 import apiClient from './client';
+import { getInquiries, getUnreadCount, markAllRead, postInquiry, type Inquiry } from './support';
+
+export type { Inquiry };
 
 export type JlptLevel = 'N1' | 'N2' | 'N3' | 'N4' | 'N5';
 
@@ -212,5 +215,55 @@ export function useAttendanceMonth(year: number, month: number) {
           params: { year, month },
         })
       ).data,
+  });
+}
+
+// ─── Support / Inquiry ────────────────────────────────────────────────────────
+
+export function useInquiries() {
+  return useQuery({
+    queryKey: ['inquiries'],
+    queryFn: getInquiries,
+  });
+}
+
+export function usePostInquiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => postInquiry(content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inquiries'], exact: true });
+    },
+  });
+}
+
+export function useUnreadInquiryCount() {
+  return useQuery({
+    queryKey: ['inquiries', 'unread-count'],
+    queryFn: getUnreadCount,
+  });
+}
+
+export function useMarkAllInquiriesRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markAllRead,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['inquiries', 'unread-count'] });
+      const previous = queryClient.getQueryData<{ count: number }>(['inquiries', 'unread-count']);
+      queryClient.setQueryData(['inquiries', 'unread-count'], { count: 0 });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['inquiries', 'unread-count'], context.previous);
+      } else {
+        queryClient.removeQueries({ queryKey: ['inquiries', 'unread-count'], exact: true });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['inquiries', 'unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['inquiries'], exact: true });
+    },
   });
 }

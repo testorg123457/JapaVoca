@@ -51,6 +51,8 @@ export type MainStackParamList = {
   ExchangeHistory: undefined;
   /** 인앱 알림 목록. */
   Notifications: undefined;
+  /** 고객 문의 목록 + 작성. */
+  Inquiry: undefined;
   /** DEBUG 전용 — 디자인 시스템 쇼케이스. */
   StyleGuide: undefined;
 };

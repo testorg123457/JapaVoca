@@ -28,6 +28,8 @@ export interface ListRowProps {
   danger?: boolean;
   /** 마지막 행이면 하단 구분선 생략. */
   last?: boolean;
+  /** 우측에 빨간 dot 뱃지. 미확인 답변 알림용. */
+  rightDot?: boolean;
 }
 
 export function ListRow({
@@ -39,6 +41,7 @@ export function ListRow({
   showChevron,
   danger = false,
   last = false,
+  rightDot = false,
 }: ListRowProps): React.JSX.Element {
   const c = useThemeColors();
   const chevron = showChevron ?? !!onPress;
@@ -68,6 +71,9 @@ export function ListRow({
         </View>
       </View>
       <View className="flex-row items-center" style={{ gap: 4 }}>
+        {rightDot ? (
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.danger }} />
+        ) : null}
         {value ? (
           <AppText variant="body" className="text-text-tertiary">
             {value}

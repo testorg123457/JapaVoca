@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'rewards',
     'exchange',
     'notifications',
+    'support',
 
     # Celery Beat (DB 기반 주기 스케줄러)
     'django_celery_beat',
