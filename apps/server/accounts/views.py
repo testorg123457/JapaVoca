@@ -1,10 +1,13 @@
 """accounts 뷰 — 게스트/구글/카카오 로그인(JWT 발급) / 계정 연결 / 내 프로필."""
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .models import User
 from .serializers import (
     ConsentSubmitSerializer,
     GoogleLoginSerializer,
@@ -158,6 +161,29 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        """DELETE /api/auth/me/ — 회원 탈퇴(soft delete).
+
+        하드 삭제하지 않는다:
+          - 식별자(google_uid/kakao_uid/guest_uid)는 **재가입 차단용 묘비**로 남긴다
+            (어뷰징 방지 — 같은 소셜계정 즉시 재가입으로 일일상한/가입보너스 리셋 차단).
+          - 캐시 원장(append-only 자산기록)을 보존한다(정산/감사).
+          - PII(email/nickname)는 즉시 익명화. 보존기간 경과분은 후속 배치로 완전삭제.
+        status=WITHDRAWN + is_active=False 로 로그인이 차단된다(서비스 login 단계에서 reject).
+        멱등: 이미 WITHDRAWN 이어도 204.
+        """
+        user = request.user
+        with transaction.atomic():
+            user.status = User.Status.WITHDRAWN
+            user.is_active = False
+            user.withdrawn_at = timezone.now()
+            user.email = None
+            user.nickname = '탈퇴회원'
+            user.save(
+                update_fields=['status', 'is_active', 'withdrawn_at', 'email', 'nickname'],
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ConsentStatusView(APIView):

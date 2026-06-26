@@ -4,11 +4,14 @@ import { ScrollView, View } from 'react-native';
 
 import { AppHeader, AppText } from '../../components';
 import { TERMS_CONTENT } from './termsContent';
-import type { OnboardingStackScreenProps } from '../../navigation/types';
+import type { TermKind } from '../../navigation/types';
 
+/** 스택 무관 — 온보딩/메인(계정 설정) 양쪽 스택에서 재사용(route.params.kind만 사용). */
 export default function TermsDetailScreen({
   route,
-}: OnboardingStackScreenProps<'TermsDetail'>): React.JSX.Element {
+}: {
+  route: { params: { kind: TermKind } };
+}): React.JSX.Element {
   const content = TERMS_CONTENT[route.params.kind];
   return (
     <View className="flex-1 bg-bg-secondary">

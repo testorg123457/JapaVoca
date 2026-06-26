@@ -80,13 +80,19 @@ function LockBackground(): React.JSX.Element {
               <Stop offset="0" stopColor="#14161B" />
               <Stop offset="1" stopColor="#0C0D10" />
             </LinearGradient>
-            <RadialGradient id="lockGlow" cx="50%" cy="0%" rx="78%" ry="46%" fx="50%" fy="0%">
-              <Stop offset="0" stopColor="#1F9660" stopOpacity="0.26" />
+            <RadialGradient id="lockGlow" cx="50%" cy="2%" rx="82%" ry="44%" fx="50%" fy="2%">
+              <Stop offset="0" stopColor="#1F9660" stopOpacity="0.32" />
               <Stop offset="1" stopColor="#1F9660" stopOpacity="0" />
+            </RadialGradient>
+            {/* 하단 비네팅 — 시선을 위(문제)로 모으고 깊이감을 준다. */}
+            <RadialGradient id="lockVig" cx="50%" cy="116%" rx="120%" ry="52%" fx="50%" fy="116%">
+              <Stop offset="0" stopColor="#000000" stopOpacity="0.5" />
+              <Stop offset="1" stopColor="#000000" stopOpacity="0" />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockBg)" />
           <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockGlow)" />
+          <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockVig)" />
         </Svg>
       ) : null}
     </View>
@@ -275,51 +281,57 @@ export function LockQuizView({
                   {clock.date}
                 </AppText>
               </View>
-              <View style={{ gap: 9, alignItems: 'flex-end' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                {/* 앱 열기 — 존재감 낮춘 고스트 텍스트(보조 동작). */}
                 <PressableScale onPress={onOpenApp}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      height: 36,
-                      paddingHorizontal: 13,
-                      borderRadius: 10,
-                      backgroundColor: LOCK.brandBg,
-                      borderWidth: 1,
-                      borderColor: LOCK.brandBorder,
-                    }}>
-                    <AppText variant="label" style={{ color: LOCK.brandText }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 46 }}>
+                    <AppText variant="label" style={{ color: LOCK.t2 }}>
                       앱 열기
                     </AppText>
-                    <Icon name="chevron-right" size={15} color={LOCK.brandText} strokeWidth={2.2} />
+                    <Icon name="chevron-right" size={15} color={LOCK.t2} strokeWidth={2.4} />
                   </View>
                 </PressableScale>
+                {/* 상자 — 금테 코인 토큰 + 개수 배지. */}
                 <PressableScale onPress={openBoxes} disabled={boxCount === 0}>
                   <View
                     style={{
-                      flexDirection: 'row',
+                      width: 46,
+                      height: 46,
+                      borderRadius: 23,
                       alignItems: 'center',
-                      gap: 6,
-                      height: 36,
-                      paddingHorizontal: 13,
-                      borderRadius: 10,
-                      backgroundColor: 'rgba(255,255,255,0.04)',
+                      justifyContent: 'center',
+                      backgroundColor: LOCK.surface2,
                       borderWidth: 1,
-                      borderColor: LOCK.line2,
-                      opacity: boxCount === 0 ? 0.5 : 1,
+                      borderColor: 'rgba(255,206,0,0.45)',
+                      opacity: boxCount === 0 ? 0.45 : 1,
                     }}>
-                    <Icon name="gift" size={15} color={LOCK.amber} strokeWidth={2} />
-                    <AppText variant="label" style={{ color: LOCK.t1 }}>
-                      상자 <AppText variant="label" style={{ color: LOCK.amber }}>{boxCount}</AppText>
-                    </AppText>
+                    <Icon name="gift" size={20} color={LOCK.amber} strokeWidth={2} />
+                    {boxCount > 0 ? (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: -5,
+                          right: -5,
+                          minWidth: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          paddingHorizontal: 5,
+                          backgroundColor: LOCK.amber,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                        <AppText variant="micro" style={{ color: '#241b00', fontWeight: '800' }}>
+                          {boxCount}
+                        </AppText>
+                      </View>
+                    ) : null}
                   </View>
                 </PressableScale>
               </View>
             </View>
 
-            {/* 중앙: 퀴즈 */}
-            <View style={{ flex: 1, paddingHorizontal: 22, paddingTop: 30 }}>
+            {/* 중앙: 퀴즈 — 상단 정렬(위로 끌어올림), 아래는 여백으로 비움 */}
+            <View style={{ flex: 1, paddingHorizontal: 22, paddingTop: 8 }}>
               {noContent ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                   <Icon name="sparkles" size={44} color={LOCK.amber} />
@@ -333,52 +345,46 @@ export function LockQuizView({
                 </View>
               ) : (
                 <>
-                  {/* 문제 카드 */}
-                  <View
-                    style={{
-                      backgroundColor: LOCK.surface,
-                      borderWidth: 1,
-                      borderColor: LOCK.line,
-                      borderRadius: 14,
-                      paddingHorizontal: 22,
-                      paddingTop: 20,
-                      paddingBottom: 26,
-                    }}>
+                  {/* 문제 — 카드 없이 배경 위에 떠 있는 스포트라이트 */}
+                  <View style={{ alignItems: 'center', paddingTop: 30, gap: 12 }}>
                     <AppText
                       variant="micro"
-                      style={{ color: LOCK.brand, letterSpacing: 1.5, fontWeight: '700' }}>
+                      style={{ color: LOCK.brandText, letterSpacing: 2, fontWeight: '700' }}>
                       {quizTypeLabel(question.item_type).toUpperCase()}
                     </AppText>
-                    <AppText variant="label" style={{ color: LOCK.t2, marginTop: 11 }}>
-                      {quizInstruction(question.item_type, question.question_type)}
-                    </AppText>
-                    <AppText
-                      variant="hero"
-                      style={{ color: '#fff', textAlign: 'center', marginTop: 22 }}>
-                      {question.prompt}
-                    </AppText>
                     {question.reading ? (
-                      <AppText
-                        variant="caption"
-                        style={{ color: LOCK.t3, textAlign: 'center', marginTop: 10 }}>
+                      <AppText variant="caption" style={{ color: LOCK.t3, letterSpacing: 1.5 }}>
                         {question.reading}
                       </AppText>
                     ) : null}
+                    <AppText
+                      variant="hero"
+                      style={{
+                        color: '#fff',
+                        fontSize: 56,
+                        lineHeight: 62,
+                        letterSpacing: -1,
+                        textAlign: 'center',
+                      }}>
+                      {question.prompt}
+                    </AppText>
+                    <AppText variant="label" style={{ color: LOCK.t2, marginTop: 2 }}>
+                      {quizInstruction(question.item_type, question.question_type)}
+                    </AppText>
                   </View>
 
-                  {/* 4지선다 2×2 — 카드 크기 항상 고정 */}
+                  {/* 4지선다 2×2 — 번호 없이, 크게 */}
                   <View
                     style={{
                       flexDirection: 'row',
                       flexWrap: 'wrap',
                       justifyContent: 'space-between',
-                      marginTop: 22,
+                      marginTop: 34,
                       rowGap: 11,
                     }}>
                     {question.choices.map((choice) => (
                       <ChoiceCard
                         key={choice.index}
-                        index={choice.index}
                         text={choice.text}
                         visual={choiceVisual(choice.index)}
                         disabled={selectedIndex !== null}
@@ -415,24 +421,22 @@ export function LockQuizView({
   );
 }
 
-/** 선택지 1개 — 2×2 그리드용 고정 크기 카드. 번호 배지 + 텍스트(1줄 말줄임). */
+/** 선택지 1개 — 2×2 그리드용. 번호 없이 가운데 정렬, 정/오답 시 체크·X 마크. */
 function ChoiceCard({
-  index,
   text,
   visual,
   disabled,
   onPress,
 }: {
-  index: number;
   text: string;
   visual: ChoiceVisual;
   disabled: boolean;
   onPress: () => void;
 }): React.JSX.Element {
   const style = {
-    default: { bg: LOCK.surface2, border: LOCK.line, text: LOCK.t1, badge: 'rgba(255,255,255,0.07)', badgeText: LOCK.t2 },
-    correct: { bg: LOCK.successBg, border: LOCK.successBorder, text: '#6FE3A4', badge: LOCK.success, badgeText: '#06210f' },
-    wrong: { bg: LOCK.dangerBg, border: LOCK.dangerBorder, text: '#FF8C7B', badge: LOCK.danger, badgeText: '#2a0a06' },
+    default: { bg: LOCK.surface2, border: LOCK.line, text: LOCK.t1 },
+    correct: { bg: LOCK.successBg, border: LOCK.successBorder, text: '#6FE3A4' },
+    wrong: { bg: LOCK.dangerBg, border: LOCK.dangerBorder, text: '#FF8C7B' },
   }[visual];
 
   const showCheck = visual === 'correct';
@@ -442,39 +446,23 @@ function ChoiceCard({
     <PressableScale onPress={onPress} disabled={disabled} pressedScale={0.985} style={{ width: '48.5%' }}>
       <View
         style={{
-          height: 66,
+          height: 72,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 11,
-          paddingHorizontal: 15,
+          justifyContent: 'center',
+          gap: 7,
+          paddingHorizontal: 14,
           backgroundColor: style.bg,
           borderWidth: 1,
           borderColor: style.border,
-          borderRadius: 12,
+          borderRadius: 16,
         }}>
-        <View
-          style={{
-            width: 23,
-            height: 23,
-            borderRadius: 7,
-            backgroundColor: style.badge,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          {showCheck ? (
-            <Icon name="check" size={14} color={style.badgeText} strokeWidth={2.8} />
-          ) : showCross ? (
-            <Icon name="close" size={14} color={style.badgeText} strokeWidth={2.8} />
-          ) : (
-            <AppText variant="caption" style={{ color: style.badgeText, fontWeight: '700' }}>
-              {index + 1}
-            </AppText>
-          )}
-        </View>
+        {showCheck ? <Icon name="check" size={18} color="#6FE3A4" strokeWidth={2.8} /> : null}
+        {showCross ? <Icon name="close" size={18} color="#FF8C7B" strokeWidth={2.8} /> : null}
         <AppText
           variant="subheading"
           numberOfLines={1}
-          style={{ flex: 1, color: style.text }}>
+          style={{ color: style.text, fontSize: 19, lineHeight: 24 }}>
           {text}
         </AppText>
       </View>

@@ -19,7 +19,7 @@ import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
 import { AppText, Button, Gradient, Icon } from '../../components';
-import { gradients, yellow } from '../../theme/tokens';
+import { gradients, scrim, yellow } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   useLedger,
@@ -217,7 +217,7 @@ export default function WalletScreen(): React.JSX.Element {
         onRequestClose={() => setExchangeOpen(false)}>
         <Pressable
           className="flex-1 justify-end"
-          style={{ backgroundColor: 'rgba(15,18,22,0.55)' }}
+          style={{ backgroundColor: scrim }}
           onPress={() => setExchangeOpen(false)}>
           <Pressable className="rounded-t-xl bg-bg-primary px-xl pb-3xl pt-lg" onPress={() => {}}>
             <View className="mb-lg items-center">

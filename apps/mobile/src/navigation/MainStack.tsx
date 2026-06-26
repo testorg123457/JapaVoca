@@ -15,6 +15,9 @@ import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
 import KanaScreen from '../screens/main/KanaScreen';
 import AttendanceScreen from '../screens/main/AttendanceScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
+import AccountSettingsScreen from '../screens/main/AccountSettingsScreen';
+import LockSettingsScreen from '../screens/main/LockSettingsScreen';
+import TermsDetailScreen from '../screens/onboarding/TermsDetailScreen';
 import ExchangeScreen from '../screens/main/ExchangeScreen';
 import LedgerScreen from '../screens/main/LedgerScreen';
 import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
@@ -42,6 +45,9 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Kana" component={KanaScreen} />
       <Stack.Screen name="Attendance" component={AttendanceScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+      <Stack.Screen name="LockSettings" component={LockSettingsScreen} />
+      <Stack.Screen name="TermsDetail" component={TermsDetailScreen} />
       <Stack.Screen name="Exchange" component={ExchangeScreen} />
       <Stack.Screen name="Ledger" component={LedgerScreen} />
       <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} />

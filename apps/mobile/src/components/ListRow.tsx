@@ -57,14 +57,14 @@ export function ListRow({
       style={{ minHeight: 56 }}>
       <View className="flex-1 flex-row items-center" style={{ gap: 12 }}>
         {leftIcon ? (
-          <Icon name={leftIcon} size={20} color={danger ? c.danger : c['text-secondary']} />
+          <Icon name={leftIcon} size={22} color={danger ? c.danger : c['text-secondary']} />
         ) : null}
         <View className="flex-1">
-          <AppText variant="subheading" className={titleColor}>
+          <AppText variant="heading" className={titleColor}>
             {title}
           </AppText>
           {subtitle ? (
-            <AppText variant="caption" className="mt-xs text-text-tertiary">
+            <AppText variant="body" className="mt-xs text-text-tertiary">
               {subtitle}
             </AppText>
           ) : null}
@@ -75,12 +75,12 @@ export function ListRow({
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.danger }} />
         ) : null}
         {value ? (
-          <AppText variant="body" className="text-text-tertiary">
+          <AppText variant="subheading" className="text-text-tertiary">
             {value}
           </AppText>
         ) : null}
         {chevron ? (
-          <Icon name="chevron-right" size={18} color={c['text-tertiary']} strokeWidth={2.2} />
+          <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />
         ) : null}
       </View>
     </Pressable>

@@ -87,3 +87,11 @@ export async function linkAccount(
   );
   return { tokens: response.data.tokens, switched: response.data.switched };
 }
+
+/**
+ * 회원 탈퇴 — 본인 계정 영구 삭제(DELETE /api/auth/me/). 현재 JWT로 인증된 요청.
+ * 성공(204) 후 호출부는 반드시 로그아웃(토큰 폐기)해야 한다. ⚠️ 남은 캐시는 소멸.
+ */
+export async function deleteAccount(): Promise<void> {
+  await apiClient.delete('/api/auth/me/');
+}

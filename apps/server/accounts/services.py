@@ -27,6 +27,12 @@ class AccountLinkError(Exception):
     """게스트 → 소셜 계정 연결 실패(이미 실계정이거나 지원하지 않는 연결)."""
 
 
+def _reject_withdrawn(user, error_cls):
+    """탈퇴 계정 로그인 차단 — soft delete 묘비(식별자만 남은 행)가 get_or_create에 매칭될 때 막는다."""
+    if user.status == User.Status.WITHDRAWN:
+        raise error_cls('탈퇴한 계정입니다. 재가입은 일정 기간 후 가능합니다.')
+
+
 def verify_google_id_token(token: str) -> dict:
     """구글 ID 토큰을 검증하고 payload(dict)를 반환한다.
 
@@ -62,8 +68,7 @@ def login_with_google(token: str) -> tuple[User, bool]:
         google_uid=google_uid,
         defaults={'email': email, 'nickname': name},
     )
-    if user.status == User.Status.BANNED:
-        raise GoogleAuthError('차단된 계정입니다.')
+    _reject_withdrawn(user, GoogleAuthError)
 
     # 이메일이 비어있던 기존 유저면 보강.
     if email and not user.email:
@@ -113,8 +118,7 @@ def login_with_kakao(access_token: str) -> tuple[User, bool]:
         kakao_uid=kakao_uid,
         defaults={'provider': User.Provider.KAKAO, 'email': email, 'nickname': nickname},
     )
-    if user.status == User.Status.BANNED:
-        raise KakaoAuthError('차단된 계정입니다.')
+    _reject_withdrawn(user, KakaoAuthError)
 
     user.last_login_at = timezone.now()
     user.save(update_fields=['last_login_at'])
@@ -133,8 +137,7 @@ def login_as_guest(guest_uid: str) -> tuple[User, bool]:
         guest_uid=guest_uid,
         defaults={'provider': User.Provider.GUEST, 'nickname': GUEST_NICKNAME, 'email': None},
     )
-    if user.status == User.Status.BANNED:
-        raise GuestAuthError('차단된 계정입니다.')
+    _reject_withdrawn(user, GuestAuthError)
     user.last_login_at = timezone.now()
     user.save(update_fields=['last_login_at'])
     return user, created
@@ -151,8 +154,7 @@ def _upgrade_or_switch(guest_user, *, provider_value, uid_field, uid_value, emai
     """
     existing = User.objects.filter(**{uid_field: uid_value}).first()
     if existing is not None:
-        if existing.status == User.Status.BANNED:
-            raise AccountLinkError('차단된 계정입니다.')
+        _reject_withdrawn(existing, AccountLinkError)
         existing.last_login_at = timezone.now()
         existing.save(update_fields=['last_login_at'])
         # 이미 본인 계정이면 전환 아님, 다른 기존 계정이면 전환(게스트 폐기).

@@ -20,6 +20,8 @@ export { ListRow } from './ListRow';
 export type { ListRowProps } from './ListRow';
 export { ListSection } from './ListSection';
 export type { ListSectionProps } from './ListSection';
+export { ToggleRow } from './ToggleRow';
+export type { ToggleRowProps } from './ToggleRow';
 export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';
 export { Gradient } from './Gradient';

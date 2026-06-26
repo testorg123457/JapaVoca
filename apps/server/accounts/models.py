@@ -58,7 +58,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Status(models.TextChoices):
         ACTIVE = 'active', '정상'
         FLAGGED = 'flagged', '의심(어뷰징)'
-        BANNED = 'banned', '차단'
+        # 회원 탈퇴(soft delete). 식별자(google/kakao/guest_uid)는 재가입 차단용 묘비로 남기고
+        # PII(email/nickname)는 익명화한다. 보존기간 경과분은 배치로 완전 삭제(후속).
+        WITHDRAWN = 'withdrawn', '탈퇴'
 
     class Provider(models.TextChoices):
         GUEST = 'guest', '게스트'
@@ -130,6 +132,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # 탈퇴 시각(soft delete). 보존기간 경과분 완전삭제 배치의 기준.
+    withdrawn_at = models.DateTimeField(null=True, blank=True, help_text='회원 탈퇴 시각(soft delete)')
 
     objects = UserManager()
 

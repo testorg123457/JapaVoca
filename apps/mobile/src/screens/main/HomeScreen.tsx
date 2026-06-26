@@ -164,7 +164,7 @@ export default function HomeScreen(): React.JSX.Element {
               <AppText variant="display" className="text-text-primary">
                 보유 상자 {boxCount}개
               </AppText>
-              <AppText variant="body" className="text-center text-text-tertiary">
+              <AppText variant="subheading" className="text-center text-text-tertiary">
                 {boxCount > 0 ? '탭해서 상자를 열어보세요!' : '퀴즈를 풀고 상자를 받아보세요.'}
               </AppText>
             </Card>
@@ -180,7 +180,7 @@ export default function HomeScreen(): React.JSX.Element {
                 <AppText variant="heading" className="text-text-primary">
                   단어 · 한자 퀴즈
                 </AppText>
-                <AppText variant="caption" className="text-text-tertiary">
+                <AppText variant="body" className="text-text-tertiary">
                   4지선다로 풀고 캐시 상자 받기
                 </AppText>
               </View>

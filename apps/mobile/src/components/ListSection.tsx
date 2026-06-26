@@ -24,7 +24,7 @@ export function ListSection({ title, className = '', children }: ListSectionProp
   return (
     <View className={className}>
       {title ? (
-        <AppText variant="caption" className="mb-sm px-xl text-text-tertiary">
+        <AppText variant="label" className="mb-sm px-xl text-text-tertiary">
           {title}
         </AppText>
       ) : null}
