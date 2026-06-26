@@ -10,7 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { MainStackParamList } from './types';
 import HomeScreen from '../screens/main/HomeScreen';
-import QuizScreen from '../screens/quiz/QuizScreen';
+import LockQuizScreen from '../screens/quiz/LockQuizScreen';
 import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
 import KanaScreen from '../screens/main/KanaScreen';
 import AttendanceScreen from '../screens/main/AttendanceScreen';
@@ -29,8 +29,8 @@ export default function MainStack(): React.JSX.Element {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen
-        name="Quiz"
-        component={QuizScreen}
+        name="LockQuiz"
+        component={LockQuizScreen}
         options={{ presentation: 'fullScreenModal' }}
       />
       <Stack.Screen

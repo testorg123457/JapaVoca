@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapaVoca — 잠금화면 퀴즈 목업 (Dark)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --brand:#35B98A; --brand-dim:#2A8E6B;
+    --amber:#FFCE00; --amber-dim:#E0B43A;
+    --success:#33C97A; --danger:#FF5A45;
+    /* 다크 표면 */
+    --bg0:#0C0D10; --bg1:#121419; --surface:#181B21; --surface2:#1E222A;
+    --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.10);
+    --t1:#EDEEF0; --t2:#9A9EA7; --t3:#6A6E78;
+    --r-card:14px; --r-choice:12px; --r-btn:10px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;
+    background:#000; min-height:100vh; display:flex; gap:40px;
+    align-items:center; justify-content:center; flex-wrap:wrap; padding:44px 20px;
+  }
+  .label{position:fixed; top:16px; left:22px; color:#fff; opacity:.4; font-size:12.5px; letter-spacing:.2px;}
+
+  /* 폰 프레임 */
+  .phone{
+    width:390px; height:844px; border-radius:44px; padding:11px;
+    background:#000; box-shadow:0 30px 90px rgba(0,0,0,.6), inset 0 0 0 1px #1b1b1f;
+    position:relative;
+  }
+  .screen{
+    width:100%; height:100%; border-radius:34px; overflow:hidden; position:relative;
+    /* 어두운 배경 + 상단 아주 미묘한 브랜드 글로우 */
+    background:
+      radial-gradient(140% 70% at 50% -20%, rgba(53,185,138,.16) 0%, rgba(53,185,138,0) 42%),
+      linear-gradient(180deg, #14161B 0%, #0C0D10 100%);
+    display:flex; flex-direction:column; color:var(--t1);
+  }
+  .notch{position:absolute; top:9px; left:50%; transform:translateX(-50%);
+    width:112px; height:28px; background:#000; border-radius:16px; z-index:5;}
+
+  /* 상단: 시계 / 액션 */
+  .top{padding:60px 24px 0; display:flex; justify-content:space-between; align-items:flex-start;}
+  .clock .time{font-size:52px; font-weight:700; letter-spacing:-1.5px; line-height:1; color:#fff;
+    font-variant-numeric:tabular-nums;}
+  .clock .date{margin-top:9px; font-size:13.5px; color:var(--t2); font-weight:500; letter-spacing:.2px;}
+  .actions{display:flex; flex-direction:column; gap:9px; align-items:flex-end;}
+  .btn{display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px;
+    border-radius:var(--r-btn); font-size:13.5px; font-weight:600; letter-spacing:.1px;
+    border:1px solid var(--line2); background:rgba(255,255,255,.04); color:var(--t1);
+    backdrop-filter:blur(6px);}
+  .btn-app{background:rgba(53,185,138,.16); border-color:rgba(53,185,138,.38); color:#7FE6BE;}
+  .btn .cnt{color:var(--amber); font-weight:700;}
+  .ico{width:16px; height:16px; display:inline-block;}
+
+  /* 중앙 */
+  .center{flex:1; padding:30px 22px 0; display:flex; flex-direction:column;}
+  .qcard{
+    background:linear-gradient(180deg,var(--surface) 0%, #15171C 100%);
+    border:1px solid var(--line); border-radius:var(--r-card); padding:20px 22px 26px;
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px rgba(0,0,0,.35);
+  }
+  /* 유형 — 글자만(배경 없음) */
+  .qtype{font-size:12px; font-weight:700; color:var(--brand); letter-spacing:1.5px; text-transform:uppercase;}
+  .qinstr{margin-top:11px; font-size:14.5px; color:var(--t2); font-weight:500; letter-spacing:.1px;}
+  .qmain{margin-top:22px; text-align:center; font-size:74px; font-weight:700; line-height:1.02; color:#fff;}
+  .qread{margin-top:10px; text-align:center; font-size:14.5px; color:var(--t3); font-weight:500;}
+
+  /* 4지선다 2×2 — 항상 고정 크기 */
+  .choices{margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:11px;}
+  .choice{
+    height:66px; min-width:0; display:flex; align-items:center; gap:11px; padding:0 15px;
+    background:var(--surface2); border:1px solid var(--line); border-radius:var(--r-choice);
+    cursor:pointer; transition:.12s;
+  }
+  .choice:active{transform:scale(.985); background:#232831;}
+  .choice .num{flex:0 0 auto; width:23px; height:23px; border-radius:7px; background:rgba(255,255,255,.07);
+    color:var(--t2); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .choice .txt{flex:1 1 auto; min-width:0; font-size:18px; font-weight:600; color:var(--t1);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .choice.correct{background:rgba(51,201,122,.12); border-color:rgba(51,201,122,.5);}
+  .choice.correct .num{background:var(--success); color:#06210f;}
+  .choice.correct .txt{color:#6FE3A4;}
+
+  .feedback{margin-top:20px; text-align:center;}
+  .feedback .pill{display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:700;
+    color:var(--amber); letter-spacing:.2px;}
+
+  /* 하단: 밀어서 잠금해제 — 칸 없이 화면 어디든 스와이프 */
+  .bottom{padding:0 24px 26px; text-align:center;}
+  .swipe{display:inline-flex; align-items:center; gap:8px; color:var(--t3);
+    font-size:13.5px; font-weight:500; letter-spacing:.3px;}
+  .chev{display:inline-flex; gap:-2px;}
+  .chev svg{width:13px; height:13px; opacity:.0; animation:run 1.8s infinite;}
+  .chev svg:nth-child(2){animation-delay:.22s;}
+  .chev svg:nth-child(3){animation-delay:.44s;}
+  @keyframes run{0%,70%,100%{opacity:.0}35%{opacity:.85}}
+  .handlebar{margin:12px auto 0; width:128px; height:5px; border-radius:3px; background:rgba(255,255,255,.16);}
+
+  .caption{position:fixed; bottom:12px; left:0; right:0; text-align:center; color:#fff; opacity:.4; font-size:12.5px;}
+</style>
+</head>
+<body>
+  <div class="label">JapaVoca · 잠금화면 학습 (Dark / 디자인 시안 v2)</div>
+
+  <!-- 시안 1: 기본 -->
+  <div class="phone"><div class="screen">
+    <div class="notch"></div>
+    <div class="top">
+      <div class="clock"><div class="time">22:15</div><div class="date">6월 26일 목요일</div></div>
+      <div class="actions">
+        <span class="btn btn-app">앱 열기
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#7FE6BE" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+        <span class="btn">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FFCE00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg>
+          상자 <span class="cnt">12</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="qcard">
+        <div class="qtype">한자</div>
+        <div class="qinstr">다음 한자의 뜻으로 옳은 것은?</div>
+        <div class="qmain">水</div>
+        <div class="qread">みず</div>
+      </div>
+      <div class="choices">
+        <div class="choice"><span class="num">1</span><span class="txt">물</span></div>
+        <div class="choice"><span class="num">2</span><span class="txt">불</span></div>
+        <div class="choice"><span class="num">3</span><span class="txt">나무</span></div>
+        <div class="choice"><span class="num">4</span><span class="txt">쇠</span></div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="swipe">밀어서 잠금해제
+        <span class="chev">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </span>
+      </div>
+      <div class="handlebar"></div>
+    </div>
+  </div></div>
+
+  <!-- 시안 2: 정답 피드백 + 단어 유형 -->
+  <div class="phone"><div class="screen">
+    <div class="notch"></div>
+    <div class="top">
+      <div class="clock"><div class="time">07:42</div><div class="date">6월 27일 금요일</div></div>
+      <div class="actions">
+        <span class="btn btn-app">앱 열기
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#7FE6BE" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+        <span class="btn">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FFCE00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg>
+          상자 <span class="cnt">13</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="qcard">
+        <div class="qtype">단어</div>
+        <div class="qinstr">다음 뜻에 해당하는 단어는?</div>
+        <div class="qmain" style="font-size:42px; margin-top:30px;">학교</div>
+      </div>
+      <div class="choices">
+        <div class="choice correct"><span class="num">✓</span><span class="txt">学校</span></div>
+        <div class="choice"><span class="num">2</span><span class="txt">会社</span></div>
+        <div class="choice"><span class="num">3</span><span class="txt">病院</span></div>
+        <div class="choice"><span class="num">4</span><span class="txt">図書館</span></div>
+      </div>
+      <div class="feedback">
+        <span class="pill">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#FFCE00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8 12h8"/></svg>
+          정답! 상자 +1
+        </span>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="swipe">밀어서 잠금해제
+        <span class="chev">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9A9EA7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </span>
+      </div>
+      <div class="handlebar"></div>
+    </div>
+  </div></div>
+
+  <div class="caption">화면 어디를 밀어도(오른쪽 스와이프) 잠금해제 · 왼쪽=기본 · 오른쪽=정답 피드백</div>
+</body>
+</html>

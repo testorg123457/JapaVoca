@@ -100,24 +100,37 @@ export default function PermissionsScreen(): React.JSX.Element {
     setBusy(true);
     try {
       let anyBlocked = false;
-      if (!notif) {
+
+      // 각 권한은 state(이전 요청 후 갱신 안 됐을 수 있음)가 아니라 실제 상태를
+      // 매번 재확인한 뒤, 미허용일 때만 요청한다. 이미 허용돼 있으면 요청을 건너뛴다.
+      let n = await checkNotification();
+      if (!n) {
         const r = await requestNotification();
+        n = r === 'granted';
         if (r === 'blocked') anyBlocked = true;
       }
-      if (!phone) {
+      setNotif(n);
+
+      let p = await checkPhone();
+      if (!p) {
         const r = await requestPhone();
+        p = r === 'granted';
         if (r === 'blocked') anyBlocked = true;
       }
-      if (!battery) {
-        // 배터리 면제는 시스템 다이얼로그(fire-and-forget). 요청 후 즉시 refresh 하면
-        // 아직 허용 전이라 false가 나오므로, 요청만 하고 AppState 복귀 시 자동 재확인에 맡긴다.
-        requestBatteryExemption();
+      setPhone(p);
+
+      // 배터리 면제 다이얼로그는 AppState 변화를 못 일으킬 수 있어 자동 재확인이 안 될 수
+      // 있다. 그래서 버튼 경로가 매번 실제 상태를 직접 확인해 완료까지 스스로 책임진다.
+      const b = await isIgnoringBatteryOptimizations();
+      setBattery(b);
+      if (!b) {
         setBlocked(anyBlocked);
-        return;
+        requestBatteryExemption();
+        return; // 면제 허용 후 버튼을 다시 누르거나 AppState 복귀 시 완료된다.
       }
+
       setBlocked(anyBlocked);
-      const ok = await refresh();
-      if (ok) {
+      if (n && p && b) {
         fireComplete();
       }
     } finally {
@@ -213,7 +226,7 @@ export default function PermissionsScreen(): React.JSX.Element {
         ) : null}
       </View>
 
-      <View className="px-xl pb-2xl pt-md gap-sm">
+      <View className="px-xl pb-2xl pt-md gap-sm" style={{ marginBottom: 40 }}>
         {blocked ? (
           <AppText variant="caption" className="text-danger text-center">
             권한이 꺼져 있어요. 설정에서 알림·전화 권한을 켜주세요.

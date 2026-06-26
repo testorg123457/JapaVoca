@@ -10,6 +10,7 @@ import type {
 } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BoxGrade } from '../api/hooks';
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
@@ -35,8 +36,9 @@ export type OnboardingStackParamList = {
 export type MainStackParamList = {
   /** 단일 스크롤 메인. 구 BottomTab 대체. */
   Home: undefined;
-  Quiz: undefined;
-  BoxOpen: { boxIds: number[] };
+  /** 학습 퀴즈. 인앱 진입 + 잠금화면(LockApp)이 공유하는 단일 퀴즈 화면. */
+  LockQuiz: undefined;
+  BoxOpen: { boxes: { id: number; grade: BoxGrade }[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;
   /** 출석체크(달력/스트릭). */

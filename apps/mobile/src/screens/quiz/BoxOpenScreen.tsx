@@ -1,12 +1,16 @@
 /**
  * 상자 개봉 화면.
  *
- * boxIds(퀴즈에서 획득한 미개봉 상자들)를 한 개씩 연다. 3개당 1회 보상형
- * 광고를 띄우되, 광고가 미로드/실패/닫힘이면 블로킹 없이 바로 개봉한다.
- * 개봉 보상(캐시)은 서버가 확정하며, 등급별 연출을 보여준 뒤 다음 상자로
- * 넘어가고 마지막이면 홈으로 돌아간다.
+ * boxes(퀴즈/홈에서 획득한 미개봉 상자들 — id+grade)를 한 개씩 연다.
+ * 등급이 높을수록 여는 데 필요한 **터치 수가 많다**(일반=1 … 잭팟=5).
+ * 매 터치마다 상자가 한 바퀴(360°) 돌며 **한 등급씩 색이 상승**하고,
+ * 마지막 터치에서 실제 서버 개봉이 일어나 보상이 드러난다.
+ *   - 색: 일반(브라운)→레어(파랑)→에픽(보라)→전설(노랑)→잭팟(빨강).
+ *   - 중간 터치는 순수 연출(서버 호출 없음), 마지막 터치에서만 openBox().
+ *   - 보상 금액은 항상 서버가 확정한다(클라는 등급=연출용만 안다).
  *
- * 디자인: 큰 상자를 탭하면 부드럽게 보상이 드러나는 연출. 등급별 색으로 강약(잭팟=옐로).
+ * 3개 개봉당 1회 보상형 광고를 띄우되, 광고가 미로드/실패/닫힘이면 블로킹 없이
+ * 바로 개봉한다. 마지막 상자면 홈으로 돌아간다.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
@@ -14,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
   FadeInUp,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -38,7 +43,26 @@ const AD_EVERY = 3; // 상자 N개당 광고 1회.
 const GRADE_LABEL: Record<BoxGrade, string> = {
   normal: '일반',
   rare: '레어',
+  epic: '에픽',
+  legendary: '전설',
   jackpot: '잭팟',
+};
+
+// tier = 등급 서열(0~4). 터치 수 = tier + 1.
+const GRADE_TIER: Record<BoxGrade, number> = {
+  normal: 0,
+  rare: 1,
+  epic: 2,
+  legendary: 3,
+  jackpot: 4,
+};
+
+const GRADE_TAG_VARIANT: Record<BoxGrade, 'neutral' | 'brand' | 'amber' | 'danger'> = {
+  normal: 'neutral',
+  rare: 'brand',
+  epic: 'brand',
+  legendary: 'amber',
+  jackpot: 'danger',
 };
 
 export default function BoxOpenScreen({
@@ -46,17 +70,27 @@ export default function BoxOpenScreen({
   navigation,
 }: MainStackScreenProps<'BoxOpen'>): React.JSX.Element {
   const c = useThemeColors();
-  const { boxIds } = route.params;
+  const { boxes } = route.params;
   const queryClient = useQueryClient();
   const { showThen } = useRewardedAd(Config.ADMOB_REWARDED_BOX_ID || TestIds.REWARDED);
 
+  // 등급 서열에 따른 색 시퀀스(브라운→파랑→보라→노랑→빨강). interpolateColor 입력 [0..4].
+  const SEQUENCE_COLORS = [c.box, c.info, c.epic, c.amber, c.danger];
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [phase, setPhase] = useState<'idle' | 'opening' | 'opened'>('idle');
+  const [phase, setPhase] = useState<'sealed' | 'opening' | 'opened'>('sealed');
   const [result, setResult] = useState<OpenBoxResult | null>(null);
 
+  const box = boxes[currentIndex];
+  const grade = box?.grade ?? 'normal';
+  const tier = GRADE_TIER[grade];
+  const tapsNeeded = tier + 1;
+
+  const [tapsLeft, setTapsLeft] = useState(tapsNeeded);
+
   const openedCountRef = useRef(0);
-  // 동기 락 — phase(state) 갱신 전 더블탭이 같은 상자를 두 번 여는 것을 막는다.
-  const openLockRef = useRef(false);
+  // 회전 애니 진행 중 추가 입력 무시(중간 터치) + 마지막 개봉 중복 방지.
+  const animLockRef = useRef(false);
   const mountedRef = useRef(true);
   useEffect(() => {
     return () => {
@@ -64,20 +98,33 @@ export default function BoxOpenScreen({
     };
   }, []);
 
-  const boxId = boxIds[currentIndex];
-  const isLast = currentIndex >= boxIds.length - 1;
-  const remaining = boxIds.length - currentIndex;
+  const isLast = currentIndex >= boxes.length - 1;
+  const remaining = boxes.length - currentIndex;
 
-  // idle 상태에서 상자가 살짝 들썩이며 "눌러보세요"를 유도.
+  // 회전 + 색 진행도(0=브라운 … tier=자기 등급색).
+  const rotate = useSharedValue(0);
+  const colorStep = useSharedValue(0);
+  // sealed 상태에서 상자가 살짝 들썩이며 "눌러보세요"를 유도.
   const wobble = useSharedValue(0);
   useEffect(() => {
-    if (phase === 'idle') {
-      wobble.value = withRepeat(withSequence(withTiming(-1, { duration: 900 }), withTiming(1, { duration: 900 })), -1, true);
+    if (phase === 'sealed') {
+      wobble.value = withRepeat(
+        withSequence(withTiming(-1, { duration: 900 }), withTiming(1, { duration: 900 })),
+        -1,
+        true,
+      );
     } else {
       wobble.value = withTiming(0, { duration: 200 });
     }
   }, [phase, wobble]);
-  const wobbleStyle = useAnimatedStyle(() => ({ transform: [{ translateY: wobble.value * 4 }, { rotate: `${wobble.value * 2}deg` }] }));
+
+  const boxStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(colorStep.value, [0, 1, 2, 3, 4], SEQUENCE_COLORS),
+    transform: [
+      { translateY: wobble.value * 4 },
+      { rotate: `${rotate.value + wobble.value * 2}deg` },
+    ],
+  }));
 
   const goHome = useCallback(() => {
     navigation.navigate('Home');
@@ -87,7 +134,7 @@ export default function BoxOpenScreen({
     async (adShown: boolean) => {
       setPhase('opening');
       try {
-        const res = await openBox(boxId, adShown);
+        const res = await openBox(box.id, adShown);
         if (!mountedRef.current) {
           return;
         }
@@ -107,21 +154,36 @@ export default function BoxOpenScreen({
           setPhase('opened');
           return;
         }
-        openLockRef.current = false;
-        setPhase('idle');
+        animLockRef.current = false;
+        setPhase('sealed');
         Alert.alert('오류', '상자 개봉에 실패했어요. 잠시 후 다시 시도해주세요.', [
           { text: '확인', onPress: goHome },
         ]);
       }
     },
-    [boxId, queryClient, goHome],
+    [box, queryClient, goHome],
   );
 
   function handleTap() {
-    if (openLockRef.current || phase !== 'idle') {
+    if (phase !== 'sealed' || animLockRef.current) {
       return;
     }
-    openLockRef.current = true;
+    rotate.value = withTiming(rotate.value + 360, { duration: 480 });
+
+    if (tapsLeft > 1) {
+      // 중간 터치 — 한 등급 색 상승. 서버 호출 없음.
+      animLockRef.current = true;
+      const nextStep = Math.min(tier + 2 - tapsLeft, tier); // 이번 탭 후 도달 색 단계
+      colorStep.value = withTiming(nextStep, { duration: 480 });
+      setTapsLeft((n) => n - 1);
+      setTimeout(() => {
+        animLockRef.current = false;
+      }, 300);
+      return;
+    }
+
+    // 마지막 터치 — 실제 개봉.
+    animLockRef.current = true;
     const isAdTurn = (openedCountRef.current + 1) % AD_EVERY === 0;
     if (isAdTurn) {
       showThen(() => doOpen(true));
@@ -135,11 +197,18 @@ export default function BoxOpenScreen({
       goHome();
       return;
     }
-    setCurrentIndex((i) => i + 1);
-    setPhase('idle');
+    const next = currentIndex + 1;
+    setCurrentIndex(next);
+    setTapsLeft(GRADE_TIER[boxes[next].grade] + 1);
+    setPhase('sealed');
     setResult(null);
-    openLockRef.current = false; // 다음 상자 탭 허용.
+    rotate.value = 0;
+    colorStep.value = 0;
+    animLockRef.current = false; // 다음 상자 탭 허용.
   }
+
+  const tapHint =
+    tapsLeft > 1 ? `${tapsLeft}번 더 탭!` : tapsNeeded > 1 ? '마지막 탭! 열기' : '탭해서 열기';
 
   return (
     <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
@@ -156,23 +225,44 @@ export default function BoxOpenScreen({
         {phase === 'opened' && result ? (
           <RewardReveal result={result} />
         ) : (
-          <PressableScale
-            onPress={handleTap}
-            disabled={phase !== 'idle'}
-            pressedScale={0.95}
-            className="items-center justify-center rounded-xl bg-bg-primary"
-            style={{ width: 240, height: 240, borderWidth: 1, borderColor: c['border-tertiary'] }}>
-            {phase === 'opening' ? (
-              <ActivityIndicator color={c.brand} />
-            ) : (
-              <Animated.View className="items-center" style={wobbleStyle}>
-                <Icon name="gift" size={96} color={c.brand} strokeWidth={1.6} />
-                <AppText variant="subheading" className="mt-lg text-text-secondary">
-                  탭해서 열기
-                </AppText>
+          <View className="items-center gap-lg">
+            <PressableScale
+              onPress={handleTap}
+              disabled={phase !== 'sealed'}
+              pressedScale={0.95}>
+              <Animated.View
+                className="items-center justify-center rounded-xl"
+                style={[{ width: 240, height: 240 }, boxStyle]}>
+                {phase === 'opening' ? (
+                  <ActivityIndicator color={c['on-brand']} />
+                ) : (
+                  <Icon name="gift" size={96} color={c['on-brand']} strokeWidth={1.6} />
+                )}
               </Animated.View>
+            </PressableScale>
+
+            {/* 진행 점 — 등급이 2단계 이상일 때만(탭 수 표시). */}
+            {tapsNeeded > 1 && (
+              <View className="flex-row gap-xs">
+                {Array.from({ length: tapsNeeded }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor:
+                        i < tapsNeeded - tapsLeft ? SEQUENCE_COLORS[tier] : c['border-secondary'],
+                    }}
+                  />
+                ))}
+              </View>
             )}
-          </PressableScale>
+
+            <AppText variant="subheading" className="text-text-secondary">
+              {tapHint}
+            </AppText>
+          </View>
         )}
       </View>
 
@@ -188,7 +278,7 @@ export default function BoxOpenScreen({
   );
 }
 
-/** 개봉 결과 연출 — 등급별 색 + 캐시 금액 애니메이션, jackpot 파티클. */
+/** 개봉 결과 연출 — 등급별 색 + 캐시 금액 애니메이션, 상위 등급 파티클. */
 function RewardReveal({ result }: { result: OpenBoxResult }): React.JSX.Element {
   const c = useThemeColors();
   const scale = useSharedValue(0.6);
@@ -202,16 +292,22 @@ function RewardReveal({ result }: { result: OpenBoxResult }): React.JSX.Element 
   const { grade, reward_cash } = result;
   const gradeColor: Record<BoxGrade, string> = {
     normal: c['text-secondary'],
-    rare: c.brand,
-    jackpot: c.amber,
+    rare: c.info,
+    epic: c.epic,
+    legendary: c.amber,
+    jackpot: c.danger,
   };
-  const gradeTagVariant = grade === 'jackpot' ? 'amber' : grade === 'rare' ? 'brand' : 'neutral';
+  const showParticles = grade === 'legendary' || grade === 'jackpot';
 
   return (
     <Animated.View entering={FadeInUp} className="items-center gap-md">
-      {grade === 'jackpot' && <JackpotParticles />}
-      <Tag label={GRADE_LABEL[grade]} variant={gradeTagVariant} leftIcon={grade === 'normal' ? 'gift' : 'sparkles'} />
-      <Animated.View style={amountStyle} className="flex-row items-end" >
+      {showParticles && <RewardParticles />}
+      <Tag
+        label={GRADE_LABEL[grade]}
+        variant={GRADE_TAG_VARIANT[grade]}
+        leftIcon={grade === 'normal' ? 'gift' : 'sparkles'}
+      />
+      <Animated.View style={amountStyle} className="flex-row items-end">
         <Icon name="coin" size={34} color={c.amber} />
         <AppText variant="hero" style={{ color: gradeColor[grade], marginLeft: 8 }}>
           {reward_cash.toLocaleString()}
@@ -227,8 +323,8 @@ function RewardReveal({ result }: { result: OpenBoxResult }): React.JSX.Element 
   );
 }
 
-/** lottie 없이 이모지로 대체한 잭팟 파티클(축하 연출이라 이모지 유지). */
-function JackpotParticles(): React.JSX.Element {
+/** lottie 없이 이모지로 대체한 축하 파티클(연출 목적이라 이모지 유지). */
+function RewardParticles(): React.JSX.Element {
   const particles = ['🎉', '✨', '🎊', '⭐', '💫', '🎉', '✨', '⭐'];
   return (
     <View className="absolute" style={{ width: 280, height: 140 }} pointerEvents="none">

@@ -23,9 +23,11 @@ MAX_BOXES_PER_DAY = 50      # 일일 상자 획득 상한(어뷰징 방지)
 
 # 정답 등급 가중치(상자 생성 시). 개봉 시 캐시 보상은 rewards.services 에서 결정.
 _BOX_GRADE_WEIGHTS = [
-    (CashBox.Grade.NORMAL, 80),
-    (CashBox.Grade.RARE, 18),
-    (CashBox.Grade.JACKPOT, 2),
+    (CashBox.Grade.NORMAL, 140),     # 70.0%
+    (CashBox.Grade.RARE, 28),        # 14.0%
+    (CashBox.Grade.EPIC, 23),        # 11.5%
+    (CashBox.Grade.LEGENDARY, 8),    #  4.0%
+    (CashBox.Grade.JACKPOT, 1),      #  0.5%
 ]
 
 

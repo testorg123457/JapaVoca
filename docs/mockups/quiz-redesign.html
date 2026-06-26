@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapaVoca — 퀴즈 페이지 디자인 시안</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --brand:#1F9660; --brand2:#15A07A; --brand-d:#0F7048;
+    --amber:#FFCE00; --amber-strong:#9C7C00;
+    --ink:#15171B; --t2:#5C5C62; --t3:#8A8D94;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;background:#191B20;
+    display:flex;flex-wrap:wrap;gap:38px;justify-content:center;align-items:flex-start;
+    padding:52px 20px 44px;color:var(--ink);}
+  .col{display:flex;flex-direction:column;align-items:center;gap:13px;}
+  .col h2{color:#fff;font-size:15px;font-weight:700;}
+  .col p{color:#fff;opacity:.5;font-size:12px;max-width:330px;text-align:center;line-height:1.5;}
+  .phone{width:360px;height:760px;border-radius:42px;padding:10px;background:#000;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);}
+  .scr{width:100%;height:100%;border-radius:33px;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .ico{display:inline-block;}
+
+  /* 공통 상단/선택지/하단 베이스 */
+  .top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .time{font-size:42px;font-weight:700;letter-spacing:-1.2px;line-height:1;}
+  .date{font-size:12.5px;margin-top:7px;font-weight:500;}
+  .acts{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+  .pill{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;
+    font-size:13px;font-weight:600;border:1px solid transparent;}
+  .qtype{font-size:11.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;}
+  .qinstr{font-size:14px;font-weight:500;}
+  .qmain{text-align:center;font-weight:700;}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .ch{height:64px;display:flex;align-items:center;gap:10px;padding:0 15px;border-radius:12px;}
+  .ch .n{flex:0 0 auto;width:22px;height:22px;border-radius:7px;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;}
+  .ch .t{flex:1;min-width:0;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .swipe{text-align:center;font-size:12.5px;font-weight:500;letter-spacing:.3px;display:flex;
+    align-items:center;justify-content:center;gap:6px;}
+  .bar{margin:11px auto 0;width:120px;height:5px;border-radius:3px;}
+
+  /* ============ A. 다크 프로 ============ */
+  .A .scr{background:radial-gradient(130% 60% at 50% -15%,rgba(31,150,96,.18),rgba(31,150,96,0) 45%),linear-gradient(180deg,#14161B,#0C0D10);color:#EDEEF0;}
+  .A .top{padding:54px 22px 0;} .A .time{color:#fff;} .A .date{color:#9A9EA7;}
+  .A .pill{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#EDEEF0;}
+  .A .pill.app{background:rgba(31,150,96,.18);border-color:rgba(31,150,96,.4);color:#7FE6BE;}
+  .A .cnt{color:var(--amber);font-weight:800;}
+  .A .mid{flex:1;padding:28px 20px 0;}
+  .A .card{background:#181B21;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px 20px 26px;}
+  .A .qtype{color:var(--brand2);} .A .qinstr{color:#9A9EA7;margin-top:10px;}
+  .A .qmain{color:#fff;font-size:70px;margin-top:20px;} .A .qread{text-align:center;color:#6A6E78;font-size:14px;margin-top:8px;}
+  .A .choices{margin-top:20px;}
+  .A .ch{background:#1E222A;border:1px solid rgba(255,255,255,.07);}
+  .A .ch .n{background:rgba(255,255,255,.07);color:#9A9EA7;} .A .ch .t{color:#EDEEF0;}
+  .A .bottom{padding:0 22px 26px;} .A .swipe{color:#6A6E78;} .A .bar{background:rgba(255,255,255,.16);}
+
+  /* ============ B. 라이트 미니멀 ============ */
+  .B .scr{background:#F6F7F4;color:var(--ink);}
+  .B .top{padding:54px 22px 0;} .B .time{color:var(--ink);} .B .date{color:var(--t3);}
+  .B .pill{background:#fff;border-color:#E7E8EA;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.04);}
+  .B .pill.app{color:var(--brand);} .B .cnt{color:var(--amber-strong);font-weight:800;}
+  .B .mid{flex:1;padding:40px 26px 0;display:flex;flex-direction:column;align-items:center;}
+  .B .qtype{color:var(--brand);align-self:center;} .B .qinstr{color:var(--t3);margin-top:12px;text-align:center;}
+  .B .qmain{color:var(--ink);font-size:78px;margin-top:18px;letter-spacing:-1px;} .B .qread{color:var(--t3);font-size:15px;margin-top:10px;}
+  .B .choices{margin-top:auto;margin-bottom:8px;width:100%;}
+  .B .ch{background:#fff;border:1px solid #E7E8EA;box-shadow:0 3px 8px rgba(0,0,0,.04);}
+  .B .ch .n{background:#F0F1F0;color:var(--t3);} .B .ch .t{color:var(--ink);}
+  .B .bottom{padding:18px 22px 26px;} .B .swipe{color:var(--t3);} .B .bar{background:#D8DAD8;}
+
+  /* ============ C. 그라데이션 히어로 ============ */
+  .C .scr{background:#FFFFFF;}
+  .C .hero{background:linear-gradient(160deg,#23A877 0%,#138463 100%);padding:54px 24px 60px;color:#fff;position:relative;}
+  .C .top .time{color:#fff;} .C .date{color:rgba(255,255,255,.8);}
+  .C .pill{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28);color:#fff;backdrop-filter:blur(4px);}
+  .C .pill.app{background:rgba(255,255,255,.92);color:var(--brand-d);border-color:transparent;}
+  .C .cnt{color:#FFE873;font-weight:800;}
+  .C .qtype{color:rgba(255,255,255,.85);margin-top:30px;display:block;}
+  .C .qinstr{color:rgba(255,255,255,.9);margin-top:10px;}
+  .C .qmain{color:#fff;font-size:72px;margin-top:14px;}
+  .C .sheet{flex:1;background:#fff;border-radius:22px 22px 0 0;margin-top:-26px;padding:26px 22px 0;
+    box-shadow:0 -8px 24px rgba(0,0,0,.06);}
+  .C .choices{margin-top:4px;}
+  .C .ch{background:#F7F8F6;border:1px solid #ECEDEA;}
+  .C .ch .n{background:#fff;color:var(--t3);border:1px solid #E7E8EA;} .C .ch .t{color:var(--ink);}
+  .C .bottom{padding:20px 22px 26px;} .C .swipe{color:var(--t3);} .C .bar{background:#DADCD9;}
+
+  /* ============ D. 라이트 + 컬러 액센트(정답 카드 통일, 번호 컬러칩) ============ */
+  .D .scr{background:#FBFBF9;color:var(--ink);}
+  .D .top{padding:54px 22px 0;} .D .date{color:var(--t3);}
+  .D .pill{background:#fff;border-color:#EAEBE8;color:var(--ink);}
+  .D .pill.app{background:var(--brand);color:#fff;border-color:transparent;} .D .cnt{color:var(--amber-strong);font-weight:800;}
+  .D .mid{flex:1;padding:30px 22px 0;}
+  .D .card{background:#fff;border:1px solid #ECEDEA;border-radius:16px;padding:22px 22px 28px;box-shadow:0 8px 22px rgba(20,40,30,.05);}
+  .D .qtype{color:var(--brand);} .D .qinstr{color:var(--t2);margin-top:11px;font-weight:600;}
+  .D .qmain{color:var(--ink);font-size:64px;margin-top:18px;} .D .qread{text-align:center;color:var(--t3);font-size:14px;margin-top:8px;}
+  .D .choices{margin-top:18px;gap:11px;}
+  .D .ch{background:#fff;border:1.5px solid #E7E8EA;}
+  .D .ch .n{background:var(--brand);color:#fff;} .D .ch .t{color:var(--ink);}
+  .D .bottom{padding:8px 22px 26px;} .D .swipe{color:var(--t3);} .D .bar{background:#DDDED9;}
+</style>
+</head>
+<body>
+
+<!-- A -->
+<div class="col A">
+  <h2>A · 다크 프로 (현재 개선)</h2>
+  <div class="phone"><div class="scr">
+    <div class="top"><div><div class="time">22:15</div><div class="date">6월 26일 목요일</div></div>
+      <div class="acts">
+        <span class="pill app">앱 열기 <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7FE6BE" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="pill"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCE00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg> 상자 <span class="cnt">12</span></span>
+      </div></div>
+    <div class="mid"><div class="card">
+      <div class="qtype">한자</div><div class="qinstr">다음 한자의 뜻으로 옳은 것은?</div>
+      <div class="qmain">水</div><div class="qread">みず</div>
+    </div>
+    <div class="choices">
+      <div class="ch"><span class="n">1</span><span class="t">물</span></div>
+      <div class="ch"><span class="n">2</span><span class="t">불</span></div>
+      <div class="ch"><span class="n">3</span><span class="t">나무</span></div>
+      <div class="ch"><span class="n">4</span><span class="t">쇠</span></div>
+    </div></div>
+    <div class="bottom"><div class="swipe">밀어서 잠금해제 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6A6E78" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div><div class="bar"></div></div>
+  </div></div>
+  <p>지금 방향의 정돈판. 어두운 무드 + 흰 문제카드. 잠금화면에 자연스러움.</p>
+</div>
+
+<!-- B -->
+<div class="col B">
+  <h2>B · 라이트 미니멀</h2>
+  <div class="phone"><div class="scr">
+    <div class="top"><div><div class="time">22:15</div><div class="date">6월 26일 목요일</div></div>
+      <div class="acts">
+        <span class="pill app">앱 열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1F9660" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9C7C00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg> 상자 <span class="cnt">12</span></span>
+      </div></div>
+    <div class="mid">
+      <div class="qtype">한자</div><div class="qinstr">다음 한자의 뜻으로 옳은 것은?</div>
+      <div class="qmain">水</div><div class="qread">みず</div>
+      <div class="choices">
+        <div class="ch"><span class="n">1</span><span class="t">물</span></div>
+        <div class="ch"><span class="n">2</span><span class="t">불</span></div>
+        <div class="ch"><span class="n">3</span><span class="t">나무</span></div>
+        <div class="ch"><span class="n">4</span><span class="t">쇠</span></div>
+      </div>
+    </div>
+    <div class="bottom"><div class="swipe">밀어서 잠금해제 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A8D94" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div><div class="bar"></div></div>
+  </div></div>
+  <p>밝고 깨끗한 무드. 문제는 카드 없이 배경 위 크게, 선택지는 흰 카드. 차분·고급.</p>
+</div>
+
+<!-- C -->
+<div class="col C">
+  <h2>C · 그라데이션 히어로</h2>
+  <div class="phone"><div class="scr">
+    <div class="hero">
+      <div class="top"><div><div class="time">22:15</div><div class="date">6월 26일 목요일</div></div>
+        <div class="acts">
+          <span class="pill app">앱 열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F7048" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          <span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg> 상자 <span class="cnt">12</span></span>
+        </div></div>
+      <div class="qtype">한자</div><div class="qinstr">다음 한자의 뜻으로 옳은 것은?</div>
+      <div class="qmain">水</div>
+    </div>
+    <div class="sheet">
+      <div class="choices">
+        <div class="ch"><span class="n">1</span><span class="t">물</span></div>
+        <div class="ch"><span class="n">2</span><span class="t">불</span></div>
+        <div class="ch"><span class="n">3</span><span class="t">나무</span></div>
+        <div class="ch"><span class="n">4</span><span class="t">쇠</span></div>
+      </div>
+      <div class="bottom"><div class="swipe">밀어서 잠금해제 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A8D94" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div><div class="bar"></div></div>
+    </div>
+  </div></div>
+  <p>상단 브랜드 그라데이션에 문제, 아래 흰 시트에 선택지. 활기차고 임팩트 큼.</p>
+</div>
+
+<!-- D -->
+<div class="col D">
+  <h2>D · 라이트 + 카드 강조</h2>
+  <div class="phone"><div class="scr">
+    <div class="top"><div><div class="time">22:15</div><div class="date">6월 26일 목요일</div></div>
+      <div class="acts">
+        <span class="pill app">앱 열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9C7C00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg> 상자 <span class="cnt">12</span></span>
+      </div></div>
+    <div class="mid"><div class="card">
+      <div class="qtype">한자</div><div class="qinstr">다음 한자의 뜻으로 옳은 것은?</div>
+      <div class="qmain">水</div><div class="qread">みず</div>
+    </div>
+    <div class="choices">
+      <div class="ch"><span class="n">1</span><span class="t">물</span></div>
+      <div class="ch"><span class="n">2</span><span class="t">불</span></div>
+      <div class="ch"><span class="n">3</span><span class="t">나무</span></div>
+      <div class="ch"><span class="n">4</span><span class="t">쇠</span></div>
+    </div></div>
+    <div class="bottom"><div class="swipe">밀어서 잠금해제 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A8D94" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div><div class="bar"></div></div>
+  </div></div>
+  <p>밝은 배경 + 떠 있는 문제카드, 번호칩은 브랜드색. 또렷하고 친근.</p>
+</div>
+
+</body>
+</html>

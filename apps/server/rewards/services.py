@@ -18,9 +18,11 @@ from .models import Attendance, CashBox, Daily, Ledger, Wallet
 
 # 개봉 시 등급별 캐시 보상 범위.
 BOX_REWARD_RANGE = {
-    CashBox.Grade.NORMAL: (5, 30),
-    CashBox.Grade.RARE: (50, 150),
-    CashBox.Grade.JACKPOT: (300, 1000),
+    CashBox.Grade.NORMAL: (10, 40),
+    CashBox.Grade.RARE: (40, 90),
+    CashBox.Grade.EPIC: (90, 170),
+    CashBox.Grade.LEGENDARY: (180, 280),
+    CashBox.Grade.JACKPOT: (800, 1200),
 }
 
 

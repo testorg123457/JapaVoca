@@ -17,6 +17,7 @@ class MainApplication : Application(), ReactApplication {
           // 자체 네이티브 모듈(오버레이 권한). New Arch에서도 레거시 모듈 interop로 동작한다.
           add(OverlayPermissionPackage())
           add(BatteryOptimizationPackage())
+          add(LockScreenPackage())
         },
       // useDevSupport는 기본값이 react-android(AAR)의 BuildConfig.DEBUG라 릴리스로 빌드된
       // AAR에선 항상 false → debug 빌드에서도 Metro를 안 거치고 assets 번들을 찾다 크래시.

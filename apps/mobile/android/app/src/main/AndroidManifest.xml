@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 잠금화면 학습: 화면 켜짐/잠금해제 감지용 포그라운드 서비스 + 부팅 복구 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
       android:name=".MainApplication"
@@ -29,6 +34,37 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- 잠금화면 학습 퀴즈 액티비티 — keyguard 위에 표시. RN "JapaVocaLock" 호스팅. -->
+      <activity
+        android:name=".LockQuizActivity"
+        android:exported="false"
+        android:showWhenLocked="true"
+        android:turnScreenOn="true"
+        android:excludeFromRecents="true"
+        android:taskAffinity="com.japavoca.app.lock"
+        android:launchMode="singleTask"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:theme="@style/AppTheme" />
+
+      <!-- 화면 켜짐/잠금해제 감지 포그라운드 서비스 -->
+      <service
+        android:name=".LockScreenService"
+        android:exported="false"
+        android:foregroundServiceType="specialUse">
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="lock_screen_learning" />
+      </service>
+
+      <!-- 재부팅 후 서비스 복구 -->
+      <receiver
+        android:name=".BootReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </intent-filter>
+      </receiver>
 
       <!-- AdMob App ID (필수: 없으면 MobileAdsInitProvider가 부팅 시 크래시).
            아래는 Google 공식 *테스트* App ID입니다. 실 서비스 시 .env의 ADMOB_APP_ID

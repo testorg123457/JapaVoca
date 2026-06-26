@@ -15,15 +15,17 @@
 import apiClient from './client';
 
 export type QuizMode = 'word' | 'kanji';
+/** 출제 항목 종류. 서버 item_type/mode 값(가나 트랙 포함). */
+export type QuizItemType = 'word' | 'kanji' | 'kana';
 export type QuestionType = 'word_to_meaning' | 'meaning_to_word';
-export type BoxGrade = 'normal' | 'rare' | 'jackpot';
+export type BoxGrade = 'normal' | 'rare' | 'epic' | 'legendary' | 'jackpot';
 
 export type QuizChoice = { index: number; text: string };
 
 export type QuizQuestion = {
   question_token: string;
-  mode: QuizMode;
-  item_type: QuizMode;
+  mode: QuizItemType;
+  item_type: QuizItemType;
   question_type: QuestionType;
   prompt: string;
   /** 읽기(히라가나/음·훈독). word_to_meaning 일 때만 채워짐. 없으면 빈 문자열. */

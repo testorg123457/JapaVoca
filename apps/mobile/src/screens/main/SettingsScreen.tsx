@@ -22,6 +22,13 @@ import { useMe, useUpdateProfile, useUnreadInquiryCount, type ProfileUpdate } fr
 import { linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
+import {
+  disableLockScreen,
+  enableLockScreen,
+  isLockScreenEnabled,
+  lockScreenAvailable,
+  showLockQuizNow,
+} from '../../lib/lockScreen';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 const APP_VERSION = 'v0.0.1';
@@ -72,10 +79,25 @@ export default function SettingsScreen(): React.JSX.Element {
   const [linking, setLinking] = useState(false);
   const [studySel, setStudySel] = useState<StudySelection | null>(null);
   const studyInitialized = useRef(false);
+  const [lockEnabled, setLockEnabled] = useState(false);
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: Config.GOOGLE_WEB_CLIENT_ID });
+    isLockScreenEnabled().then(setLockEnabled);
   }, []);
+
+  function toggleLockScreen(next: boolean) {
+    setLockEnabled(next);
+    if (next) {
+      enableLockScreen();
+      Alert.alert(
+        '잠금화면 학습 켜짐',
+        '화면을 켜거나 잠금을 해제할 때 퀴즈가 떠요.\n삼성 기기는 설정에서 "자동 실행"·배터리 최적화 제외가 필요할 수 있어요.',
+      );
+    } else {
+      disableLockScreen();
+    }
+  }
 
   const m = me.data;
 
@@ -250,9 +272,27 @@ export default function SettingsScreen(): React.JSX.Element {
           <ListRow leftIcon="mail" title="문의하기" onPress={() => navigation.navigate('Inquiry')} rightDot={hasUnreadInquiry} />
           <ListRow title="버전" value={APP_VERSION} showChevron={false} />
           {__DEV__ ? (
-            <ListRow title="디자인 시스템" onPress={() => navigation.navigate('StyleGuide')} last />
+            <ListRow title="디자인 시스템" onPress={() => navigation.navigate('StyleGuide')} />
+          ) : null}
+          {__DEV__ ? (
+            <ListRow title="잠금화면 학습(미리보기)" onPress={() => navigation.navigate('LockQuiz')} last={!lockScreenAvailable} />
+          ) : null}
+          {__DEV__ && lockScreenAvailable ? (
+            <ListRow title="잠금화면 즉시 표시(테스트)" onPress={showLockQuizNow} last />
           ) : null}
         </ListSection>
+
+        {/* 잠금화면 학습 */}
+        {lockScreenAvailable ? (
+          <ListSection title="잠금화면 학습">
+            <ToggleRow
+              title="화면 켤 때 퀴즈 띄우기"
+              value={lockEnabled}
+              onValueChange={toggleLockScreen}
+              last
+            />
+          </ListSection>
+        ) : null}
 
         {/* 로그아웃 */}
         <Pressable onPress={confirmLogout} className="items-center py-lg active:opacity-60">

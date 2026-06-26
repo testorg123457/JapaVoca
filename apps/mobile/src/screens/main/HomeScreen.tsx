@@ -91,7 +91,9 @@ export default function HomeScreen(): React.JSX.Element {
       return;
     }
     navLockRef.current = true;
-    navigation.navigate('BoxOpen', { boxIds: boxes.data.map((b) => b.id) });
+    navigation.navigate('BoxOpen', {
+      boxes: boxes.data.map((b) => ({ id: b.id, grade: b.grade })),
+    });
   }
 
   return (
@@ -168,7 +170,7 @@ export default function HomeScreen(): React.JSX.Element {
             </Card>
 
             {/* 퀴즈 시작 — 핵심 액션 카드 */}
-            <Card onPress={() => navigation.navigate('Quiz')} className="flex-row items-center" style={{ gap: 14 }}>
+            <Card onPress={() => navigation.navigate('LockQuiz')} className="flex-row items-center" style={{ gap: 14 }}>
               <View
                 className="items-center justify-center rounded-md"
                 style={{ width: 48, height: 48, backgroundColor: c['brand-subtle'] }}>

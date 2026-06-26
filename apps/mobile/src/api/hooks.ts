@@ -13,7 +13,7 @@ import {
 import type { AxiosError } from 'axios';
 
 import apiClient from './client';
-import { getInquiries, getUnreadCount, markAllRead, postInquiry, type Inquiry } from './support';
+import { deleteInquiry, getInquiries, getUnreadCount, markAllRead, postInquiry, type Inquiry } from './support';
 
 export type { Inquiry };
 
@@ -130,7 +130,7 @@ export function useLedger(direction?: LedgerDirection) {
   });
 }
 
-export type BoxGrade = 'normal' | 'rare' | 'jackpot';
+export type BoxGrade = 'normal' | 'rare' | 'epic' | 'legendary' | 'jackpot';
 export type BoxItem = { id: number; grade: BoxGrade };
 
 /** 미개봉 캐시상자 인벤토리. */
@@ -233,6 +233,17 @@ export function usePostInquiry() {
     mutationFn: (content: string) => postInquiry(content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inquiries'], exact: true });
+    },
+  });
+}
+
+export function useDeleteInquiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteInquiry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inquiries'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['inquiries', 'unread-count'] });
     },
   });
 }

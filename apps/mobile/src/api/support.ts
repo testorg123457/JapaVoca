@@ -33,3 +33,7 @@ export async function getUnreadCount(): Promise<{ count: number }> {
 export async function markAllRead(): Promise<void> {
   await apiClient.patch('/api/support/inquiries/mark-all-read/');
 }
+
+export async function deleteInquiry(id: number): Promise<void> {
+  await apiClient.delete(`/api/support/inquiries/${id}/`);
+}

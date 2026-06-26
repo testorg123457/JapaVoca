@@ -91,7 +91,9 @@ export const primitives = {
   gray,
   // 단색 기능색(스케일 불필요) — 500=메인, 50=옅은 배경
   green: { 50: '#E6F9EE', 500: '#2AC171' }, // success
-  blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info
+  blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info / 상자 레어색
+  purple: { 50: '#F3EEFE', 500: '#7C4DFF' }, // 상자 에픽색
+  brown: { 50: '#F5EFE8', 500: '#B07B4F' }, // 상자 일반색(우드 브라운)
   white: '#FFFFFF',
   black: '#000000',
 } as const;
@@ -137,6 +139,11 @@ const lightSemantic = {
   'danger-subtle': red[50],
   info: primitives.blue[500],
   'info-subtle': primitives.blue[50],
+  // 상자 등급색 (normal=box / rare=info / epic / legendary=amber / jackpot=danger)
+  epic: primitives.purple[500],
+  'epic-subtle': primitives.purple[50],
+  box: primitives.brown[500],
+  'box-subtle': primitives.brown[50],
 
   /* ── 백워드 호환 별칭 (기존 화면/컴포넌트 className·colors.* 키) ── */
   bg: gray[0],
@@ -188,6 +195,11 @@ const darkSemantic = {
   'danger-subtle': '#3A1A14',
   info: '#6AA6E8',
   'info-subtle': '#16243A',
+  // 상자 등급색 (다크에선 약간 밝게)
+  epic: '#A07BFF',
+  'epic-subtle': '#241A3A',
+  box: '#C99B73',
+  'box-subtle': '#2E2620',
 
   /* ── 백워드 호환 별칭 ── */
   bg: '#1A1716',
