@@ -4,22 +4,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import ItemType
 from .serializers import AnswerSerializer
 from .services import InvalidQuestionToken, NoContent, build_question, grade_answer
 
 
 class NextQuestionView(APIView):
-    """GET /api/quiz/next/?mode=word|kanji — 다음 문제 1개."""
+    """GET /api/quiz/next/ — 다음 문제 1개. 출제 종류·급수는 user.study_mode 로 결정."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        mode = request.query_params.get('mode', ItemType.WORD)
-        if mode not in (ItemType.WORD, ItemType.KANJI):
-            return Response({'detail': "mode 는 'word' 또는 'kanji'."}, status=400)
         try:
-            question = build_question(request.user, mode)
+            question = build_question(request.user)
         except NoContent as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
         return Response(question)

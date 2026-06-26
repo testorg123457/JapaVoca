@@ -24,3 +24,5 @@ export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';
 export { Gradient } from './Gradient';
 export type { GradientProps } from './Gradient';
+export { StudySelector } from './StudySelector';
+export type { StudySelectorProps } from './StudySelector';

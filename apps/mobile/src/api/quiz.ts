@@ -47,10 +47,9 @@ export type QuizAnswerResult = {
   box_grade: BoxGrade | null;
 };
 
-export async function getNextQuiz(mode: QuizMode = 'word'): Promise<QuizQuestion> {
-  const response = await apiClient.get<QuizQuestion>('/api/quiz/next/', {
-    params: { mode },
-  });
+export async function getNextQuiz(): Promise<QuizQuestion> {
+  // 출제 종류·급수는 서버가 user.study_mode 로 결정한다(클라가 mode 를 넘기지 않음).
+  const response = await apiClient.get<QuizQuestion>('/api/quiz/next/');
   return response.data;
 }
 

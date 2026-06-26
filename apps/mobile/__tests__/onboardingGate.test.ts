@@ -3,27 +3,37 @@ import { computeGateStatus } from '../src/navigation/gateStatus';
 describe('computeGateStatus', () => {
   it('동의 로딩 중이면 loading', () => {
     expect(
-      computeGateStatus({ consentLoading: true, consentRequired: undefined, permsGranted: null }),
+      computeGateStatus({ consentLoading: true, consentRequired: undefined, permsGranted: null, studyNeeded: undefined }),
     ).toBe('loading');
   });
   it('권한 상태 미확정(null)이면 loading', () => {
     expect(
-      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: null }),
+      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: null, studyNeeded: undefined }),
     ).toBe('loading');
   });
   it('동의 필요면 terms', () => {
     expect(
-      computeGateStatus({ consentLoading: false, consentRequired: true, permsGranted: false }),
+      computeGateStatus({ consentLoading: false, consentRequired: true, permsGranted: false, studyNeeded: undefined }),
     ).toBe('terms');
   });
   it('동의 완료 + 권한 미허용이면 permissions', () => {
     expect(
-      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: false }),
+      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: false, studyNeeded: undefined }),
     ).toBe('permissions');
   });
-  it('동의 완료 + 권한 허용이면 ready', () => {
+  it('동의·권한 OK + study 필요면 study', () => {
     expect(
-      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: true }),
+      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: true, studyNeeded: true }),
+    ).toBe('study');
+  });
+  it('동의·권한 OK + study 완료면 ready', () => {
+    expect(
+      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: true, studyNeeded: false }),
     ).toBe('ready');
+  });
+  it('study 상태 미확정(undefined)이면 loading', () => {
+    expect(
+      computeGateStatus({ consentLoading: false, consentRequired: false, permsGranted: true, studyNeeded: undefined }),
+    ).toBe('loading');
   });
 });

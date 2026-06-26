@@ -29,6 +29,7 @@ export type OnboardingStackParamList = {
   Terms: undefined;
   TermsDetail: { kind: TermKind };
   Permissions: undefined;
+  StudySelect: undefined;
 };
 
 export type MainStackParamList = {

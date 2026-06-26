@@ -5,8 +5,8 @@
  * 알림 화면, 로그아웃. 일부(계정/잠금화면)는 안내 스텁.
  * 비즈니스 로직은 기존 훅(useUpdateProfile/useAuth) 그대로 — 화면은 호출만.
  */
-import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, Switch, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Linking, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Config from 'react-native-config';
@@ -16,19 +16,17 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 
-import { AppHeader, AppText, Icon, ListRow, ListSection, Tag } from '../../components';
+import { AppHeader, AppText, Icon, ListRow, ListSection, StudySelector, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, type ProfileUpdate } from '../../api/hooks';
 import { linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
+import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
 
-const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 const APP_VERSION = 'v0.0.1';
 const SUPPORT_EMAIL = '0211ilyoil@gmail.com';
 const SUPPORT_MAIL = `mailto:${SUPPORT_EMAIL}?subject=[JapaVoca]%20문의`;
-
-type LevelTarget = 'jlpt_level_word' | 'jlpt_level_kanji' | null;
 
 function comingSoon() {
   Alert.alert('준비 중', '곧 제공될 기능이에요.');
@@ -71,12 +69,43 @@ export default function SettingsScreen(): React.JSX.Element {
   const updateProfile = useUpdateProfile();
   const { signIn, signOut } = useAuth();
   const queryClient = useQueryClient();
-  const [levelTarget, setLevelTarget] = useState<LevelTarget>(null);
   const [linking, setLinking] = useState(false);
+  const [studySel, setStudySel] = useState<StudySelection | null>(null);
+  const studyInitialized = useRef(false);
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: Config.GOOGLE_WEB_CLIENT_ID });
   }, []);
+
+  const m = me.data;
+
+  // me 로드 후 딱 한 번만 초기화(useRef 플래그로 이후 변경에 의한 재초기화 방지).
+  useEffect(() => {
+    if (m && !studyInitialized.current) {
+      studyInitialized.current = true;
+      setStudySel({
+        mode: (m.study_mode as StudySelection['mode']) ?? null,
+        level: (m.study_level as StudySelection['level']) ?? null,
+        hiragana: m.study_kana_hiragana,
+        katakana: m.study_kana_katakana,
+      });
+    }
+  }, [m]);
+
+  function changeStudy(next: StudySelection) {
+    const prev = studySel;
+    setStudySel(next);
+    if (isStudyValid(next)) {
+      updateProfile.mutate(
+        { study_mode: next.mode, study_level: next.level,
+          study_kana_hiragana: next.hiragana, study_kana_katakana: next.katakana },
+        { onError: () => {
+          Alert.alert('오류', '설정 변경에 실패했어요.');
+          setStudySel(prev);
+        }},
+      );
+    }
+  }
 
   const patch = (data: ProfileUpdate) =>
     updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
@@ -121,14 +150,6 @@ export default function SettingsScreen(): React.JSX.Element {
     );
   }
 
-  function selectLevel(level: string) {
-    const target = levelTarget;
-    setLevelTarget(null);
-    if (target) {
-      patch({ [target]: level });
-    }
-  }
-
   function confirmLogout() {
     Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
       { text: '취소', style: 'cancel' },
@@ -141,8 +162,6 @@ export default function SettingsScreen(): React.JSX.Element {
       Alert.alert('문의하기', `${SUPPORT_EMAIL} 로 문의해주세요.`),
     );
   }
-
-  const m = me.data;
 
   return (
     <View className="flex-1 bg-bg-secondary">
@@ -191,24 +210,13 @@ export default function SettingsScreen(): React.JSX.Element {
           </ListSection>
         ) : null}
 
-        {/* 학습 — 단어/한자 급수 별도 */}
-        <ListSection title="학습 급수">
-          <ListRow
-            leftIcon="book"
-            title="단어 급수"
-            value={m?.jlpt_level_word ?? '미설정'}
-            onPress={() => setLevelTarget('jlpt_level_word')}
-            showChevron
-          />
-          <ListRow
-            leftIcon="pencil"
-            title="한자 급수"
-            value={m?.jlpt_level_kanji ?? '미설정'}
-            onPress={() => setLevelTarget('jlpt_level_kanji')}
-            showChevron
-            last
-          />
-        </ListSection>
+        {/* 학습 트랙 */}
+        <View className="px-xl">
+          <AppText variant="label" className="text-text-tertiary" style={{ marginBottom: 12 }}>
+            학습
+          </AppText>
+          {studySel ? <StudySelector value={studySel} onChange={changeStudy} /> : null}
+        </View>
 
         {/* 캐시 · 내역 */}
         <ListSection title="캐시 · 내역">
@@ -260,44 +268,6 @@ export default function SettingsScreen(): React.JSX.Element {
         </Pressable>
       </ScrollView>
 
-      {/* 급수 선택 바텀시트 (단어/한자 공용) */}
-      <Modal
-        visible={levelTarget !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setLevelTarget(null)}>
-        <Pressable
-          className="flex-1 justify-end"
-          style={{ backgroundColor: 'rgba(15,18,22,0.55)' }}
-          onPress={() => setLevelTarget(null)}>
-          <Pressable className="rounded-t-xl bg-bg-primary px-xl pb-3xl pt-lg" onPress={() => {}}>
-            <View className="mb-lg items-center">
-              <View className="h-1 w-10 rounded-full bg-bg-tertiary" />
-            </View>
-            <AppText variant="title" className="mb-md text-text-primary">
-              {levelTarget === 'jlpt_level_kanji' ? '한자' : '단어'} 급수 선택
-            </AppText>
-            {JLPT_LEVELS.map((level, i) => {
-              const current =
-                levelTarget === 'jlpt_level_kanji' ? m?.jlpt_level_kanji : m?.jlpt_level_word;
-              const active = level === current;
-              return (
-                <Pressable
-                  key={level}
-                  className={`flex-row items-center justify-between py-lg active:opacity-60 ${
-                    i === JLPT_LEVELS.length - 1 ? '' : 'border-b border-border-tertiary'
-                  }`}
-                  onPress={() => selectLevel(level)}>
-                  <AppText variant="subheading" className={active ? 'text-brand' : 'text-text-primary'}>
-                    {level}
-                  </AppText>
-                  {active && <Icon name="check" size={20} color={c.brand} strokeWidth={2.4} />}
-                </Pressable>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }

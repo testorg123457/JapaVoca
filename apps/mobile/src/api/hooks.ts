@@ -26,6 +26,10 @@ export type MeResponse = {
   selected_jlpt_level: string | null;
   jlpt_level_word: string | null;
   jlpt_level_kanji: string | null;
+  study_mode: 'kanji' | 'kanji_word' | 'kana_word' | 'kana' | null;
+  study_level: string | null;
+  study_kana_hiragana: boolean;
+  study_kana_katakana: boolean;
   push_enabled: boolean;
   push_quiz_reminder: boolean;
   push_marketing: boolean;
@@ -45,6 +49,10 @@ export type ProfileUpdate = {
   selected_jlpt_level?: string | null;
   jlpt_level_word?: string | null;
   jlpt_level_kanji?: string | null;
+  study_mode?: 'kanji' | 'kanji_word' | 'kana_word' | 'kana' | null;
+  study_level?: string | null;
+  study_kana_hiragana?: boolean;
+  study_kana_katakana?: boolean;
   push_enabled?: boolean;
   push_quiz_reminder?: boolean;
   push_marketing?: boolean;

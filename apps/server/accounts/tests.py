@@ -114,3 +114,36 @@ class ConsentApiTest(TestCase):
         self.client.force_authenticate(user=None)
         resp = self.client.get('/api/auth/consent/status/')
         self.assertEqual(resp.status_code, 401)
+
+
+class StudyFieldsTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(google_uid='g-study', email='s@x.com')
+        self.client.force_authenticate(user=self.user)
+
+    def test_defaults_unset(self):
+        resp = self.client.get('/api/auth/me/')
+        self.assertIsNone(resp.data['study_mode'])
+
+    def test_set_kanji_track(self):
+        resp = self.client.patch(
+            '/api/auth/me/', {'study_mode': 'kanji', 'study_level': 'N5'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['study_mode'], 'kanji')
+        self.assertEqual(resp.data['study_level'], 'N5')
+
+    def test_leveled_mode_requires_level(self):
+        resp = self.client.patch(
+            '/api/auth/me/', {'study_mode': 'kanji_word', 'study_level': None}, format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_kana_mode_requires_a_script(self):
+        resp = self.client.patch(
+            '/api/auth/me/',
+            {'study_mode': 'kana', 'study_kana_hiragana': False, 'study_kana_katakana': False},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)

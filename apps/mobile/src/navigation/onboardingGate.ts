@@ -8,6 +8,7 @@ import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { CONSENT_QUERY_KEY, useConsentStatus } from '../api/consent';
+import { useMe } from '../api/hooks';
 import { checkRequiredPermissions } from '../lib/permissions';
 import { setCachedConsentStatus } from '../store/onboarding';
 import { computeGateStatus, type GateStatus } from './gateStatus';
@@ -20,8 +21,11 @@ export function useOnboardingGate(isLoggedIn: boolean): {
   recheck: () => void;
 } {
   const consent = useConsentStatus(isLoggedIn);
+  const me = useMe();
   const queryClient = useQueryClient();
   const [permsGranted, setPermsGranted] = useState<boolean | null>(null);
+  // study_mode 가 null 이면 학습 선택(온보딩) 미완료. me 로딩 전이면 undefined.
+  const studyNeeded = me.data ? me.data.study_mode == null : undefined;
 
   const checkPerms = useCallback(async () => {
     const ok = await checkRequiredPermissions();
@@ -55,6 +59,7 @@ export function useOnboardingGate(isLoggedIn: boolean): {
         consentLoading: consent.isLoading,
         consentRequired: consent.data?.required,
         permsGranted,
+        studyNeeded,
       });
 
   const recheck = useCallback(() => {

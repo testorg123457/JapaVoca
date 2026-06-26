@@ -65,6 +65,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         GOOGLE = 'google', '구글'
         KAKAO = 'kakao', '카카오'
 
+    class StudyMode(models.TextChoices):
+        KANJI = 'kanji', '한자'
+        KANJI_WORD = 'kanji_word', '한자단어'
+        KANA_WORD = 'kana_word', '가나단어'
+        KANA = 'kana', '가나'  # 출제는 후속 플랜(현재 미지원)
+
     # 소셜 식별자 — 멀티 프로바이더. 카카오 유저는 google_uid 가 없으므로 null 허용
     # (Postgres unique 는 NULL 다중 허용). 카카오는 kakao_uid 로 식별한다.
     # 게스트는 셋 다 비고 기기별 guest_uid 로만 식별 → 나중에 소셜 연결 시 같은 행을 승격.
@@ -106,6 +112,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE,
     )
+
+    # 단일 학습 트랙 선택(온보딩). study_mode 가 null 이면 온보딩(학습 선택) 미완료.
+    study_mode = models.CharField(
+        max_length=12, choices=StudyMode.choices, null=True, blank=True,
+        help_text='현재 학습 트랙(단일). null=온보딩 미완료',
+    )
+    study_level = models.CharField(
+        max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
+        help_text='study_mode 가 한자/한자단어/가나단어일 때의 급수',
+    )
+    study_kana_hiragana = models.BooleanField(default=False, help_text='가나 트랙: 히라가나 포함')
+    study_kana_katakana = models.BooleanField(default=False, help_text='가나 트랙: 가타카나 포함')
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

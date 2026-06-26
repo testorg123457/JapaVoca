@@ -112,7 +112,7 @@ export default function QuizScreen({
     setSelectedIndex(null);
     setResult(null);
     try {
-      const q = await getNextQuiz('word');
+      const q = await getNextQuiz();
       if (!mountedRef.current) {
         return;
       }

@@ -80,12 +80,40 @@ def _item_extra(item_type, item_id):
     return reading, (kanji.jlpt_level or '')
 
 
-def _pick_item_id(user, item_type):
-    """SRS 기한 도래 항목 우선, 없으면 미학습 신규 항목(가능하면 유저 급수)."""
+def resolve_study(user):
+    """user.study_mode → (item_type, word_type|None, level) 반환.
+
+    한자→(kanji, None, level) / 한자단어→(word, 'kanji', level) / 가나단어→(word, 'kana', level).
+    study 미설정이거나 가나(글자, 후속 플랜)면 NoContent.
+    """
+    mode = user.study_mode
+    if mode == 'kanji':
+        return ItemType.KANJI, None, user.study_level
+    if mode == 'kanji_word':
+        return ItemType.WORD, Word.WordType.KANJI, user.study_level
+    if mode == 'kana_word':
+        return ItemType.WORD, Word.WordType.KANA, user.study_level
+    raise NoContent('학습 트랙이 설정되지 않았습니다.')
+
+
+def _pick_item_id(user, item_type, word_type, level):
+    """SRS 기한 도래 항목 우선, 없으면 미학습 신규 항목(study_mode 의 word_type/급수 적용).
+
+    kanji_word ↔ kana_word 오염 방지: due 쿼리도 현재 트랙의 word_type 로 제한한다.
+    (SrsState 에 word_type 컬럼이 없으므로 Word 서브쿼리로 필터.)
+    """
     now = timezone.now()
+    model = Word if item_type == ItemType.WORD else Kanji
+
+    # 현재 트랙에 속하는 item_id 집합(서브쿼리).
+    track_qs = model.objects.all()
+    if item_type == ItemType.WORD and word_type:
+        track_qs = track_qs.filter(word_type=word_type)
+    track_ids = track_qs.values('id')
+
     due = (
         SrsState.objects
-        .filter(user=user, item_type=item_type, due_at__lte=now)
+        .filter(user=user, item_type=item_type, due_at__lte=now, item_id__in=track_ids)
         .order_by('due_at')
         .values_list('item_id', flat=True)
         .first()
@@ -94,19 +122,12 @@ def _pick_item_id(user, item_type):
         return due
 
     seen = SrsState.objects.filter(user=user, item_type=item_type).values_list('item_id', flat=True)
-    model = Word if item_type == ItemType.WORD else Kanji
-    qs = model.objects.exclude(id__in=seen)
-    # 단어/한자 급수를 별도로 사용. 미설정이면 하위호환 공통(selected_jlpt_level)로 폴백.
-    if item_type == ItemType.KANJI:
-        level = user.jlpt_level_kanji or user.selected_jlpt_level
-    else:
-        level = user.jlpt_level_word or user.selected_jlpt_level
+    qs = track_qs.exclude(id__in=seen)
     if level:
         leveled = qs.filter(jlpt_level=level)
         if leveled.exists():
             qs = leveled
-    obj_id = qs.order_by('?').values_list('id', flat=True).first()
-    return obj_id
+    return qs.order_by('?').values_list('id', flat=True).first()
 
 
 def _distractor_texts(item_type, item_id, dimension, correct_text, n=3):
@@ -125,13 +146,13 @@ def _distractor_texts(item_type, item_id, dimension, correct_text, n=3):
     return out
 
 
-def build_question(user, mode):
-    """문제 1개 생성. mode in {'word','kanji'}.
+def build_question(user):
+    """문제 1개 생성. 출제 종류·급수는 user.study_mode 로 결정.
 
     반환: {question_token, mode, item_type, question_type, prompt, choices:[{index,text}]}
     """
-    item_type = ItemType.WORD if mode == ItemType.WORD else ItemType.KANJI
-    item_id = _pick_item_id(user, item_type)
+    item_type, word_type, level = resolve_study(user)
+    item_id = _pick_item_id(user, item_type, word_type, level)
     if item_id is None:
         raise NoContent('출제할 항목이 없습니다.')
 
@@ -166,7 +187,7 @@ def build_question(user, mode):
     )
     return {
         'question_token': token,
-        'mode': mode,
+        'mode': item_type,
         'item_type': item_type,
         'question_type': question_type,
         'prompt': prompt,
