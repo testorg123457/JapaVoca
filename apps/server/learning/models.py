@@ -4,10 +4,11 @@ from django.db import models
 
 
 class ItemType(models.TextChoices):
-    """학습 항목 종류. item_id 는 Word.id 또는 Kanji.id 를 가리킨다(FK 아님)."""
+    """학습 항목 종류. item_id 는 Word.id / Kanji.id / Kana.id 를 가리킨다(FK 아님)."""
 
     WORD = 'word', '단어'
     KANJI = 'kanji', '한자'
+    KANA = 'kana', '가나'
 
 
 class SrsState(models.Model):
@@ -64,6 +65,7 @@ class QuizLog(models.Model):
     class Mode(models.TextChoices):
         WORD = 'word', '단어'
         KANJI = 'kanji', '한자'
+        KANA = 'kana', '가나'
 
     class QuestionType(models.TextChoices):
         WORD_TO_MEANING = 'word_to_meaning', '단어→뜻'

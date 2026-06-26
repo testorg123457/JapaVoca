@@ -28,10 +28,9 @@ export const LEVELS: { code: JlptLevel; name: string; difficulty: number }[] = [
   { code: 'N1', name: '고급', difficulty: 5 },
 ];
 
-/** 종류 탭. 가나(글자) 보상 퀴즈는 후속 플랜이라 비활성. */
-export const TABS: { mode: StudyMode; label: string; disabled?: boolean }[] = [
+export const TABS: { mode: StudyMode; label: string }[] = [
   { mode: 'kanji', label: '한자' },
   { mode: 'kanji_word', label: '한자단어' },
   { mode: 'kana_word', label: '가나단어' },
-  { mode: 'kana', label: '가나', disabled: true },
+  { mode: 'kana', label: '가나' },
 ];

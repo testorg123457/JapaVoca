@@ -71,6 +71,45 @@ class Word(models.Model):
         return self.surface
 
 
+class Kana(models.Model):
+    """가나 글자(히라가나/가타카나, ~200행).
+
+    한 발음이라도 script(hira/kata)가 다르면 별도 행. romaji 는 중복 가능
+    (じ·ぢ 둘 다 'ji') 이므로 unique 는 (character, script) 로 잡는다.
+    """
+
+    class Script(models.TextChoices):
+        HIRA = 'hira', '히라가나'
+        KATA = 'kata', '가타카나'
+
+    class Kind(models.TextChoices):
+        SEION = 'seion', '청음'
+        DAKUTEN = 'dakuten', '탁음·반탁음'
+        YOUON = 'youon', '요음'
+
+    character = models.CharField(max_length=4, help_text='가나 글자(예: あ, ア, きゃ)')
+    romaji = models.CharField(max_length=8, help_text='로마자 읽기(예: a, kya)')
+    script = models.CharField(max_length=4, choices=Script.choices)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tbl_content_kana'
+        verbose_name = '가나'
+        verbose_name_plural = '가나'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['character', 'script'], name='uniq_kana_char_script',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['script', 'kind'], name='idx_kana_script_kind'),
+        ]
+
+    def __str__(self):
+        return f'{self.character}({self.romaji})'
+
+
 class WordMeaning(models.Model):
     """단어 뜻 (Word 1:N). 한 단어의 여러 뜻을 의미 순번으로 분리 저장."""
 

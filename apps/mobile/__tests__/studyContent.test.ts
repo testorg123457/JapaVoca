@@ -14,5 +14,7 @@ describe('isStudyValid', () => {
   it('가나 트랙은 히라/가타 중 하나 이상', () => {
     expect(isStudyValid({ ...base, mode: 'kana' })).toBe(false);
     expect(isStudyValid({ ...base, mode: 'kana', hiragana: true })).toBe(true);
+    expect(isStudyValid({ ...base, mode: 'kana', katakana: true })).toBe(true);
+    expect(isStudyValid({ ...base, mode: 'kana', hiragana: true, katakana: true })).toBe(true);
   });
 });

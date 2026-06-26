@@ -29,7 +29,22 @@ class ResolveStudyTest(TestCase):
         with self.assertRaises(NoContent):
             resolve_study(u)
 
-    def test_kana_mode_raises_nocontent(self):
-        u = self._user(google_uid='g-k', email='k@x.com', study_mode='kana', study_kana_hiragana=True)
+    def test_kana_hira_only(self):
+        u = self._user(google_uid='g-kh', email='kh@x.com', study_mode='kana', study_kana_hiragana=True)
+        self.assertEqual(resolve_study(u), ('kana', 'hira', None))
+
+    def test_kana_kata_only(self):
+        u = self._user(google_uid='g-kk', email='kk@x.com', study_mode='kana', study_kana_katakana=True)
+        self.assertEqual(resolve_study(u), ('kana', 'kata', None))
+
+    def test_kana_both_scripts(self):
+        u = self._user(
+            google_uid='g-kb', email='kb@x.com',
+            study_mode='kana', study_kana_hiragana=True, study_kana_katakana=True,
+        )
+        self.assertEqual(resolve_study(u), ('kana', None, None))
+
+    def test_kana_no_script_raises_nocontent(self):
+        u = self._user(google_uid='g-kn', email='kn@x.com', study_mode='kana')
         with self.assertRaises(NoContent):
             resolve_study(u)

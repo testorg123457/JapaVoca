@@ -12,7 +12,7 @@ from django.core import signing
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from content.models import Kanji, Word, WordMeaning
+from content.models import Kana, Kanji, Word, WordMeaning
 from rewards.models import CashBox
 
 from .models import ItemType, QuizLog, SrsState
@@ -42,13 +42,21 @@ class InvalidQuestionToken(QuizError):
 
 
 def _item_texts(item_type, item_id):
-    """(surface, meaning) 반환. 없으면 빈 문자열."""
+    """(surface, meaning) 반환. 없으면 빈 문자열.
+
+    KANA: surface=글자(あ), meaning=로마자(a).
+    """
     if item_type == ItemType.WORD:
         word = Word.objects.filter(id=item_id).first()
         if not word:
             return '', ''
         wm = WordMeaning.objects.filter(word_id=item_id).order_by('sense_no').first()
         return word.surface, (wm.meaning_ko if wm else '')
+    if item_type == ItemType.KANA:
+        kana = Kana.objects.filter(id=item_id).first()
+        if not kana:
+            return '', ''
+        return kana.character, kana.romaji
     kanji = Kanji.objects.filter(id=item_id).first()
     if not kanji:
         return '', ''
@@ -70,6 +78,8 @@ def _item_extra(item_type, item_id):
             return '', ''
         reading = word.reading if (word.reading and word.reading != word.surface) else ''
         return reading, (word.jlpt_level or '')
+    if item_type == ItemType.KANA:
+        return '', ''  # 가나는 읽기/급수 없음
     kanji = (
         Kanji.objects.filter(id=item_id)
         .only('on_reading', 'kun_reading', 'jlpt_level').first()
@@ -81,10 +91,11 @@ def _item_extra(item_type, item_id):
 
 
 def resolve_study(user):
-    """user.study_mode → (item_type, word_type|None, level) 반환.
+    """user.study_mode → (item_type, subtype|None, level|None) 반환.
 
-    한자→(kanji, None, level) / 한자단어→(word, 'kanji', level) / 가나단어→(word, 'kana', level).
-    study 미설정이거나 가나(글자, 후속 플랜)면 NoContent.
+    한자→(KANJI, None, level) / 한자단어→(WORD, 'kanji', level) / 가나단어→(WORD, 'kana', level).
+    가나→(KANA, script|None, None). script: 'hira'|'kata'|None(둘 다 선택).
+    study 미설정이면 NoContent.
     """
     mode = user.study_mode
     if mode == 'kanji':
@@ -93,6 +104,18 @@ def resolve_study(user):
         return ItemType.WORD, Word.WordType.KANJI, user.study_level
     if mode == 'kana_word':
         return ItemType.WORD, Word.WordType.KANA, user.study_level
+    if mode == 'kana':
+        hira = user.study_kana_hiragana
+        kata = user.study_kana_katakana
+        if not hira and not kata:
+            raise NoContent('가나 스크립트를 선택해주세요.')
+        if hira and not kata:
+            script = Kana.Script.HIRA
+        elif kata and not hira:
+            script = Kana.Script.KATA
+        else:
+            script = None  # 둘 다 — 필터 없음
+        return ItemType.KANA, script, None
     raise NoContent('학습 트랙이 설정되지 않았습니다.')
 
 
@@ -103,12 +126,19 @@ def _pick_item_id(user, item_type, word_type, level):
     (SrsState 에 word_type 컬럼이 없으므로 Word 서브쿼리로 필터.)
     """
     now = timezone.now()
-    model = Word if item_type == ItemType.WORD else Kanji
+    if item_type == ItemType.WORD:
+        model = Word
+    elif item_type == ItemType.KANA:
+        model = Kana
+    else:
+        model = Kanji
 
     # 현재 트랙에 속하는 item_id 집합(서브쿼리).
     track_qs = model.objects.all()
     if item_type == ItemType.WORD and word_type:
         track_qs = track_qs.filter(word_type=word_type)
+    elif item_type == ItemType.KANA and word_type:
+        track_qs = track_qs.filter(script=word_type)
     track_ids = track_qs.values('id')
 
     due = (
@@ -132,7 +162,12 @@ def _pick_item_id(user, item_type, word_type, level):
 
 def _distractor_texts(item_type, item_id, dimension, correct_text, n=3):
     """같은 종류의 다른 항목들에서 오답 텍스트 n개 수집(중복/정답 제외)."""
-    model = Word if item_type == ItemType.WORD else Kanji
+    if item_type == ItemType.WORD:
+        model = Word
+    elif item_type == ItemType.KANA:
+        model = Kana
+    else:
+        model = Kanji
     out = []
     for oid in (
         model.objects.exclude(id=item_id).order_by('?').values_list('id', flat=True)[:60]
@@ -160,9 +195,13 @@ def build_question(user):
     if not surface or not meaning:
         raise NoContent('항목의 표기/뜻 데이터가 부족합니다.')
 
-    question_type = random.choice(
-        [QuizLog.QuestionType.WORD_TO_MEANING, QuizLog.QuestionType.MEANING_TO_WORD]
-    )
+    if item_type == ItemType.KANA:
+        # 가나는 글자→로마자 방향만. 로마자→글자는 じ·ぢ 등 동음 이자(異字) 문제로 정답이 모호.
+        question_type = QuizLog.QuestionType.WORD_TO_MEANING
+    else:
+        question_type = random.choice(
+            [QuizLog.QuestionType.WORD_TO_MEANING, QuizLog.QuestionType.MEANING_TO_WORD]
+        )
     if question_type == QuizLog.QuestionType.WORD_TO_MEANING:
         prompt, correct_text, dimension = surface, meaning, 'meaning'
     else:
@@ -264,14 +303,14 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
         daily.boxes_earned += 1
 
     # 4) 퀴즈 로그 기록.
-    _, item_meaning = item_type, None
     jlpt = ''
     if item_type == ItemType.WORD:
         w = Word.objects.filter(id=item_id).only('jlpt_level').first()
         jlpt = (w.jlpt_level or '') if w else ''
-    else:
+    elif item_type == ItemType.KANJI:
         k = Kanji.objects.filter(id=item_id).only('jlpt_level').first()
         jlpt = (k.jlpt_level or '') if k else ''
+    # KANA: jlpt 없음, jlpt='' 그대로
 
     # token_hash unique 충돌 = 동시 요청이 사전 조회를 함께 통과한 경우.
     # savepoint(중첩 atomic) 안에서 create 하여 IntegrityError 시 깔끔히 거부하고,

@@ -109,7 +109,11 @@ export default function PermissionsScreen(): React.JSX.Element {
         if (r === 'blocked') anyBlocked = true;
       }
       if (!battery) {
+        // 배터리 면제는 시스템 다이얼로그(fire-and-forget). 요청 후 즉시 refresh 하면
+        // 아직 허용 전이라 false가 나오므로, 요청만 하고 AppState 복귀 시 자동 재확인에 맡긴다.
         requestBatteryExemption();
+        setBlocked(anyBlocked);
+        return;
       }
       setBlocked(anyBlocked);
       const ok = await refresh();
