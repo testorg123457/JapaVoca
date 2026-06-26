@@ -7,6 +7,10 @@
  */
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
+import { isIgnoringBatteryOptimizations } from './battery';
+export { isIgnoringBatteryOptimizations } from './battery';
+export { requestBatteryExemption } from './battery';
+
 export type PermResult = 'granted' | 'denied' | 'blocked';
 
 export function mapAndroidResult(r: string): PermResult {
@@ -55,10 +59,14 @@ export async function requestPhone(): Promise<PermResult> {
   return mapAndroidResult(r);
 }
 
-/** 필수 권한(알림 + 번호) 모두 허용 여부. */
+/** 필수 권한(알림 + 번호 + 배터리 최적화 제외) 모두 허용 여부. */
 export async function checkRequiredPermissions(): Promise<boolean> {
-  const [notification, phone] = await Promise.all([checkNotification(), checkPhone()]);
-  return notification && phone;
+  const [notification, phone, battery] = await Promise.all([
+    checkNotification(),
+    checkPhone(),
+    isIgnoringBatteryOptimizations(),
+  ]);
+  return notification && phone && battery;
 }
 
 export function openAppSettings(): void {

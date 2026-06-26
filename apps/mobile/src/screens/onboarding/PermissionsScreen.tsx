@@ -13,7 +13,9 @@ import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   checkNotification,
   checkPhone,
+  isIgnoringBatteryOptimizations,
   openAppSettings,
+  requestBatteryExemption,
   requestNotification,
   requestPhone,
 } from '../../lib/permissions';
@@ -33,6 +35,7 @@ export default function PermissionsScreen(): React.JSX.Element {
   const { onComplete } = useOnboardingActions();
   const [notif, setNotif] = useState(false);
   const [phone, setPhone] = useState(false);
+  const [battery, setBattery] = useState(false);
   const [overlay, setOverlay] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,15 +50,20 @@ export default function PermissionsScreen(): React.JSX.Element {
   }, [onComplete]);
 
   const refresh = useCallback(async () => {
-    const [n, p, o] = await Promise.all([checkNotification(), checkPhone(), canDrawOverlays()]);
+    const [n, p, b, o] = await Promise.all([
+      checkNotification(),
+      checkPhone(),
+      isIgnoringBatteryOptimizations(),
+      canDrawOverlays(),
+    ]);
     setNotif(n);
     setPhone(p);
+    setBattery(b);
     setOverlay(o);
-    // 둘 다 허용되면(설정에서 켜고 복귀 등) 거부 안내를 내린다.
-    if (n && p) {
+    if (n && p && b) {
       setBlocked(false);
     }
-    return n && p;
+    return n && p && b;
   }, []);
 
   // 마운트 + 설정에서 복귀(AppState active) 시 재확인. 필수 충족되면 자동 진행(중복 호출/언마운트 후
@@ -94,15 +102,14 @@ export default function PermissionsScreen(): React.JSX.Element {
       let anyBlocked = false;
       if (!notif) {
         const r = await requestNotification();
-        if (r === 'blocked') {
-          anyBlocked = true;
-        }
+        if (r === 'blocked') anyBlocked = true;
       }
       if (!phone) {
         const r = await requestPhone();
-        if (r === 'blocked') {
-          anyBlocked = true;
-        }
+        if (r === 'blocked') anyBlocked = true;
+      }
+      if (!battery) {
+        requestBatteryExemption();
       }
       setBlocked(anyBlocked);
       const ok = await refresh();
@@ -130,6 +137,13 @@ export default function PermissionsScreen(): React.JSX.Element {
       required: true,
     },
     {
+      icon: 'flame',
+      title: '배터리 사용량 최적화 중지',
+      desc: '백그라운드 알림·출석 체크가 끊기지 않게 해요.',
+      granted: battery,
+      required: true,
+    },
+    {
       icon: 'lock',
       title: '다른 앱 위에 표시',
       desc: '잠금화면 학습(준비 중)에 쓰여요. 지금 건너뛰어도 돼요.',
@@ -147,7 +161,7 @@ export default function PermissionsScreen(): React.JSX.Element {
             원활한 이용을 위해 권한이 필요해요
           </AppText>
           <AppText variant="caption" className="text-text-tertiary">
-            알림과 전화(휴대폰 번호) 권한은 필수예요.
+            알림·전화·배터리 최적화 중지는 필수예요.
           </AppText>
         </View>
 
