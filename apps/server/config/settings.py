@@ -86,6 +86,10 @@ MIDDLEWARE = [
 # 커스텀 유저 모델 (google_uid 기반 인증) — 최초 마이그레이션 전에 반드시 등록.
 AUTH_USER_MODEL = 'accounts.User'
 
+# 약관/개인정보 처리방침 현재 버전. 올리면 그 버전 동의가 없는 유저는 재동의 대상.
+TERMS_VERSION = '1'
+PRIVACY_VERSION = '1'
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [

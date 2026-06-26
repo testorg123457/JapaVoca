@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (
+    ConsentSubmitSerializer,
     GoogleLoginSerializer,
     GuestLoginSerializer,
     KakaoLoginSerializer,
@@ -15,12 +16,15 @@ from .serializers import (
 )
 from .services import (
     AccountLinkError,
+    ConsentError,
     GoogleAuthError,
     GuestAuthError,
     KakaoAuthError,
+    get_consent_status,
     login_as_guest,
     login_with_google,
     login_with_kakao,
+    record_consent,
     upgrade_guest_with_google,
     upgrade_guest_with_kakao,
 )
@@ -154,3 +158,32 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSerializer(request.user).data)
+
+
+class ConsentStatusView(APIView):
+    """GET /api/auth/consent/status/ — 현재 약관 버전 + 재동의 필요 여부."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_consent_status(request.user))
+
+
+class ConsentView(APIView):
+    """POST /api/auth/consent/ — 동의 기록(append-only).
+
+    append-only라 같은 버전을 다시 제출하면 행이 새로 추가된다(중복 자체는 무해 —
+    get_consent_status가 항상 최신 행 기준으로 판정). 진짜 멱등(버전당 1행)이 필요하면
+    record_consent를 (user, terms_version, privacy_version) get_or_create로 바꿔야 한다.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ConsentSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            record_consent(request.user, **serializer.validated_data)
+        except ConsentError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(get_consent_status(request.user), status=status.HTTP_201_CREATED)

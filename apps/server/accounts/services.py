@@ -6,7 +6,7 @@ from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
-from .models import User
+from .models import ConsentAgreement, User
 
 GUEST_NICKNAME = '게스트'
 
@@ -200,3 +200,58 @@ def upgrade_guest_with_kakao(guest_user, access_token: str) -> tuple[User, bool]
         email=email,
         nickname=nickname,
     )
+
+
+class ConsentError(Exception):
+    """약관 동의 처리 실패(필수 항목 누락 등)."""
+
+
+def get_consent_status(user) -> dict:
+    """현재 약관/개인정보 버전과 이 유저의 재동의 필요 여부를 반환한다."""
+    current_terms = settings.TERMS_VERSION
+    current_privacy = settings.PRIVACY_VERSION
+    latest = (
+        ConsentAgreement.objects.filter(
+            user=user,
+            terms_version=current_terms,
+            privacy_version=current_privacy,
+        )
+        .order_by('-agreed_at')
+        .first()
+    )
+    return {
+        'required': latest is None,
+        'terms_version': current_terms,
+        'privacy_version': current_privacy,
+        'marketing_agreed': bool(latest.marketing_agreed) if latest else False,
+        'phone_data_agreed': bool(latest.phone_data_agreed) if latest else False,
+    }
+
+
+@transaction.atomic
+def record_consent(user, *, marketing_agreed, phone_data_agreed, phone_number=None):
+    """동의를 append-only 로 기록한다. (ConsentAgreement 반환)
+
+    - 게스트는 휴대폰번호 데이터 동의·수집 대상이 아니라 강제로 False/None 처리.
+    - 게스트가 아니면 휴대폰번호 데이터 동의(phone_data_agreed)는 필수 → 없으면 ConsentError.
+    - 마케팅 동의는 User.push_marketing 과 동기화한다.
+    """
+    is_guest = user.is_guest
+    if is_guest:
+        phone_data_agreed = False
+        phone_number = None
+    elif not phone_data_agreed:
+        raise ConsentError('휴대폰번호 데이터 동의는 필수입니다.')
+
+    agreement = ConsentAgreement.objects.create(
+        user=user,
+        terms_version=settings.TERMS_VERSION,
+        privacy_version=settings.PRIVACY_VERSION,
+        phone_data_agreed=phone_data_agreed,
+        marketing_agreed=marketing_agreed,
+        phone_number=phone_number or None,
+    )
+    if user.push_marketing != marketing_agreed:
+        user.push_marketing = marketing_agreed
+        user.save(update_fields=['push_marketing'])
+    return agreement

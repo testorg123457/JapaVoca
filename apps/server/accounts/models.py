@@ -3,6 +3,7 @@
 Google OAuth(google_uid) 기반 커스텀 유저. Django 기본 username 인증은 쓰지 않는다.
 settings.py 에 AUTH_USER_MODEL = 'accounts.User' 등록 필수.
 """
+from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -129,3 +130,41 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.nickname or self.email or self.guest_uid} ({self.provider})'
+
+
+class ConsentAgreement(models.Model):
+    """약관/개인정보/휴대폰번호/마케팅 동의 이력 (append-only).
+
+    원장(Ledger)과 같은 철학: 수정·삭제하지 않고 동의할 때마다 행을 추가한다.
+    현재 약관 버전은 settings.TERMS_VERSION / PRIVACY_VERSION 으로 관리하며,
+    버전이 올라가면 그 버전의 동의 행이 없는 유저는 재동의 대상이 된다.
+    게스트는 휴대폰번호 데이터 동의/수집 대상이 아니다(서버에서 강제 false/null).
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='consents',
+    )
+    terms_version = models.CharField(max_length=20, help_text='동의한 이용약관 버전')
+    privacy_version = models.CharField(max_length=20, help_text='동의한 개인정보 처리방침 버전')
+    phone_data_agreed = models.BooleanField(default=False, help_text='휴대폰번호 데이터 동의(게스트 False)')
+    marketing_agreed = models.BooleanField(default=False, help_text='마케팅 정보 수신 동의(선택)')
+    # PII — 최소 수집. 게스트/미획득 시 null.
+    phone_number = models.CharField(max_length=20, null=True, blank=True, help_text='휴대폰 번호(PII, 게스트 null)')
+    agreed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tbl_accounts_consent'
+        ordering = ['-agreed_at']
+        verbose_name = '동의 이력'
+        verbose_name_plural = '동의 이력'
+
+    def save(self, *args, **kwargs):
+        # append-only: 이미 존재하는 행(pk 보유)은 수정 금지. 동의는 행 추가로만 기록한다.
+        if self.pk is not None:
+            raise TypeError('ConsentAgreement is append-only and cannot be updated.')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.user_id} terms@{self.terms_version} privacy@{self.privacy_version}'

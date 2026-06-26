@@ -54,3 +54,22 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             'nickname', 'selected_jlpt_level', 'jlpt_level_word', 'jlpt_level_kanji',
             'push_enabled', 'push_quiz_reminder', 'push_marketing',
         )
+
+
+class ConsentSubmitSerializer(serializers.Serializer):
+    """동의 제출 — 필수(이용약관·개인정보)는 제출 자체가 동의이므로 별도 필드 없음.
+
+    phone_data_agreed: 휴대폰번호 데이터 동의(게스트는 서버가 무시).
+    marketing_agreed: 선택. phone_number: 선택(미획득 시 생략/공백 → null).
+    """
+
+    marketing_agreed = serializers.BooleanField(default=False)
+    phone_data_agreed = serializers.BooleanField(default=False)
+    phone_number = serializers.CharField(
+        max_length=20, required=False, allow_null=True, allow_blank=True,
+    )
+
+    def validate(self, attrs):
+        if not attrs.get('phone_number'):
+            attrs['phone_number'] = None
+        return attrs

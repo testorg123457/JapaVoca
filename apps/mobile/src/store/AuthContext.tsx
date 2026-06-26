@@ -19,6 +19,18 @@ import {
   isLoggedIn as readIsLoggedIn,
   setTokens,
 } from './auth';
+import { clearOnboardingCache } from './onboarding';
+import { queryClient } from '../api/queryClient';
+
+// 계정 전환 시 이전 계정의 동의 상태가 새 계정으로 새지 않도록 동의 캐시를 모두 비운다.
+// MMKV 캐시 + React Query in-memory 캐시 둘 다 지워야 한다(invalidate는 refetch 동안
+// 옛 data를 유지해 게이트가 잠깐 Terms를 건너뛸 수 있으므로 removeQueries 사용).
+// 키는 api/consent의 CONSENT_QUERY_KEY와 동일하지만, import 순환(consent→client→AuthContext)을
+// 피하려고 리터럴로 둔다.
+function clearConsentState(): void {
+  clearOnboardingCache();
+  queryClient.removeQueries({ queryKey: ['consent', 'status'] });
+}
 
 type AuthContextValue = {
   isLoggedIn: boolean;
@@ -47,11 +59,15 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     () => ({
       isLoggedIn: loggedIn,
       signIn: (access: string, refresh: string) => {
+        // 게스트→소셜 연결(SettingsScreen)처럼 signOut 없이 다른 계정으로 전환되는 경로가
+        // 있어, 로그인 시점에 이전 계정의 동의 캐시를 동기적으로 비운다(계정 누수 방지).
+        clearConsentState();
         setTokens(access, refresh);
         setLoggedIn(true);
       },
       signOut: () => {
         clearTokens();
+        clearConsentState();
         setLoggedIn(false);
       },
     }),

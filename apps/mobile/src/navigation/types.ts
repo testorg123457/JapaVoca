@@ -13,11 +13,22 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  Splash: undefined;
+  Onboarding: undefined;
   Main: NavigatorScreenParams<MainStackParamList>;
 };
 
 export type AuthStackParamList = {
   Login: undefined;
+};
+
+/** 약관 본문 종류. */
+export type TermKind = 'terms' | 'privacy' | 'phone' | 'marketing';
+
+export type OnboardingStackParamList = {
+  Terms: undefined;
+  TermsDetail: { kind: TermKind };
+  Permissions: undefined;
 };
 
 export type MainStackParamList = {
@@ -59,6 +70,9 @@ export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
 
 export type MainStackScreenProps<T extends keyof MainStackParamList> =
   NativeStackScreenProps<MainStackParamList, T>;
+
+export type OnboardingStackScreenProps<T extends keyof OnboardingStackParamList> =
+  NativeStackScreenProps<OnboardingStackParamList, T>;
 
 /** @deprecated 하단 탭 제거됨. deprecated 화면 컴파일 호환용. */
 export type BottomTabScreenPropsFor<T extends keyof BottomTabParamList> =
