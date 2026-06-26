@@ -217,21 +217,26 @@ export function LockQuizView({
 
   // 오른쪽으로 밀면 잠금해제 — RNGH가 터치를 가로채므로(루트뷰) RNGH 제스처를 쓰되,
   // 워클릿 경로가 이 버전 조합에서 불안정해 .runOnJS(true)로 JS 콜백 + RN Animated 사용.
-  const unlockDist = screenW * 0.5; // 화면 절반쯤 밀면 닫힘
   const dragX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
   const onUnlockRef = useRef(onUnlock);
   onUnlockRef.current = onUnlock;
+  // 제스처는 useRef로 1회만 생성되므로 콜백 클로저가 첫 렌더의 screenW를 고정한다.
+  // 회전 등으로 너비가 바뀌어도 최신값을 쓰도록 ref로 갱신해 참조한다.
+  const dimsRef = useRef({ screenW });
+  dimsRef.current.screenW = screenW;
   const pan = useRef(
     Gesture.Pan()
       .runOnJS(true)
       .activeOffsetX(10)
+      .failOffsetY([-14, 14]) // 세로/대각선 움직임이 크면 취소 — "오른쪽 밀기"만 받는다.
       .onUpdate((e) => {
         if (e.translationX >= 0) {
-          dragX.setValue(Math.min(e.translationX, screenW));
+          dragX.setValue(Math.min(e.translationX, dimsRef.current.screenW));
         }
       })
       .onEnd((e) => {
+        const unlockDist = dimsRef.current.screenW * 0.5; // 화면 절반쯤 밀면 닫힘
         if (e.translationX > unlockDist || e.velocityX > 600) {
           // 절반쯤 밀면 슬라이드로 빠져나가는 대신 그 자리에서 투명해지며 꺼진다.
           Animated.timing(opacity, {
