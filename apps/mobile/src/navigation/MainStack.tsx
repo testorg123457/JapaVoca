@@ -21,6 +21,7 @@ import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import InquiryScreen from '../screens/main/InquiryScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
+import GestureDebugScreen from '../screens/GestureDebugScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -31,7 +32,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen
         name="LockQuiz"
         component={LockQuizScreen}
-        options={{ presentation: 'fullScreenModal' }}
+        options={{ animation: 'fade', gestureEnabled: false, fullScreenGestureEnabled: false }}
       />
       <Stack.Screen
         name="BoxOpen"
@@ -53,6 +54,7 @@ export default function MainStack(): React.JSX.Element {
           options={{ presentation: 'fullScreenModal' }}
         />
       )}
+      {__DEV__ && <Stack.Screen name="GestureDebug" component={GestureDebugScreen} />}
     </Stack.Navigator>
   );
 }

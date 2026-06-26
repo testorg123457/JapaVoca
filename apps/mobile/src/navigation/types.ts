@@ -38,6 +38,8 @@ export type MainStackParamList = {
   Home: undefined;
   /** 학습 퀴즈. 인앱 진입 + 잠금화면(LockApp)이 공유하는 단일 퀴즈 화면. */
   LockQuiz: undefined;
+  /** 제스처 격리 디버그(DEBUG). */
+  GestureDebug: undefined;
   BoxOpen: { boxes: { id: number; grade: BoxGrade }[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;

@@ -12,17 +12,17 @@
  * 라우트로 먼저 검증한다. 그래서 "앱 열기"·"잠금해제"는 모두 Home/뒤로가기로 처리.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import type { AxiosError } from 'axios';
 
 import { AppText, Icon, PressableScale } from '../../components';
@@ -95,7 +95,6 @@ function LockBackground(): React.JSX.Element {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const FEEDBACK_MS = 1200; // 정/오답 표시 후 다음 문제 자동 로드.
-const UNLOCK_THRESHOLD = 110; // 이 이상 오른쪽으로 밀면 잠금해제.
 
 function formatClock(d: Date): { time: string; date: string } {
   const hh = String(d.getHours()).padStart(2, '0');
@@ -129,6 +128,7 @@ export function LockQuizView({
 }: LockQuizActions): React.JSX.Element {
   const boxes = useBoxes();
   const boxCount = boxes.data?.length ?? 0;
+  const { width: screenW } = useWindowDimensions();
 
   const [now, setNow] = useState(() => new Date());
   const [question, setQuestion] = useState<QuizQuestion | null>(null);
@@ -215,23 +215,35 @@ export function LockQuizView({
     return 'default';
   }
 
-  // 화면 어디서든 오른쪽으로 밀면 잠금해제. 가로 드래그에만 활성(세로/탭은 통과).
-  const dragX = useSharedValue(0);
-  const pan = Gesture.Pan()
-    .activeOffsetX(20)
-    .failOffsetY([-14, 14])
-    .onUpdate((e) => {
-      dragX.value = Math.max(0, e.translationX);
-    })
-    .onEnd((e) => {
-      if (e.translationX > UNLOCK_THRESHOLD) {
-        dragX.value = withTiming(600, { duration: 220 });
-        runOnJS(onUnlock)();
-      } else {
-        dragX.value = withSpring(0, { damping: 18 });
-      }
-    });
-  const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }] }));
+  // 오른쪽으로 밀면 잠금해제 — RNGH가 터치를 가로채므로(루트뷰) RNGH 제스처를 쓰되,
+  // 워클릿 경로가 이 버전 조합에서 불안정해 .runOnJS(true)로 JS 콜백 + RN Animated 사용.
+  const unlockDist = screenW * 0.5; // 화면 절반쯤 밀면 닫힘
+  const dragX = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const onUnlockRef = useRef(onUnlock);
+  onUnlockRef.current = onUnlock;
+  const pan = useRef(
+    Gesture.Pan()
+      .runOnJS(true)
+      .activeOffsetX(10)
+      .onUpdate((e) => {
+        if (e.translationX >= 0) {
+          dragX.setValue(Math.min(e.translationX, screenW));
+        }
+      })
+      .onEnd((e) => {
+        if (e.translationX > unlockDist || e.velocityX > 600) {
+          // 절반쯤 밀면 슬라이드로 빠져나가는 대신 그 자리에서 투명해지며 꺼진다.
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 160,
+            useNativeDriver: false,
+          }).start(() => onUnlockRef.current());
+        } else {
+          Animated.spring(dragX, { toValue: 0, useNativeDriver: false, bounciness: 0 }).start();
+        }
+      }),
+  ).current;
 
   const clock = formatClock(now);
 
@@ -239,7 +251,7 @@ export function LockQuizView({
     <View style={{ flex: 1, backgroundColor: LOCK.bg }}>
       <LockBackground />
       <GestureDetector gesture={pan}>
-        <Animated.View style={[{ flex: 1 }, slideStyle]}>
+        <Animated.View style={{ flex: 1, opacity, transform: [{ translateX: dragX }] }}>
           <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
             {/* 상단: 시계 / 액션 */}
             <View

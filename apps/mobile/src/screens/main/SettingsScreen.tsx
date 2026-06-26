@@ -278,7 +278,10 @@ export default function SettingsScreen(): React.JSX.Element {
             <ListRow title="잠금화면 학습(미리보기)" onPress={() => navigation.navigate('LockQuiz')} last={!lockScreenAvailable} />
           ) : null}
           {__DEV__ && lockScreenAvailable ? (
-            <ListRow title="잠금화면 즉시 표시(테스트)" onPress={showLockQuizNow} last />
+            <ListRow title="잠금화면 즉시 표시(테스트)" onPress={showLockQuizNow} />
+          ) : null}
+          {__DEV__ ? (
+            <ListRow title="제스처 디버그(테스트)" onPress={() => navigation.navigate('GestureDebug')} last />
           ) : null}
         </ListSection>
 
