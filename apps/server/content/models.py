@@ -114,7 +114,7 @@ class WordMeaning(models.Model):
     )
     sense_no = models.PositiveIntegerField(help_text='의미 순번(1,2,3…)')
     meaning_ko = models.TextField(help_text='정제된 개별 뜻')
-    note = models.TextField(blank=True, help_text='부가 설명(예: 정중한 말)')
+
     class Meta:
         db_table = 'tbl_content_wordmeaning'
         verbose_name = '단어 뜻'
