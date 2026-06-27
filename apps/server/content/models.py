@@ -28,8 +28,6 @@ class Kanji(models.Model):
     jlpt_level = models.CharField(
         max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         db_table = 'tbl_content_kanji'
         verbose_name = '한자'
@@ -56,8 +54,6 @@ class Word(models.Model):
     jlpt_level = models.CharField(
         max_length=2, choices=JLPTLevel.choices, null=True, blank=True,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         db_table = 'tbl_content_word'
         verbose_name = '단어'
@@ -119,9 +115,6 @@ class WordMeaning(models.Model):
     sense_no = models.PositiveIntegerField(help_text='의미 순번(1,2,3…)')
     meaning_ko = models.TextField(help_text='정제된 개별 뜻')
     note = models.TextField(blank=True, help_text='부가 설명(예: 정중한 말)')
-    # 규칙 0: 모든 모델에 created_at 기본.
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         db_table = 'tbl_content_wordmeaning'
         verbose_name = '단어 뜻'
