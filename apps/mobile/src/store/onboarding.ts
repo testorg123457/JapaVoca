@@ -28,4 +28,28 @@ export function setCachedConsentStatus(status: ConsentStatus): void {
 
 export function clearOnboardingCache(): void {
   storage.remove(CONSENT_KEY);
+  storage.remove(PENDING_CONSENT_KEY);
+}
+
+// 온보딩 중 약관 동의 내용을 임시 보관. 유저 생성 후 서버에 제출한다.
+export type PendingConsent = { marketing_agreed: boolean; phone_data_agreed: boolean };
+
+const PENDING_CONSENT_KEY = 'onboarding.pendingConsent';
+
+export function getPendingConsent(): PendingConsent | null {
+  const raw = storage.getString(PENDING_CONSENT_KEY);
+  if (!raw) { return null; }
+  try {
+    return JSON.parse(raw) as PendingConsent;
+  } catch {
+    return null;
+  }
+}
+
+export function setPendingConsent(consent: PendingConsent): void {
+  storage.set(PENDING_CONSENT_KEY, JSON.stringify(consent));
+}
+
+export function clearPendingConsent(): void {
+  storage.remove(PENDING_CONSENT_KEY);
 }

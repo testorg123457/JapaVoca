@@ -13,6 +13,7 @@ import {
 import type { AxiosError } from 'axios';
 
 import apiClient from './client';
+import { isLoggedIn } from '../store/auth';
 import { deleteInquiry, getInquiries, getUnreadCount, markAllRead, postInquiry, type Inquiry } from './support';
 
 export type { Inquiry };
@@ -44,6 +45,8 @@ export function useMe() {
   return useQuery({
     queryKey: ['me'],
     queryFn: async () => (await apiClient.get<MeResponse>('/api/auth/me/')).data,
+    // 토큰이 없을 때 호출하면 401 → forceSignOut 루프가 생기므로 반드시 가드.
+    enabled: isLoggedIn(),
   });
 }
 

@@ -1,12 +1,12 @@
 /**
  * 약관 동의 — 토스풍 레이아웃(우리 디자인 시스템: tokens + 공용 컴포넌트).
  *
- * 큰 타이틀 + 둥근 "전체 동의" 박스 + 원형 체크(선택=민트 채움) + 헤어라인 행 + 하단 큰 CTA.
- * 민트는 선택상태/활성박스/주액션(CTA)에만(디자인-시스템-원칙: 색은 기능적으로). 필수/선택
- * 라벨은 중립 그레이로 절제. 온보딩 게이트라 버밀리온 헤더 대신 깔끔한 헤더리스로 둔다.
+ * 두 가지 모드:
+ * 1. pending 모드 (pendingAuth 있음) — 유저 미생성 상태. 동의 내용을 MMKV에 저장하고
+ *    Permissions로 넘어간다. 서버 호출 없음.
+ * 2. 일반 모드 (이미 로그인됨) — 서버에 바로 POST /api/auth/consent/.
  *
  * 필수(이용약관·개인정보·휴대폰번호[게스트 제외])를 모두 체크해야 "동의하고 계속" 활성.
- * 제출 성공 시 권한 화면(Permissions)으로 이동(휴대폰 번호는 권한 허용 후 수집 → phone_number=null).
  */
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StatusBar, View } from 'react-native';
@@ -18,6 +18,8 @@ import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe } from '../../api/hooks';
 import { useSubmitConsent } from '../../api/consent';
 import { isRequiredConsentComplete, type ConsentChecks } from './termsContent';
+import { useAuth } from '../../store/AuthContext';
+import { setPendingConsent } from '../../store/onboarding';
 import type { OnboardingStackScreenProps, TermKind } from '../../navigation/types';
 
 type Item = { key: keyof ConsentChecks; kind: TermKind; label: string; required: boolean };
@@ -29,7 +31,6 @@ const ALL_ITEMS: Item[] = [
   { key: 'marketing', kind: 'marketing', label: '마케팅 정보 수신 동의', required: false },
 ];
 
-/** 토스풍 원형 체크 — 선택 시 민트 채움 + 흰 체크, 미선택 시 옅은 테두리 + 옅은 체크. */
 function CircleCheck({ checked, size = 24 }: { checked: boolean; size?: number }): React.JSX.Element {
   const c = useThemeColors();
   return (
@@ -55,9 +56,14 @@ function CircleCheck({ checked, size = 24 }: { checked: boolean; size?: number }
 export default function TermsScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation<OnboardingStackScreenProps<'Terms'>['navigation']>();
+  const { pendingAuth } = useAuth();
+  const isPendingMode = pendingAuth !== null;
   const me = useMe();
   const submit = useSubmitConsent();
-  const isGuest = me.data?.is_guest ?? false;
+
+  const isGuest = isPendingMode
+    ? pendingAuth?.method === 'guest'
+    : (me.data?.is_guest ?? false);
 
   const [checks, setChecks] = useState<ConsentChecks>({
     terms: false,
@@ -66,9 +72,8 @@ export default function TermsScreen(): React.JSX.Element {
     marketing: false,
   });
 
-  // 프로필(is_guest) 확정 전엔 행을 그리지 않는다 — 게스트가 잠깐 휴대폰번호 행을 보거나
-  // 잘못 토글하는 것을 막는다(스펙: 게스트는 휴대폰번호 행 숨김).
-  if (!me.data) {
+  // 일반 모드에서는 me 로딩 전에 게스트 여부를 알 수 없으므로 대기.
+  if (!isPendingMode && !me.data) {
     return (
       <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
         <StatusBar barStyle="dark-content" />
@@ -79,10 +84,8 @@ export default function TermsScreen(): React.JSX.Element {
     );
   }
 
-  // 게스트는 휴대폰번호 행을 숨긴다.
   const items = ALL_ITEMS.filter((it) => it.key !== 'phone' || !isGuest);
   const requiredDone = isRequiredConsentComplete(checks, isGuest);
-  // 전체동의: 보이는 항목(게스트면 phone 제외) 전부 체크 여부.
   const allChecked = items.every((it) => checks[it.key]);
 
   function toggle(key: keyof ConsentChecks) {
@@ -95,7 +98,20 @@ export default function TermsScreen(): React.JSX.Element {
   }
 
   async function onSubmit() {
-    if (!requiredDone || submit.isPending) {
+    if (!requiredDone) {
+      return;
+    }
+
+    if (isPendingMode) {
+      setPendingConsent({
+        marketing_agreed: checks.marketing,
+        phone_data_agreed: isGuest ? false : checks.phone,
+      });
+      navigation.navigate('Permissions');
+      return;
+    }
+
+    if (submit.isPending) {
       return;
     }
     try {
@@ -106,7 +122,7 @@ export default function TermsScreen(): React.JSX.Element {
       });
       navigation.navigate('Permissions');
     } catch {
-      // 제출 실패 — 토스트 대신 버튼이 다시 활성화되며 재시도 가능.
+      // 제출 실패 — 버튼이 다시 활성화되며 재시도 가능.
     }
   }
 
@@ -115,7 +131,6 @@ export default function TermsScreen(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
 
       <ScrollView contentContainerClassName="pb-2xl" showsVerticalScrollIndicator={false}>
-        {/* 타이틀 */}
         <View className="px-2xl pt-3xl pb-2xl gap-sm">
           <AppText variant="display" className="text-text-primary" style={{ lineHeight: 38 }}>
             약관에 동의하고{'\n'}시작해요
@@ -125,7 +140,6 @@ export default function TermsScreen(): React.JSX.Element {
           </AppText>
         </View>
 
-        {/* 전체 동의 — 둥근 강조 박스 */}
         <View className="px-xl">
           <Pressable onPress={toggleAll} className="active:opacity-80">
             <View
@@ -146,10 +160,8 @@ export default function TermsScreen(): React.JSX.Element {
           </Pressable>
         </View>
 
-        {/* 구분선 */}
         <View className="h-px bg-border-tertiary mx-2xl mt-xl mb-xs" />
 
-        {/* 항목별 */}
         <View className="px-xl">
           {items.map((it) => (
             <View
@@ -183,14 +195,13 @@ export default function TermsScreen(): React.JSX.Element {
         </View>
       </ScrollView>
 
-      {/* 하단 CTA */}
       <View className="px-xl pt-md">
         <Button
           title="동의하고 계속"
           size="lg"
           onPress={onSubmit}
           disabled={!requiredDone}
-          loading={submit.isPending}
+          loading={!isPendingMode && submit.isPending}
         />
       </View>
     </SafeAreaView>

@@ -59,14 +59,15 @@ export async function requestPhone(): Promise<PermResult> {
   return mapAndroidResult(r);
 }
 
-/** 필수 권한(알림 + 번호 + 배터리 최적화 제외) 모두 허용 여부. */
+/** 필수 권한(알림 + 번호) 모두 허용 여부.
+ * 배터리 최적화 제외는 Samsung One UI에서 API가 false를 반환하는 케이스가 있어 게이트에서 제외.
+ * 잠금화면 설정 화면에서 별도 안내한다. */
 export async function checkRequiredPermissions(): Promise<boolean> {
-  const [notification, phone, battery] = await Promise.all([
+  const [notification, phone] = await Promise.all([
     checkNotification(),
     checkPhone(),
-    isIgnoringBatteryOptimizations(),
   ]);
-  return notification && phone && battery;
+  return notification && phone;
 }
 
 export function openAppSettings(): void {

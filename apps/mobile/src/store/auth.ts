@@ -62,3 +62,27 @@ export function getOrCreateGuestUid(): string {
   storage.set(GUEST_UID_KEY, fresh);
   return fresh;
 }
+
+// 온보딩 미완료 상태에서 선택한 로그인 방식을 임시 보관.
+// 약관·권한·학습 설정을 모두 마친 뒤 StudySelect에서 실제 유저를 생성한다.
+export type PendingAuth = { method: 'guest' } | { method: 'google'; idToken: string };
+
+const PENDING_AUTH_KEY = 'auth.pendingAuth';
+
+export function getPendingAuth(): PendingAuth | null {
+  const raw = storage.getString(PENDING_AUTH_KEY);
+  if (!raw) { return null; }
+  try {
+    return JSON.parse(raw) as PendingAuth;
+  } catch {
+    return null;
+  }
+}
+
+export function setPendingAuth(auth: PendingAuth): void {
+  storage.set(PENDING_AUTH_KEY, JSON.stringify(auth));
+}
+
+export function clearPendingAuth(): void {
+  storage.remove(PENDING_AUTH_KEY);
+}

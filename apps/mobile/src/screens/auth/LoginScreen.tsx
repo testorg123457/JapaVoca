@@ -1,16 +1,13 @@
 /**
  * 로그인 화면.
  *
- * 구글 소셜 로그인 → 백엔드에 ID 토큰 전달 → JWT 수신 → MMKV 저장 →
- * AuthContext 갱신까지의 흐름을 담당한다. 로그인 성공 시 RootNavigator가
- * isLoggedIn 변화를 감지해 MainStack으로 전환한다(이 화면이 직접 navigate
- * 하지 않음).
+ * 로그인 방식을 선택하면 즉시 유저를 생성하지 않고 온보딩(약관→권한→학습)을 먼저
+ * 진행한다. 유저는 StudySelect "시작" 버튼을 눌렀을 때 생성된다.
+ * 구글: ID 토큰을 여기서 받아 pendingAuth에 저장 → 온보딩 → StudySelect에서 서버 호출.
+ * 게스트: 바로 pendingAuth 설정 → 온보딩 → StudySelect에서 서버 호출.
  *
  * 디자인: 브랜드 마크 + 한 줄 가치 제안 hero, 하단에 구글 버튼(멀티컬러 G)과
  * 약관 안내, 게스트로 시작하기. press 촉감(PressableScale).
- *
- * 게스트: 기기 UUID로 즉시 시작. 학습·적립은 되지만 교환은 막혀 있고(어뷰징 방지),
- * 설정에서 구글/카카오 연결 시 같은 계정이 실계정으로 승격된다.
  */
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
@@ -25,13 +22,11 @@ import {
 import { AppText, Gradient, Icon, PressableScale } from '../../components';
 import { gradients, shadowStyle } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { googleLogin, guestLogin } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
-import { getOrCreateGuestUid } from '../../store/auth';
 
 export default function LoginScreen(): React.JSX.Element {
   const c = useThemeColors();
-  const { signIn } = useAuth();
+  const { startOnboarding } = useAuth();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -54,14 +49,14 @@ export default function LoginScreen(): React.JSX.Element {
       const response = await GoogleSignin.signIn();
 
       if (isCancelledResponse(response)) {
-        return; // 사용자가 팝업을 닫음 — 조용히 무시.
+        return;
       }
       if (!isSuccessResponse(response) || !response.data.idToken) {
         throw new Error('Google sign-in did not return an ID token');
       }
 
-      const { access, refresh } = await googleLogin(response.data.idToken);
-      signIn(access, refresh);
+      // ID 토큰 획득 후 온보딩 시작 — 유저 생성은 StudySelect 완료 후.
+      startOnboarding({ method: 'google', idToken: response.data.idToken });
     } catch {
       Alert.alert('로그인 실패', '다시 시도해주세요.');
     } finally {
@@ -70,9 +65,7 @@ export default function LoginScreen(): React.JSX.Element {
   }
 
   // 카카오 로그인 — 백엔드(/api/auth/kakao/)는 준비됨. 클라 카카오 SDK + 네이티브
-  // 앱키 설정이 선결조건(docs/계획 폴더/03-구현순서-선결조건.md)이라, SDK 연결 전까지는
-  // 안내만 한다. SDK 도입 후: const token = await KakaoLogin.login(); 의 accessToken을
-  // api/auth.kakaoLogin(token) 으로 보내 signIn(access, refresh) 하면 된다.
+  // 앱키 설정이 선결조건이라, SDK 연결 전까지는 안내만 한다.
   function handleKakaoLogin() {
     Alert.alert(
       '카카오 로그인 준비 중',
@@ -80,7 +73,7 @@ export default function LoginScreen(): React.JSX.Element {
     );
   }
 
-  // 게스트로 시작 — 먼저 데이터 유실 경고를 띄우고, 확인 시에만 게스트 계정을 발급한다.
+  // 게스트로 시작 — 먼저 데이터 유실 경고를 띄우고, 확인 시 온보딩을 시작한다.
   function handleGuestLogin() {
     if (loading) {
       return;
@@ -98,19 +91,8 @@ export default function LoginScreen(): React.JSX.Element {
     );
   }
 
-  async function startGuest() {
-    if (loading) {
-      return;
-    }
-    setLoading(true);
-    try {
-      const { access, refresh } = await guestLogin(getOrCreateGuestUid());
-      signIn(access, refresh);
-    } catch {
-      Alert.alert('게스트 시작 실패', '잠시 후 다시 시도해주세요.');
-    } finally {
-      setLoading(false);
-    }
+  function startGuest() {
+    startOnboarding({ method: 'guest' });
   }
 
   return (

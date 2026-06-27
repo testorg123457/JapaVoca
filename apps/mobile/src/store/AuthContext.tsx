@@ -15,9 +15,13 @@ import React, {
 } from 'react';
 
 import {
+  clearPendingAuth as clearPendingAuthStorage,
   clearTokens,
+  getPendingAuth,
   isLoggedIn as readIsLoggedIn,
+  setPendingAuth as storePendingAuth,
   setTokens,
+  type PendingAuth,
 } from './auth';
 import { clearOnboardingCache } from './onboarding';
 import { queryClient } from '../api/queryClient';
@@ -34,8 +38,13 @@ function clearConsentState(): void {
 
 type AuthContextValue = {
   isLoggedIn: boolean;
+  /** 로그인 없이 온보딩을 시작 — 유저 생성은 StudySelect 완료 후. */
+  pendingAuth: PendingAuth | null;
+  startOnboarding: (auth: PendingAuth) => void;
   /** 토큰을 저장하고 로그인 상태로 전환한다. */
   signIn: (access: string, refresh: string) => void;
+  /** 온보딩 완료 후 호출 — 동의·학습 캐시를 미리 채운 상태이므로 consent 캐시를 지우지 않는다. */
+  signInFresh: (access: string, refresh: string) => void;
   /** 토큰을 지우고 비로그인 상태로 전환한다. */
   signOut: () => void;
 };
@@ -54,24 +63,42 @@ export function forceSignOut(): void {
 export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element {
   // 앱 시작 시점의 토큰 유무로 초기화 (동기적으로 읽음).
   const [loggedIn, setLoggedIn] = useState<boolean>(() => readIsLoggedIn());
+  const [pendingAuth, setPendingAuthState] = useState<PendingAuth | null>(() => getPendingAuth());
 
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoggedIn: loggedIn,
+      pendingAuth,
+      startOnboarding: (auth: PendingAuth) => {
+        storePendingAuth(auth);
+        setPendingAuthState(auth);
+      },
       signIn: (access: string, refresh: string) => {
         // 게스트→소셜 연결(SettingsScreen)처럼 signOut 없이 다른 계정으로 전환되는 경로가
         // 있어, 로그인 시점에 이전 계정의 동의 캐시를 동기적으로 비운다(계정 누수 방지).
         clearConsentState();
+        clearPendingAuthStorage();
+        setPendingAuthState(null);
+        setTokens(access, refresh);
+        setLoggedIn(true);
+      },
+      signInFresh: (access: string, refresh: string) => {
+        // 온보딩 완료 직후 — 동의·학습 데이터를 미리 queryClient에 넣어뒀으므로
+        // clearConsentState()를 생략해 게이트가 즉시 'ready'로 계산되게 한다.
+        clearPendingAuthStorage();
+        setPendingAuthState(null);
         setTokens(access, refresh);
         setLoggedIn(true);
       },
       signOut: () => {
         clearTokens();
         clearConsentState();
+        clearPendingAuthStorage();
+        setPendingAuthState(null);
         setLoggedIn(false);
       },
     }),
-    [loggedIn],
+    [loggedIn, pendingAuth],
   );
 
   useEffect(() => {

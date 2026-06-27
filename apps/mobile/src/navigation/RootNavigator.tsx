@@ -19,13 +19,18 @@ import SplashScreen from '../screens/onboarding/SplashScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator(): React.JSX.Element {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, pendingAuth } = useAuth();
   const { status, recheck } = useOnboardingGate(isLoggedIn);
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isLoggedIn ? (
+      {!isLoggedIn && !pendingAuth ? (
         <Stack.Screen name="Auth" component={AuthStack} />
+      ) : !isLoggedIn && pendingAuth ? (
+        // 로그인 방식 선택 후 온보딩 진행 중 — 유저는 StudySelect 완료 때 생성됨.
+        <Stack.Screen name="Onboarding">
+          {() => <OnboardingStack initialStep="terms" onComplete={recheck} />}
+        </Stack.Screen>
       ) : status === 'ready' ? (
         <Stack.Screen name="Main" component={MainStack} />
       ) : status === 'loading' ? (

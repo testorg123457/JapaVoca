@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import urllib.parse
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -69,13 +70,12 @@ INSTALLED_APPS = [
     'notifications',
     'support',
 
-    # Celery Beat (DB 기반 주기 스케줄러)
-    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -114,10 +114,25 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# PostgreSQL is the intended database. For local convenience, set
-# DB_ENGINE=sqlite in .env to fall back to SQLite when Postgres is not yet
-# installed/running.
-if os.environ.get('DB_ENGINE', 'postgresql').lower() == 'sqlite':
+# DATABASE_URL (프로덕션/Supabase) 우선, 없으면 개별 DB_* 변수 사용.
+# DB_ENGINE=sqlite 이면 SQLite로 폴백(로컬 편의용).
+_db_url = os.environ.get('DATABASE_URL', '')
+if _db_url:
+    _u = urllib.parse.urlparse(_db_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _u.path.lstrip('/'),
+            'USER': _u.username,
+            'PASSWORD': _u.password,
+            'HOST': _u.hostname,
+            'PORT': _u.port or 5432,
+            # Supabase Transaction pooler(pgBouncer)는 연결 유지를 지원하지 않음.
+            'CONN_MAX_AGE': 0,
+            'OPTIONS': {'sslmode': 'require'},
+        }
+    }
+elif os.environ.get('DB_ENGINE', 'postgresql').lower() == 'sqlite':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -172,6 +187,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+}
+
+# Cloud Run은 HTTPS를 앞단 로드밸런서에서 처리하고 내부는 HTTP로 전달함.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
@@ -222,12 +249,8 @@ KAKAO_API_BASE = os.environ.get('KAKAO_API_BASE', 'https://kapi.kakao.com')
 FCM_ENABLED = os.environ.get('FCM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 
 
-# Celery — 주기 배치(QuizLog 7일 삭제 등). 브로커는 Redis.
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-# crontab(hour=3) 을 서버 로컬타임 기준으로 해석하도록 TIME_ZONE 과 맞춘다.
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_ENABLE_UTC = False
+# QuizLog 7일 배치 삭제는 Cloud Scheduler + Cloud Run Job으로 처리.
+# (python manage.py delete_old_quiz_logs)
 
 
 # 기프티콘 교환 발급사 — URL 이 비어있으면(dev) exchange.providers 가 Mock 응답.

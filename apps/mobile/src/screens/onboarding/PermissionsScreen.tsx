@@ -1,11 +1,12 @@
 /**
- * 권한 허용 — 알림·휴대폰번호(필수)와 오버레이(권장).
- * 필수 권한이 모두 허용되면 onComplete()로 게이트를 재계산해 Main으로 넘어간다.
+ * 권한 허용 — 알림·휴대폰번호(필수)와 배터리·오버레이(권장).
+ * 필수 권한이 모두 허용되면 StudySelect로 직접 이동한다.
  * 영구 거부(blocked)면 버튼이 설정 이동으로 바뀌고, 설정에서 돌아오면(AppState active)
- * 자동 재확인한다. 오버레이는 미허용이어도 진행 가능(권장 항목).
+ * 자동 재확인한다.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AppState, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { AppHeader, AppText, Button, Icon, Tag } from '../../components';
 import type { IconName } from '../../components';
@@ -20,7 +21,7 @@ import {
   requestPhone,
 } from '../../lib/permissions';
 import { canDrawOverlays, requestOverlayPermission } from '../../lib/overlay';
-import { useOnboardingActions } from '../../navigation/OnboardingStack';
+import type { OnboardingStackScreenProps } from '../../navigation/types';
 
 type Row = {
   icon: IconName;
@@ -32,7 +33,7 @@ type Row = {
 
 export default function PermissionsScreen(): React.JSX.Element {
   const c = useThemeColors();
-  const { onComplete } = useOnboardingActions();
+  const navigation = useNavigation<OnboardingStackScreenProps<'Permissions'>['navigation']>();
   const [notif, setNotif] = useState(false);
   const [phone, setPhone] = useState(false);
   const [battery, setBattery] = useState(false);
@@ -40,14 +41,9 @@ export default function PermissionsScreen(): React.JSX.Element {
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const completedRef = useRef(false);
-  const fireComplete = useCallback(() => {
-    if (completedRef.current) {
-      return;
-    }
-    completedRef.current = true;
-    onComplete();
-  }, [onComplete]);
+  const goNext = useCallback(() => {
+    navigation.navigate('StudySelect');
+  }, [navigation]);
 
   const refresh = useCallback(async () => {
     const [n, p, b, o] = await Promise.all([
@@ -60,34 +56,33 @@ export default function PermissionsScreen(): React.JSX.Element {
     setPhone(p);
     setBattery(b);
     setOverlay(o);
-    if (n && p && b) {
+    if (n && p) {
       setBlocked(false);
     }
-    return n && p && b;
+    return n && p;
   }, []);
 
-  // 마운트 + 설정에서 복귀(AppState active) 시 재확인. 필수 충족되면 자동 진행(중복 호출/언마운트 후
-  // 호출 방지: active 플래그 + completedRef).
+  // 마운트 시 + 설정에서 복귀(AppState active) 시 재확인. 필수 충족되면 자동 진행.
   useEffect(() => {
     let active = true;
-    const checkAndMaybeComplete = () => {
+    const checkAndMaybeAdvance = () => {
       refresh().then((ok) => {
         if (active && ok) {
-          fireComplete();
+          goNext();
         }
       });
     };
-    checkAndMaybeComplete();
+    checkAndMaybeAdvance();
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        checkAndMaybeComplete();
+        checkAndMaybeAdvance();
       }
     });
     return () => {
       active = false;
       sub.remove();
     };
-  }, [refresh, fireComplete]);
+  }, [refresh, goNext]);
 
   async function onPressAllow() {
     if (busy) {
@@ -101,8 +96,6 @@ export default function PermissionsScreen(): React.JSX.Element {
     try {
       let anyBlocked = false;
 
-      // 각 권한은 state(이전 요청 후 갱신 안 됐을 수 있음)가 아니라 실제 상태를
-      // 매번 재확인한 뒤, 미허용일 때만 요청한다. 이미 허용돼 있으면 요청을 건너뛴다.
       let n = await checkNotification();
       if (!n) {
         const r = await requestNotification();
@@ -119,19 +112,15 @@ export default function PermissionsScreen(): React.JSX.Element {
       }
       setPhone(p);
 
-      // 배터리 면제 다이얼로그는 AppState 변화를 못 일으킬 수 있어 자동 재확인이 안 될 수
-      // 있다. 그래서 버튼 경로가 매번 실제 상태를 직접 확인해 완료까지 스스로 책임진다.
       const b = await isIgnoringBatteryOptimizations();
       setBattery(b);
       if (!b) {
-        setBlocked(anyBlocked);
-        requestBatteryExemption();
-        return; // 면제 허용 후 버튼을 다시 누르거나 AppState 복귀 시 완료된다.
+        requestBatteryExemption(); // 권장 사항 — 허용 안 해도 진행 가능
       }
 
       setBlocked(anyBlocked);
-      if (n && p && b) {
-        fireComplete();
+      if (n && p) {
+        goNext();
       }
     } finally {
       setBusy(false);
@@ -158,7 +147,7 @@ export default function PermissionsScreen(): React.JSX.Element {
       title: '배터리 사용량 최적화 중지',
       desc: '백그라운드 알림·출석 체크가 끊기지 않게 해요.',
       granted: battery,
-      required: true,
+      required: false,
     },
     {
       icon: 'lock',
@@ -178,7 +167,7 @@ export default function PermissionsScreen(): React.JSX.Element {
             원활한 이용을 위해 권한이 필요해요
           </AppText>
           <AppText variant="caption" className="text-text-tertiary">
-            알림·전화·배터리 최적화 중지는 필수예요.
+            알림·전화는 필수예요.
           </AppText>
         </View>
 
