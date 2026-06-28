@@ -108,3 +108,80 @@ class QuizLog(models.Model):
 
     def __str__(self):
         return f'{self.user_id} {self.item_type}:{self.item_id} {"O" if self.is_correct else "X"}'
+
+
+class QuizSet(models.Model):
+    """10문제 세트 — 상자 3개 캡·1시간 쿨다운 단위."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quiz_sets',
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    boxes_earned = models.PositiveIntegerField(default=0)
+    answered_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'tbl_learning_quizset'
+        verbose_name = '퀴즈 세트'
+        verbose_name_plural = '퀴즈 세트'
+        indexes = [
+            models.Index(fields=['user', 'completed_at'], name='idx_quizset_user_completed'),
+        ]
+
+    def __str__(self):
+        return f'QuizSet(user={self.user_id}, answered={self.answered_count})'
+
+
+class QuizSetItem(models.Model):
+    """세트 내 문항 — choices/prompt/reading 은 생성 시 확정해 저장(재로드용)."""
+
+    quiz_set = models.ForeignKey(QuizSet, on_delete=models.CASCADE, related_name='items')
+    order = models.PositiveIntegerField()
+    item_type = models.CharField(max_length=10, choices=ItemType.choices)
+    # item_type='word'일 때 kanji_word/kana_word 구분. 그 외 null.
+    word_type = models.CharField(max_length=10, null=True, blank=True)
+    item_id = models.PositiveIntegerField()
+    question_type = models.CharField(max_length=20)
+    correct_index = models.PositiveIntegerField()
+    prompt = models.CharField(max_length=200, blank=True)
+    reading = models.CharField(max_length=100, blank=True)
+    jlpt_level = models.CharField(max_length=2, blank=True)
+    choices_json = models.JSONField(default=list, help_text='[{index, text}, ...] 셔플 완료 순서')
+    answered = models.BooleanField(default=False)
+    is_correct = models.BooleanField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'tbl_learning_quizsetitem'
+        verbose_name = '세트 문항'
+        verbose_name_plural = '세트 문항'
+        constraints = [
+            models.UniqueConstraint(fields=['quiz_set', 'order'], name='uniq_quizset_item_order'),
+        ]
+
+    def __str__(self):
+        return f'QuizSetItem(set={self.quiz_set_id}, order={self.order})'
+
+
+class Bookmark(models.Model):
+    """학습 항목 북마크."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookmarks',
+    )
+    item_type = models.CharField(max_length=10, choices=ItemType.choices)
+    item_id = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tbl_learning_bookmark'
+        verbose_name = '북마크'
+        verbose_name_plural = '북마크'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'item_type', 'item_id'], name='uniq_bookmark_user_item',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Bookmark(user={self.user_id}, {self.item_type}:{self.item_id})'

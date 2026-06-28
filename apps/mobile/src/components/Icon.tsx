@@ -43,7 +43,13 @@ export type IconName =
   | 'lock'
   | 'mail'
   | 'google'
-  | 'kakao';
+  | 'kakao'
+  | 'star'
+  | 'star-filled'
+  | 'bookmark'
+  | 'bookmark-filled'
+  | 'volume'
+  | 'clock';
 
 export interface IconProps {
   name: IconName;
@@ -257,6 +263,29 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
                 <Rect x="2" y="2" width="20" height="20" rx="6" fill="#FEE500" />
                 <Ellipse cx="12" cy="10.6" rx="6.3" ry="5" fill="#3C1E1E" />
                 <Path d="M8.6 14 L6.8 17.6 L11 14.9 Z" fill="#3C1E1E" />
+              </>
+            );
+          case 'star':
+            return <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" {...s} />;
+          case 'star-filled':
+            return <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke="none" />;
+          case 'bookmark':
+            return <Path d="M6 3.5 H18 a1 1 0 0 1 1 1 V20 l-7-3.5 -7 3.5 V4.5 a1 1 0 0 1 1-1z" {...s} />;
+          case 'bookmark-filled':
+            return <Path d="M6 3.5 H18 a1 1 0 0 1 1 1 V20 l-7-3.5 -7 3.5 V4.5 a1 1 0 0 1 1-1z" fill={color} stroke="none" />;
+          case 'volume':
+            return (
+              <>
+                <Path d="M11 5L6 9H2v6h4l5 4V5z" {...s} />
+                <Path d="M15.54 8.46a5 5 0 0 1 0 7.07" {...s} />
+                <Path d="M19.07 4.93a10 10 0 0 1 0 14.14" {...s} />
+              </>
+            );
+          case 'clock':
+            return (
+              <>
+                <Circle cx="12" cy="12" r="10" {...s} />
+                <Path d="M12 6v6l4 2" {...s} />
               </>
             );
           default:
