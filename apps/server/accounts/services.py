@@ -120,8 +120,12 @@ def login_with_kakao(access_token: str) -> tuple[User, bool]:
     )
     _reject_withdrawn(user, KakaoAuthError)
 
+    update_fields = ['last_login_at']
     user.last_login_at = timezone.now()
-    user.save(update_fields=['last_login_at'])
+    if nickname and not user.nickname:
+        user.nickname = nickname
+        update_fields.append('nickname')
+    user.save(update_fields=update_fields)
     return user, created
 
 

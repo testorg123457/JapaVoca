@@ -8,8 +8,8 @@
  *
  * 필수(이용약관·개인정보·휴대폰번호[게스트 제외])를 모두 체크해야 "동의하고 계속" 활성.
  */
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StatusBar, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StatusBar, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -56,8 +56,17 @@ function CircleCheck({ checked, size = 24 }: { checked: boolean; size?: number }
 export default function TermsScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation<OnboardingStackScreenProps<'Terms'>['navigation']>();
-  const { pendingAuth } = useAuth();
+  const { pendingAuth, signOut } = useAuth();
   const isPendingMode = pendingAuth !== null;
+
+  useEffect(() => {
+    if (!isPendingMode) { return; }
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      signOut();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isPendingMode, signOut]);
   const me = useMe();
   const submit = useSubmitConsent();
 
@@ -129,6 +138,14 @@ export default function TermsScreen(): React.JSX.Element {
   return (
     <SafeAreaView className="flex-1 bg-bg-secondary" edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
+
+      {isPendingMode && (
+        <View className="px-xl pt-sm">
+          <Pressable onPress={signOut} hitSlop={10} className="active:opacity-60 self-start p-sm">
+            <Icon name="arrow-left" size={24} color={c['text-primary']} strokeWidth={2} />
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView contentContainerClassName="pb-2xl" showsVerticalScrollIndicator={false}>
         <View className="px-2xl pt-3xl pb-2xl gap-sm">

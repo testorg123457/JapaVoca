@@ -65,7 +65,10 @@ export function getOrCreateGuestUid(): string {
 
 // 온보딩 미완료 상태에서 선택한 로그인 방식을 임시 보관.
 // 약관·권한·학습 설정을 모두 마친 뒤 StudySelect에서 실제 유저를 생성한다.
-export type PendingAuth = { method: 'guest' } | { method: 'google'; idToken: string };
+export type PendingAuth =
+  | { method: 'guest' }
+  | { method: 'google'; idToken: string }
+  | { method: 'kakao'; accessToken: string };
 
 const PENDING_AUTH_KEY = 'auth.pendingAuth';
 

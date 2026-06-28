@@ -18,6 +18,7 @@ class MainApplication : Application(), ReactApplication {
           add(OverlayPermissionPackage())
           add(BatteryOptimizationPackage())
           add(LockScreenPackage())
+          add(StudyNotificationPackage())
         },
       // useDevSupport는 기본값이 react-android(AAR)의 BuildConfig.DEBUG라 릴리스로 빌드된
       // AAR에선 항상 false → debug 빌드에서도 Metro를 안 거치고 assets 번들을 찾다 크래시.

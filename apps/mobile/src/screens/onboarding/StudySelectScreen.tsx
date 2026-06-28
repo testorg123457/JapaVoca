@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AppText, Button, StudySelector } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile } from '../../api/hooks';
-import { guestLogin, googleLogin } from '../../api/auth';
+import { guestLogin, googleLogin, kakaoLogin } from '../../api/auth';
 import { CONSENT_QUERY_KEY } from '../../api/consent';
 import { isStudyValid, type StudySelection } from './studyContent';
 import { useOnboardingActions } from '../../navigation/OnboardingStack';
@@ -56,6 +56,10 @@ export default function StudySelectScreen(): React.JSX.Element {
         let refresh: string;
         if (pendingAuth.method === 'guest') {
           const tokens = await guestLogin(getOrCreateGuestUid());
+          access = tokens.access;
+          refresh = tokens.refresh;
+        } else if (pendingAuth.method === 'kakao') {
+          const tokens = await kakaoLogin(pendingAuth.accessToken);
           access = tokens.access;
           refresh = tokens.refresh;
         } else {

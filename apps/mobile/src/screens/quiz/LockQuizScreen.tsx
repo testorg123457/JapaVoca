@@ -154,6 +154,15 @@ function AudioButton({ text }: { text: string }): React.JSX.Element {
   const cancelRef = useRef(false);
   const subRef = useRef<{ remove: () => void } | null>(null);
 
+  useEffect(() => {
+    return () => {
+      cancelRef.current = true;
+      subRef.current?.remove();
+      subRef.current = null;
+      Tts.stop();
+    };
+  }, []);
+
   const handlePress = useCallback(() => {
     if (speaking) {
       cancelRef.current = true;
@@ -335,19 +344,23 @@ function KanjiPane({
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(false);
     getKanjiComponents(character)
       .then((res: { data: ComponentTreeResponse }) => {
+        if (cancelled) { return; }
         setCachedComponentTree(character, res.data);
         setData(res.data);
       })
       .catch(() => {
+        if (cancelled) { return; }
         const cached = getCachedComponentTree(character);
         if (cached) { setData(cached); }
         else { setError(true); }
       })
-      .finally(() => { setLoading(false); });
+      .finally(() => { if (!cancelled) { setLoading(false); } });
+    return () => { cancelled = true; };
   }, [character]);
 
   if (loading) {
@@ -921,6 +934,7 @@ export function LockQuizView({
       .onEnd((e) => {
         const unlockDist = dimsRef.current.screenW * 0.5;
         if (e.translationX > unlockDist || e.velocityX > 600) {
+          Tts.stop();
           Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: false }).start(
             () => onUnlockRef.current(),
           );

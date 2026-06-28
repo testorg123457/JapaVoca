@@ -84,10 +84,14 @@ export default function SettingsScreen(): React.JSX.Element {
           </View>
           <View className="flex-1 gap-xs">
             <AppText variant="title" className="text-text-primary">
-              {m?.nickname ?? '게스트'}
+              {m?.nickname || (m?.is_guest ? '게스트' : '이름 없음')}
             </AppText>
             <AppText variant="body" className="text-text-tertiary">
-              {m?.is_guest ? '게스트 계정 · 연결하면 교환 가능' : m?.email ?? ''}
+              {m?.is_guest
+                ? '게스트 계정 · 연결하면 교환 가능'
+                : m?.provider === 'kakao'
+                  ? (m.email?.endsWith('@kakao.local') ? '카카오 계정' : (m.email ?? '카카오 계정'))
+                  : (m?.email ?? '')}
             </AppText>
           </View>
           <Tag

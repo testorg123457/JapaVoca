@@ -102,7 +102,7 @@ export default function BookmarkScreen(): React.JSX.Element {
   async function handleRemove(item: BookmarkItem) {
     setItems(prev => prev.filter(i => !(i.item_type === item.item_type && i.item_id === item.item_id)));
     try {
-      await toggleBookmark(item.item_type, item.item_id, true);
+      await toggleBookmark(item.item_type, item.item_id, false);
     } catch {
       // 실패 시 복원
       setItems(prev => [item, ...prev]);

@@ -18,6 +18,7 @@ import {
   isCancelledResponse,
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
+import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 
 import { AppText, Gradient, Icon, PressableScale } from '../../components';
 import { gradients, shadowStyle } from '../../theme/tokens';
@@ -46,6 +47,7 @@ export default function LoginScreen(): React.JSX.Element {
     setLoading(true);
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.signOut().catch(() => {});
       const response = await GoogleSignin.signIn();
 
       if (isCancelledResponse(response)) {
@@ -64,13 +66,17 @@ export default function LoginScreen(): React.JSX.Element {
     }
   }
 
-  // 카카오 로그인 — 백엔드(/api/auth/kakao/)는 준비됨. 클라 카카오 SDK + 네이티브
-  // 앱키 설정이 선결조건이라, SDK 연결 전까지는 안내만 한다.
-  function handleKakaoLogin() {
-    Alert.alert(
-      '카카오 로그인 준비 중',
-      '카카오 네이티브 SDK/앱키 설정 후 활성화됩니다. (백엔드는 이미 준비됨)',
-    );
+  async function handleKakaoLogin() {
+    if (loading) { return; }
+    setLoading(true);
+    try {
+      const result = await loginWithKakaoAccount();
+      startOnboarding({ method: 'kakao', accessToken: result.accessToken });
+    } catch {
+      Alert.alert('로그인 실패', '다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // 게스트로 시작 — 먼저 데이터 유실 경고를 띄우고, 확인 시 온보딩을 시작한다.
