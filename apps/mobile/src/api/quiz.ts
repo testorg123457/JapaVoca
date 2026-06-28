@@ -131,6 +131,20 @@ export async function syncAnswers(items: SyncItem[]): Promise<SyncResult[]> {
 
 // ── 북마크 ────────────────────────────────────────────────────────────────────────
 
+export type BookmarkItem = {
+  item_type: QuizItemType;
+  item_id: number;
+  surface: string;
+  reading: string;
+  meaning: string;
+  jlpt_level: string;
+};
+
+export async function getBookmarks(): Promise<BookmarkItem[]> {
+  const response = await apiClient.get<BookmarkItem[]>('/api/quiz/bookmarks/');
+  return response.data;
+}
+
 export async function toggleBookmark(
   item_type: QuizItemType,
   item_id: number,

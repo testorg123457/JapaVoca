@@ -63,6 +63,8 @@ export type MainStackParamList = {
   Notifications: undefined;
   /** 고객 문의 목록 + 작성. */
   Inquiry: undefined;
+  /** 북마크 목록. */
+  Bookmarks: undefined;
   /** DEBUG 전용 — 디자인 시스템 쇼케이스. */
   StyleGuide: undefined;
 };

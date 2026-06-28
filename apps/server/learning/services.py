@@ -692,3 +692,57 @@ def get_bookmark_ids(user):
     return set(
         Bookmark.objects.filter(user=user).values_list('item_type', 'item_id'),
     )
+
+
+def get_bookmarks_with_detail(user):
+    """유저의 북마크 목록 + 콘텐츠 상세 반환."""
+    bookmarks = Bookmark.objects.filter(user=user).order_by('-created_at')
+
+    kanji_ids = [b.item_id for b in bookmarks if b.item_type == ItemType.KANJI]
+    word_ids  = [b.item_id for b in bookmarks if b.item_type == ItemType.WORD]
+    kana_ids  = [b.item_id for b in bookmarks if b.item_type == ItemType.KANA]
+
+    kanji_map = {k.id: k for k in Kanji.objects.filter(id__in=kanji_ids)}
+    word_map  = {w.id: w for w in Word.objects.filter(id__in=word_ids).prefetch_related('meanings')}
+    kana_map  = {k.id: k for k in Kana.objects.filter(id__in=kana_ids)}
+
+    result = []
+    for b in bookmarks:
+        if b.item_type == ItemType.KANJI:
+            obj = kanji_map.get(b.item_id)
+            if not obj:
+                continue
+            result.append({
+                'item_type': b.item_type,
+                'item_id': b.item_id,
+                'surface': obj.character,
+                'reading': obj.on_reading or obj.kun_reading,
+                'meaning': obj.meaning_ko,
+                'jlpt_level': obj.jlpt_level or '',
+            })
+        elif b.item_type == ItemType.WORD:
+            obj = word_map.get(b.item_id)
+            if not obj:
+                continue
+            first_meaning = obj.meanings.order_by('sense_no').first()
+            result.append({
+                'item_type': b.item_type,
+                'item_id': b.item_id,
+                'surface': obj.surface,
+                'reading': obj.reading,
+                'meaning': first_meaning.meaning_ko if first_meaning else '',
+                'jlpt_level': obj.jlpt_level or '',
+            })
+        elif b.item_type == ItemType.KANA:
+            obj = kana_map.get(b.item_id)
+            if not obj:
+                continue
+            result.append({
+                'item_type': b.item_type,
+                'item_id': b.item_id,
+                'surface': obj.character,
+                'reading': obj.romaji,
+                'meaning': '',
+                'jlpt_level': '',
+            })
+    return result

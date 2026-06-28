@@ -3,7 +3,7 @@
  *
  * 라이브러리 미사용 — 토큰·스타일만 직접 정의.
  * - Primary: Forest Mint `#1F9660` (CTA/버튼/활성탭). 보조 강조도 같은 민트 램프의 밝은 단계.
- *   (⚠️ 프리미티브 export 이름은 하위 호환 위해 `vermilion` 그대로지만, 값은 포레스트 민트 램프다.)
+ *   (⚠️ 프리미티브 export 이름은 하위 호환 위해 `mint` 그대로지만, 값은 포레스트 민트 램프다.)
  * - 경고/오답/캐시사용(−): danger 전용 Red `#E8432D` (브랜드와 분리된 기능색 → `red` 프리미티브).
  * - 캐시/리워드 전용: 옐로 yellow-400 `#FFCE00`.
  * - 텍스트: Ink gray-900 `#1A1A1A` 기본 — 메인색을 글자색으로 쓰지 않는다.
@@ -11,7 +11,7 @@
  * - 적당히 둥근 라운드(버튼 14 / 카드 18), 옅고 넓게 퍼지는 그림자, Pretendard.
  *
  * 구조는 2-tier:
- *   1) primitives — 색 스케일 자체(vermilion/yellow/gray + green/blue). 모드 무관 고정.
+ *   1) primitives — 색 스케일 자체(mint/yellow/gray + green/blue). 모드 무관 고정.
  *   2) semantic   — primitive를 역할에 매핑(light/dark 두 세트). 컴포넌트는 이것만 참조.
  *
  * 다크 모드는 semantic 매핑 한 곳(여기)만 바꾸면 전체가 따라온다.
@@ -33,9 +33,9 @@
  * Forest Mint (Primary 브랜드 램프). 500이 메인 CTA, 600은 눌림.
  * 9 stops(800 생략) 풀 램프. 역할 정렬: 기존 semantic이 500=Primary/600=Pressed/700=강조/
  * 50·100=옅은 틴트/400=보조 민트를 참조하므로, 거기에 맞춰 민트 값을 채운다.
- * (export 이름 `vermilion`은 하위 호환용 — 실제 색은 포레스트 민트다.)
+ * (export 이름 `mint`은 하위 호환용 — 실제 색은 포레스트 민트다.)
  */
-export const vermilion = {
+export const mint = {
   50: '#F2FBF7',
   100: '#C8EDD8',
   200: '#90D4B0',
@@ -75,7 +75,7 @@ export const gray = {
 
 /**
  * Danger Red — 경고/오답/캐시 사용(−)/로그아웃 전용. 브랜드(민트)와 분리된 기능색.
- * (브랜드가 민트로 바뀌며 danger를 brand에서 분리. 값은 기존 vermilion 레드를 승계.)
+ * (브랜드가 민트로 바뀌며 danger를 brand에서 분리. 값은 기존 mint 레드를 승계.)
  */
 export const red = {
   50: '#FFF0ED',
@@ -85,7 +85,7 @@ export const red = {
 } as const;
 
 export const primitives = {
-  vermilion,
+  mint,
   red,
   yellow,
   gray,
@@ -111,7 +111,7 @@ const lightSemantic = {
   'bg-primary': gray[0], // 메인 면(흰색 카드)
   'bg-secondary': gray[50], // 앱 기본 배경(Warm White)
   'bg-tertiary': gray[100], // 미묘한 구분 면
-  // 텍스트 — Ink/그레이만. 메인색(vermilion)을 글자색으로 쓰지 않는다.
+  // 텍스트 — Ink/그레이만. 메인색(mint)을 글자색으로 쓰지 않는다.
   'text-primary': gray[900], // Ink
   'text-secondary': gray[600],
   'text-tertiary': gray[500],
@@ -119,18 +119,18 @@ const lightSemantic = {
   'border-tertiary': gray[100],
   'border-secondary': gray[200],
   // 브랜드 (Vermilion) — 주액션/활성/선택에만
-  brand: vermilion[500], // Primary CTA
-  'brand-active': vermilion[600], // 눌림
-  'brand-strong': vermilion[700], // 그라데이션 끝/진한 강조
-  'brand-subtle': vermilion[50], // 옅은 vermilion 틴트
-  'brand-subtle-active': vermilion[100],
+  brand: mint[500], // Primary CTA
+  'brand-active': mint[600], // 눌림
+  'brand-strong': mint[700], // 그라데이션 끝/진한 강조
+  'brand-subtle': mint[50], // 옅은 mint 틴트
+  'brand-subtle-active': mint[100],
   'on-brand': gray[0], // 브랜드(민트) 면 위 텍스트(흰색)
   // 앱 상단 헤더 — 포레스트 민트(브랜드와 통일)
-  header: vermilion[500], // #1F9660
+  header: mint[500], // #1F9660
   'on-header': gray[0], // 헤더 위 텍스트/아이콘(흰색)
   // 보조 강조 (밝은 민트) — primary(민트)와 같은 계열의 두 번째 포인트
-  coral: vermilion[400],
-  'coral-subtle': vermilion[100], // 옅은 민트 틴트(브랜드 흡수)
+  coral: mint[400],
+  'coral-subtle': mint[100], // 옅은 민트 틴트(브랜드 흡수)
   // 기능색
   amber: yellow[400], // 캐시/리워드/출석 강조
   'amber-subtle': yellow[50],
@@ -152,8 +152,8 @@ const lightSemantic = {
   'text-strong': gray[900],
   text: gray[600],
   'text-weak': gray[500],
-  'brand-dark': vermilion[700],
-  'brand-soft': vermilion[50],
+  'brand-dark': mint[700],
+  'brand-soft': mint[50],
   success: primitives.green[500], // 성공/적립(+) = 그린
   'success-subtle': primitives.green[50],
   warning: yellow[400],
@@ -175,17 +175,17 @@ const darkSemantic = {
   'border-tertiary': '#332B29',
   'border-secondary': '#4A4442',
   // 브랜드 — 다크에선 밝은 Coral 계열
-  brand: vermilion[400],
-  'brand-active': vermilion[300],
-  'brand-strong': vermilion[500],
+  brand: mint[400],
+  'brand-active': mint[300],
+  'brand-strong': mint[500],
   'brand-subtle': '#3A1A14',
   'brand-subtle-active': '#4D241C',
   'on-brand': gray[0], // 브랜드 면 위는 흰 텍스트
   // 앱 상단 헤더 — 포레스트 민트(다크에서도 동일 유지)
-  header: vermilion[500],
+  header: mint[500],
   'on-header': gray[0],
   // 보조 강조 (밝은 민트)
-  coral: vermilion[300],
+  coral: mint[300],
   'coral-subtle': '#123A28', // 다크 민트 틴트
   // 기능색
   amber: yellow[400],
@@ -208,7 +208,7 @@ const darkSemantic = {
   'text-strong': gray[100],
   text: gray[400],
   'text-weak': gray[500],
-  'brand-dark': vermilion[300],
+  'brand-dark': mint[300],
   'brand-soft': '#3A1A14',
   success: '#3FD487',
   'success-subtle': '#143524',
@@ -309,8 +309,8 @@ export const shadow = {
  * 단색보다 깊이감이 살아 프리미엄하게 보인다. 민트 brand 계열로 절제해서 사용.
  */
 export const gradients = {
-  brand: [vermilion[300], vermilion[600]] as [string, string], // 밝은 민트 → 진한 민트 (캐시 hero)
-  brandSoft: [vermilion[50], vermilion[100]] as [string, string],
+  brand: [mint[300], mint[600]] as [string, string], // 밝은 민트 → 진한 민트 (캐시 hero)
+  brandSoft: [mint[50], mint[100]] as [string, string],
 } as const;
 
 /** 모달/바텀시트 스크림(반투명 검정). 라이트/다크 공통. */
@@ -402,7 +402,7 @@ export const hairline = 0.5;
 
 export const tokens = {
   primitives,
-  vermilion,
+  mint,
   red,
   yellow,
   gray,

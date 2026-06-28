@@ -205,6 +205,11 @@ export default function HomeScreen(): React.JSX.Element {
               leftIcon="gift"
               title="기프티콘 교환"
               onPress={() => navigation.navigate('Exchange')}
+            />
+            <ListRow
+              leftIcon="bookmark"
+              title="북마크"
+              onPress={() => navigation.navigate('Bookmarks')}
               last
             />
           </ListSection>

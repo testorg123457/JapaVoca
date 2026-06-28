@@ -1,7 +1,7 @@
 /**
  * StyleGuideScreen — 디자인 시스템 쇼케이스(합격 기준 화면).
  *
- * Vermilion 테마: Primary vermilion + Cash 옐로 + 따뜻한 그레이(Ink 텍스트) + Pretendard.
+ * Vermilion 테마: Primary mint + Cash 옐로 + 따뜻한 그레이(Ink 텍스트) + Pretendard.
  * 토큰/컴포넌트가 실제로 어떻게 조립되는지 한눈에 본다. 기기 테마를 바꾸면
  * 라이트/다크 양쪽을 확인할 수 있다(semantic 토큰이 한 곳에서 전환됨).
  */
@@ -21,7 +21,7 @@ import {
   Tag,
   type IconName,
 } from '../components';
-import { gradients, gray, hairline, spacing, typography, vermilion, yellow } from '../theme/tokens';
+import { gradients, gray, hairline, spacing, typography, mint, yellow } from '../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../theme/ThemeProvider';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -237,14 +237,14 @@ export default function StyleGuideScreen() {
             <AppText variant="subheading" className="text-text-primary">Primary — Ink #1A1A1A (기본)</AppText>
             <AppText variant="subheading" className="text-text-secondary">Secondary — gray-600 #666060</AppText>
             <AppText variant="subheading" className="text-text-tertiary">Caption — gray-500 #8A8280</AppText>
-            <AppText variant="subheading" className="text-brand">Brand — vermilion-500 (강조에만)</AppText>
+            <AppText variant="subheading" className="text-brand">Brand — mint-500 (강조에만)</AppText>
             <AppText variant="subheading" style={{ color: yellow[600] }}>Cash — yellow-600 #B38F00 (캐시 글자)</AppText>
           </Card>
         </Section>
 
         {/* 색 팔레트 */}
         <Section title="Vermilion (Primary · 9단계)">
-          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, vermilion[k]])} />
+          <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, mint[k]])} />
         </Section>
         <Section title="Cash Yellow (7단계)">
           <SwatchRow entries={(['50', '100', '200', '400', '500', '600', '700'] as const).map((k) => [k, yellow[k]])} />

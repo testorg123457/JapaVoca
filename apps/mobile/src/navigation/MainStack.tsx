@@ -23,6 +23,7 @@ import LedgerScreen from '../screens/main/LedgerScreen';
 import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import InquiryScreen from '../screens/main/InquiryScreen';
+import BookmarkScreen from '../screens/main/BookmarkScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
 import GestureDebugScreen from '../screens/GestureDebugScreen';
 
@@ -53,6 +54,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Inquiry" component={InquiryScreen} />
+      <Stack.Screen name="Bookmarks" component={BookmarkScreen} />
       {__DEV__ && (
         <Stack.Screen
           name="StyleGuide"

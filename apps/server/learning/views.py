@@ -11,6 +11,7 @@ from .services import (
     build_question,
     build_quiz_set,
     get_bookmark_ids,
+    get_bookmarks_with_detail,
     grade_answer,
     sync_answers,
     toggle_bookmark,
@@ -81,8 +82,7 @@ class BookmarkView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        pairs = get_bookmark_ids(request.user)
-        data = [{'item_type': t, 'item_id': i} for t, i in pairs]
+        data = get_bookmarks_with_detail(request.user)
         return Response(data)
 
     def post(self, request):

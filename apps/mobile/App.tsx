@@ -18,6 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import mobileAds from 'react-native-google-mobile-ads';
+import BootSplash from 'react-native-bootsplash';
 
 import { queryClient } from './src/api/queryClient';
 import { AuthProvider } from './src/store/AuthContext';
@@ -29,6 +30,8 @@ function App(): React.JSX.Element {
     mobileAds()
       .initialize()
       .catch((error) => console.warn('AdMob 초기화 실패:', error));
+
+    BootSplash.hide({ fade: true });
   }, []);
 
   return (
