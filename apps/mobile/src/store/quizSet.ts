@@ -4,9 +4,11 @@
  * - activeSet: 현재 세트 전체(문제·정답키·해설 포함). 오프라인 즉시 채점에 사용.
  * - cursor: 현재 풀이 중인 문항 인덱스 (0-based).
  * - pendingAnswers: 오프라인에서 푼 답안 큐. 온라인 복귀 시 /quiz/sync/ 로 flush.
+ * - componentTree: 한자별 구성 트리 캐시. 오프라인에서 구성 자세히 보기에 사용.
  */
 import { createMMKV } from 'react-native-mmkv';
 import type { QuizSetResponse, SyncItem } from '../api/quiz';
+import type { ComponentTreeResponse } from '../api/content';
 
 const storage = createMMKV({ id: 'quiz' });
 
@@ -58,4 +60,18 @@ export function addPendingAnswer(answer: PendingAnswer): void {
 
 export function clearPendingAnswers(): void {
   storage.remove(PENDING_KEY);
+}
+
+// ── 구성 트리 캐시 ───────────────────────────────────────────────────────────────
+
+const COMPONENT_PREFIX = 'quiz.component.';
+
+export function getCachedComponentTree(character: string): ComponentTreeResponse | null {
+  const raw = storage.getString(COMPONENT_PREFIX + character);
+  if (!raw) { return null; }
+  try { return JSON.parse(raw) as ComponentTreeResponse; } catch { return null; }
+}
+
+export function setCachedComponentTree(character: string, data: ComponentTreeResponse): void {
+  storage.set(COMPONENT_PREFIX + character, JSON.stringify(data));
 }

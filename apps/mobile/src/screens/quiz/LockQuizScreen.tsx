@@ -46,9 +46,11 @@ import {
   addPendingAnswer,
   clearPendingAnswers,
   getCachedSet,
+  getCachedComponentTree,
   getCursor,
   getPendingAnswers,
   setCachedSet,
+  setCachedComponentTree,
   setCursor,
 } from '../../store/quizSet';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -336,8 +338,15 @@ function KanjiPane({
     setLoading(true);
     setError(false);
     getKanjiComponents(character)
-      .then((res: { data: ComponentTreeResponse }) => { setData(res.data); })
-      .catch(() => { setError(true); })
+      .then((res: { data: ComponentTreeResponse }) => {
+        setCachedComponentTree(character, res.data);
+        setData(res.data);
+      })
+      .catch(() => {
+        const cached = getCachedComponentTree(character);
+        if (cached) { setData(cached); }
+        else { setError(true); }
+      })
       .finally(() => { setLoading(false); });
   }, [character]);
 
@@ -745,6 +754,23 @@ export function LockQuizView({
       }
 
       setCachedSet(set);
+
+      // 세트 내 한자 추출 → 구성 트리 백그라운드 prefetch (오프라인 대비)
+      const kanjiChars = new Set<string>();
+      for (const q of set.questions) {
+        const surface = q.detail?.surface ?? '';
+        for (const c of surface) {
+          if (c >= '一' && c <= '鿿') { kanjiChars.add(c); }
+        }
+      }
+      for (const char of kanjiChars) {
+        if (!getCachedComponentTree(char)) {
+          getKanjiComponents(char)
+            .then((res: { data: ComponentTreeResponse }) => setCachedComponentTree(char, res.data))
+            .catch(() => {});
+        }
+      }
+
       // 서버의 answered 플래그 기준으로 첫 미답변 문항으로 커서 이동
       const firstUnanswered = set.questions.findIndex(q => !q.answered);
       if (firstUnanswered === -1) {
@@ -824,11 +850,9 @@ export function LockQuizView({
           boxGrade: res.box_grade,
           offlineMode: false,
         });
-        // 세트 완료 처리는 "다음 문제" 탭 시 loadSet()에서 처리
       } catch (err: any) {
         if (!mountedRef.current) { return; }
         if (!err?.response) {
-          // 네트워크 끊김 → 오프라인으로 폴백
           setIsOnline(false);
           const isCorrect = choiceIndex === question.answer_index;
           addPendingAnswer({
@@ -843,7 +867,6 @@ export function LockQuizView({
         }
       }
     } else {
-      // 오프라인 로컬 채점
       const isCorrect = choiceIndex === question.answer_index;
       addPendingAnswer({
         question_token: question.question_token,
@@ -1110,20 +1133,6 @@ export function LockQuizView({
               </PressableScale>
             </View>
           </View>
-
-          {/* 오프라인 배너 */}
-          {!isOnline && (
-            <View style={{
-              marginHorizontal: 22, marginTop: 8,
-              backgroundColor: 'rgba(255,90,69,0.10)',
-              borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12,
-              borderWidth: 1, borderColor: LOCK.dangerBorder,
-            }}>
-              <AppText variant="caption" style={{ color: '#FF8C7B', textAlign: 'center' }}>
-                오프라인 모드 · 상자는 받을 수 없어요
-              </AppText>
-            </View>
-          )}
 
           {/* 중앙: 퀴즈 */}
           <View style={{ flex: 1, paddingHorizontal: 22 }}>
