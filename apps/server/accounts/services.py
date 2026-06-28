@@ -39,7 +39,9 @@ def verify_google_id_token(token: str) -> dict:
     GOOGLE_CLIENT_ID 가 설정돼 있으면 audience 로 검사한다(dev 에선 생략).
     실패 시 GoogleAuthError 를 던진다. (네트워크로 구글 공개키를 받아 서명 검증)
     """
-    audience = settings.GOOGLE_CLIENT_ID or None
+    audience = settings.GOOGLE_CLIENT_ID
+    if not audience:
+        raise GoogleAuthError('서버에 GOOGLE_CLIENT_ID가 설정되지 않았습니다.')
     try:
         payload = google_id_token.verify_oauth2_token(
             token, google_requests.Request(), audience,

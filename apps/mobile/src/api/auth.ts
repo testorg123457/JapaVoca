@@ -34,25 +34,26 @@ type LoginResponse = {
 };
 
 type Tokens = { access: string; refresh: string };
+type LoginResult = { tokens: Tokens; created: boolean };
 
 /**
  * 게스트 로그인. 기기 UUID(guest_uid)를 보내면 서버가 게스트 유저를 get_or_create 하고
  * JWT를 발급한다. 소셜 키 없이 즉시 시작 가능. (구글/카카오와 동일하게 raw axios)
  */
-export async function guestLogin(guestUid: string): Promise<Tokens> {
+export async function guestLogin(guestUid: string): Promise<LoginResult> {
   const response = await axios.post<LoginResponse>(
     `${Config.API_BASE_URL}/api/auth/guest/`,
     { guest_uid: guestUid },
   );
-  return response.data.tokens;
+  return { tokens: response.data.tokens, created: response.data.created };
 }
 
-export async function googleLogin(idToken: string): Promise<Tokens> {
+export async function googleLogin(idToken: string): Promise<LoginResult> {
   const response = await axios.post<LoginResponse>(
     `${Config.API_BASE_URL}/api/auth/google/`,
     { id_token: idToken },
   );
-  return response.data.tokens;
+  return { tokens: response.data.tokens, created: response.data.created };
 }
 
 /**
@@ -60,12 +61,12 @@ export async function googleLogin(idToken: string): Promise<Tokens> {
  * kapi.kakao.com으로 검증 후 JWT를 발급한다. (구글과 동일하게 raw axios — 401 우회)
  * ⚠️ 클라 카카오 SDK/네이티브 앱키 설정이 선결조건.
  */
-export async function kakaoLogin(accessToken: string): Promise<Tokens> {
+export async function kakaoLogin(accessToken: string): Promise<LoginResult> {
   const response = await axios.post<LoginResponse>(
     `${Config.API_BASE_URL}/api/auth/kakao/`,
     { access_token: accessToken },
   );
-  return response.data.tokens;
+  return { tokens: response.data.tokens, created: response.data.created };
 }
 
 export type LinkResult = { tokens: Tokens; switched: boolean };

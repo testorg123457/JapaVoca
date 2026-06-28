@@ -27,7 +27,7 @@ import { getPendingConsent, clearPendingConsent, setCachedConsentStatus } from '
 export default function StudySelectScreen(): React.JSX.Element {
   const c = useThemeColors();
   const { onComplete } = useOnboardingActions();
-  const { pendingAuth, signInFresh } = useAuth();
+  const { pendingAuth, signInFresh, signOut } = useAuth();
   const isPendingMode = pendingAuth !== null;
   const me = useMe();
   const update = useUpdateProfile();
@@ -54,53 +54,69 @@ export default function StudySelectScreen(): React.JSX.Element {
         // 1. 유저 생성
         let access: string;
         let refresh: string;
+        let created: boolean;
         if (pendingAuth.method === 'guest') {
-          const tokens = await guestLogin(getOrCreateGuestUid());
-          access = tokens.access;
-          refresh = tokens.refresh;
+          const result = await guestLogin(getOrCreateGuestUid());
+          access = result.tokens.access;
+          refresh = result.tokens.refresh;
+          created = result.created;
         } else if (pendingAuth.method === 'kakao') {
-          const tokens = await kakaoLogin(pendingAuth.accessToken);
-          access = tokens.access;
-          refresh = tokens.refresh;
+          const result = await kakaoLogin(pendingAuth.accessToken);
+          access = result.tokens.access;
+          refresh = result.tokens.refresh;
+          created = result.created;
         } else {
-          const tokens = await googleLogin(pendingAuth.idToken);
-          access = tokens.access;
-          refresh = tokens.refresh;
+          const result = await googleLogin(pendingAuth.idToken);
+          access = result.tokens.access;
+          refresh = result.tokens.refresh;
+          created = result.created;
         }
 
         const authHeader = { Authorization: `Bearer ${access}` };
 
-        // 2. 약관 동의 제출
-        const pendingConsent = getPendingConsent();
-        if (pendingConsent) {
-          const consentRes = await axios.post(
-            `${Config.API_BASE_URL}/api/auth/consent/`,
-            { ...pendingConsent, phone_number: null },
+        if (created) {
+          // 신규 유저 — 약관 동의 + 학습 설정 모두 제출
+          // 2. 약관 동의 제출
+          const pendingConsent = getPendingConsent();
+          if (pendingConsent) {
+            const consentRes = await axios.post(
+              `${Config.API_BASE_URL}/api/auth/consent/`,
+              { ...pendingConsent, phone_number: null },
+              { headers: authHeader },
+            );
+            queryClient.setQueryData(CONSENT_QUERY_KEY, consentRes.data);
+            setCachedConsentStatus(consentRes.data);
+          }
+
+          // 3. 학습 설정
+          const meRes = await axios.patch(
+            `${Config.API_BASE_URL}/api/auth/me/`,
+            {
+              study_mode: sel.mode,
+              study_level: sel.level,
+              study_kana_hiragana: sel.hiragana,
+              study_kana_katakana: sel.katakana,
+            },
             { headers: authHeader },
           );
-          // 게이트가 즉시 'ready'를 계산할 수 있도록 쿼리 캐시와 MMKV를 미리 채운다.
-          queryClient.setQueryData(CONSENT_QUERY_KEY, consentRes.data);
-          setCachedConsentStatus(consentRes.data);
+          queryClient.setQueryData(['me'], meRes.data);
         }
 
-        // 3. 학습 설정
-        const meRes = await axios.patch(
-          `${Config.API_BASE_URL}/api/auth/me/`,
-          {
-            study_mode: sel.mode,
-            study_level: sel.level,
-            study_kana_hiragana: sel.hiragana,
-            study_kana_katakana: sel.katakana,
-          },
-          { headers: authHeader },
-        );
-        queryClient.setQueryData(['me'], meRes.data);
-
-        // 4. 완료 — consent/me 캐시를 살린 채로 로그인 상태 전환
+        // 4. 완료
         clearPendingConsent();
         signInFresh(access, refresh);
-      } catch {
-        Alert.alert('저장 실패', '잠시 후 다시 시도해주세요.');
+      } catch (err) {
+        // 401 = 토큰 만료(구글 1시간) → 재로그인 유도
+        const status = axios.isAxiosError(err) ? err.response?.status : null;
+        if (status === 401) {
+          Alert.alert(
+            '인증 만료',
+            '로그인 정보가 만료됐어요. 다시 로그인해주세요.',
+            [{ text: '확인', onPress: signOut }],
+          );
+        } else {
+          Alert.alert('저장 실패', '잠시 후 다시 시도해주세요.');
+        }
       } finally {
         setLocalPending(false);
       }
