@@ -4,28 +4,38 @@ import re
 from .models import Kanji
 
 
-def _parse_component_chars(components_str: str) -> list[str]:
-    """'言(말씀 언) + 吾(나 오)' → ['言', '吾']"""
+def _parse_component_pairs(components_str: str) -> list[tuple[str, str]]:
+    """'言(말씀 언) + 吾(나 오)' → [('言', '말씀 언'), ('吾', '나 오')]"""
     result = []
     for part in components_str.split('+'):
-        m = re.match(r'^(.+?)\(', part.strip())
+        part = part.strip()
+        m = re.match(r'^(.+?)\((.+?)\)', part)
         if m:
-            result.append(m.group(1).strip())
+            result.append((m.group(1).strip(), m.group(2).strip()))
     return result
 
 
-def _walk(char: str, visited: set, nodes: dict, depth: int) -> None:
+def _walk(char: str, visited: set, nodes: dict, depth: int, fallback_meaning: str = '') -> None:
     if char in visited or depth > 4:
         return
     visited.add(char)
 
     kanji = Kanji.objects.filter(character=char).first()
     if not kanji:
-        return  # DB에 없는 이형자 — 말단으로 처리
+        nodes[char] = {
+            'character': char,
+            'meaning_ko': fallback_meaning,
+            'on_reading': '',
+            'kun_reading': '',
+            'components': [],
+            'is_leaf': True,
+        }
+        return
 
-    raw_children = _parse_component_chars(kanji.components) if kanji.components else []
+    pairs = _parse_component_pairs(kanji.components) if kanji.components else []
     # 자기 자신 참조 제거
-    children = [c for c in raw_children if c != char]
+    pairs = [(c, m) for c, m in pairs if c != char]
+    children = [c for c, _ in pairs]
 
     nodes[char] = {
         'character': char,
@@ -36,8 +46,8 @@ def _walk(char: str, visited: set, nodes: dict, depth: int) -> None:
         'is_leaf': len(children) == 0,
     }
 
-    for child in children:
-        _walk(child, visited, nodes, depth + 1)
+    for child_char, child_meaning in pairs:
+        _walk(child_char, visited, nodes, depth + 1, fallback_meaning=child_meaning)
 
 
 def build_component_tree(character: str) -> dict:

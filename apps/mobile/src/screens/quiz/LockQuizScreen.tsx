@@ -283,13 +283,7 @@ function NodeRow({
   const alreadySeen = visited.has(char);
   const newVisited = new Set([...visited, char]);
 
-  if (!node) {
-    return (
-      <View style={{ paddingLeft: depth * 20, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <AppText style={{ color: LOCK.t3, fontSize: 26, fontWeight: '700' }}>{char}</AppText>
-      </View>
-    );
-  }
+  if (!node) { return null; }
 
   const readings = [node.on_reading, node.kun_reading].filter(Boolean).join(' / ');
 
@@ -304,7 +298,7 @@ function NodeRow({
         paddingLeft: depth > 0 ? 12 : 0,
       }}>
         <AppText style={{
-          color: node.is_leaf ? LOCK.t2 : '#fff',
+          color: depth === 0 ? '#fff' : LOCK.t2,
           fontSize: depth === 0 ? 36 : 28,
           fontWeight: '700', lineHeight: depth === 0 ? 44 : 36,
           paddingBottom: 4,
@@ -705,7 +699,7 @@ export default function LockQuizScreen({
   return (
     <LockQuizView
       onUnlock={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
-      onOpenApp={() => navigation.navigate('Home')}
+      onOpenApp={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
       onOpenBoxes={(boxes) => navigation.navigate('BoxOpen', { boxes })}
     />
   );
