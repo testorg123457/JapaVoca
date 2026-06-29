@@ -281,3 +281,16 @@ export function useMarkAllInquiriesRead() {
     },
   });
 }
+
+/** 현재 활성 퀴즈 세트를 폐기. 없어도 성공. */
+export function useAbandonQuizSet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.post('/api/quiz/set/abandon/');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz', 'set'] });
+    },
+  });
+}

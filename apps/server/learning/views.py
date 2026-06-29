@@ -8,6 +8,7 @@ from .serializers import AnswerSerializer, BookmarkSerializer, SyncItemSerialize
 from .services import (
     InvalidQuestionToken,
     NoContent,
+    abandon_quiz_set,
     build_question,
     build_quiz_set,
     get_bookmark_ids,
@@ -104,3 +105,13 @@ class BookmarkView(APIView):
             serializer.validated_data['item_id'],
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AbandonQuizSetView(APIView):
+    """POST /api/quiz/set/abandon/ — 활성 세트 폐기. 없어도 200."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        abandon_quiz_set(request.user)
+        return Response({'status': 'ok'})

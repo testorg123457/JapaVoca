@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { AppHeader, AppText, Icon, ListRow, ListSection, StudySelector, Tag, ToggleRow } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
+import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -23,6 +23,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
   const updateProfile = useUpdateProfile();
+  const abandonQuizSet = useAbandonQuizSet();
   const unreadInquiry = useUnreadInquiryCount();
   const hasUnreadInquiry = (unreadInquiry.data?.count ?? 0) > 0;
   const { signOut } = useAuth();
@@ -45,18 +46,45 @@ export default function SettingsScreen(): React.JSX.Element {
   }, [m]);
 
   function changeStudy(next: StudySelection) {
-    const prev = studySel;
     setStudySel(next);
-    if (isStudyValid(next)) {
-      updateProfile.mutate(
-        { study_mode: next.mode, study_level: next.level,
-          study_kana_hiragana: next.hiragana, study_kana_katakana: next.katakana },
-        { onError: () => {
+  }
+
+  function isPendingStudyChange(): boolean {
+    if (!studySel || !m) return false;
+    return (
+      studySel.mode !== m.study_mode ||
+      studySel.level !== m.study_level ||
+      studySel.hiragana !== m.study_kana_hiragana ||
+      studySel.katakana !== m.study_kana_katakana
+    );
+  }
+
+  function applyStudyChange() {
+    if (!studySel || !isStudyValid(studySel)) return;
+    updateProfile.mutate(
+      {
+        study_mode: studySel.mode,
+        study_level: studySel.level,
+        study_kana_hiragana: studySel.hiragana,
+        study_kana_katakana: studySel.katakana,
+      },
+      {
+        onSuccess: () => {
+          abandonQuizSet.mutate();
+        },
+        onError: () => {
           Alert.alert('오류', '설정 변경에 실패했어요.');
-          setStudySel(prev);
-        }},
-      );
-    }
+          if (m) {
+            setStudySel({
+              mode: (m.study_mode as StudySelection['mode']) ?? null,
+              level: (m.study_level as StudySelection['level']) ?? null,
+              hiragana: m.study_kana_hiragana,
+              katakana: m.study_kana_katakana,
+            });
+          }
+        },
+      },
+    );
   }
 
   const patch = (data: ProfileUpdate) =>
@@ -106,6 +134,17 @@ export default function SettingsScreen(): React.JSX.Element {
             학습
           </AppText>
           {studySel ? <StudySelector value={studySel} onChange={changeStudy} /> : null}
+          {isPendingStudyChange() && isStudyValid(studySel!) ? (
+            <Pressable
+              onPress={applyStudyChange}
+              disabled={updateProfile.isPending || abandonQuizSet.isPending}
+              className="mt-md items-center rounded-2xl py-md active:opacity-60"
+              style={{ backgroundColor: c['brand'] }}>
+              <AppText variant="subheading" className="text-white">
+                {updateProfile.isPending || abandonQuizSet.isPending ? '변경 중...' : '새 설정으로 시작'}
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* 캐시 · 내역 */}

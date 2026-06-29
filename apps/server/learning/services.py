@@ -355,11 +355,20 @@ def _serialize_existing_set(quiz_set):
     }
 
 
+def abandon_quiz_set(user):
+    """활성 세트(미완료·미폐기)를 폐기. 없으면 no-op."""
+    QuizSet.objects.filter(
+        user=user,
+        completed_at__isnull=True,
+        abandoned_at__isnull=True,
+    ).update(abandoned_at=timezone.now())
+
+
 def build_quiz_set(user):
     """현재 활성 세트 반환 or 신규 생성. 쿨다운 중이면 questions=[] + cooldown_until."""
     # 1. 미완료 활성 세트
     active = (
-        QuizSet.objects.filter(user=user, completed_at__isnull=True)
+        QuizSet.objects.filter(user=user, completed_at__isnull=True, abandoned_at__isnull=True)
         .prefetch_related('items')
         .order_by('-started_at')
         .first()

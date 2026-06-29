@@ -118,6 +118,7 @@ class QuizSet(models.Model):
     )
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    abandoned_at = models.DateTimeField(null=True, blank=True)
     boxes_earned = models.PositiveIntegerField(default=0)
     answered_count = models.PositiveIntegerField(default=0)
 
