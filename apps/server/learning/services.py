@@ -125,9 +125,9 @@ def _item_detail(item_type, item_id, word_type=None):
         kanji_chars = [c for c in word.surface if '一' <= c <= '鿿']
         parts = []
         for char in kanji_chars[:3]:
-            k = Kanji.objects.filter(character=char).only('components').first()
-            if k and k.components:
-                parts.append(f'{char}: {k.components}')
+            k = Kanji.objects.filter(character=char).only('meaning_ko').first()
+            if k and k.meaning_ko:
+                parts.append(f'{char} : {k.meaning_ko}')
         components = ' / '.join(parts)
     return {
         'surface': word.surface,

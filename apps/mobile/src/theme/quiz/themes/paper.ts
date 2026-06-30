@@ -1,6 +1,6 @@
 import { defineQuizTheme } from '../contract';
 
-/** 라이트 데모 테마. 솔리드 배경 + 소프트 선택지. */
+/** 라이트 데모 테마. 내장 이미지 배경 + 소프트 선택지. */
 export default defineQuizTheme({
   id: 'paper',
   name: '페이퍼',
@@ -26,6 +26,10 @@ export default defineQuizTheme({
     choiceStyle: 'soft',
     choiceLayout: 'grid2x2',
     borderWidth: 1,
-    background: { kind: 'solid' },
+    background: {
+      kind: 'image',
+      source: require('../../../assets/themes/paper-bg.png'),
+      overlay: 'rgba(255,255,255,0.22)',
+    },
   },
 });

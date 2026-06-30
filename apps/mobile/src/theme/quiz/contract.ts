@@ -1,4 +1,5 @@
 import type React from 'react';
+import type { ImageSourcePropType } from 'react-native';
 
 /** 🚪 리워드 문 — v1은 free만. 추후 'gifticon'|'cash' 등. */
 export type ThemeUnlock = { kind: 'free' };
@@ -27,7 +28,9 @@ export type QuizThemeShape = {
   background:
     | { kind: 'solid' }
     | { kind: 'gradient'; from: string; to: string }
-    | { kind: 'glow'; glow: string };
+    | { kind: 'glow'; glow: string }
+    /** 내장 이미지 배경. overlay는 가독성용 반투명 면(rgba), 없으면 미적용. */
+    | { kind: 'image'; source: ImageSourcePropType; overlay?: string };
 };
 
 export type ChoiceVisual = 'default' | 'correct' | 'wrong' | 'dimmed';

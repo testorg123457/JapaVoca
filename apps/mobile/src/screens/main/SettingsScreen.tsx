@@ -8,8 +8,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 
-import { AppHeader, AppText, Icon, ListRow, ListSection, StudySelector, Tag, ToggleRow } from '../../components';
+import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
@@ -29,6 +30,8 @@ export default function SettingsScreen(): React.JSX.Element {
   const { signOut } = useAuth();
   const [studySel, setStudySel] = useState<StudySelection | null>(null);
   const studyInitialized = useRef(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const m = me.data;
 
@@ -47,6 +50,7 @@ export default function SettingsScreen(): React.JSX.Element {
 
   function changeStudy(next: StudySelection) {
     setStudySel(next);
+    setJustSaved(false);
   }
 
   function isPendingStudyChange(): boolean {
@@ -70,7 +74,13 @@ export default function SettingsScreen(): React.JSX.Element {
       },
       {
         onSuccess: () => {
-          abandonQuizSet.mutate();
+          abandonQuizSet.mutate(undefined, {
+            onSuccess: () => {
+              setJustSaved(true);
+              if (savedTimer.current) { clearTimeout(savedTimer.current); }
+              savedTimer.current = setTimeout(() => setJustSaved(false), 1500);
+            },
+          });
         },
         onError: () => {
           Alert.alert('오류', '설정 변경에 실패했어요.');
@@ -96,6 +106,10 @@ export default function SettingsScreen(): React.JSX.Element {
       { text: '로그아웃', style: 'destructive', onPress: signOut },
     ]);
   }
+
+  const studyLoading = updateProfile.isPending || abandonQuizSet.isPending;
+  const studyPending = isPendingStudyChange() && !!studySel && isStudyValid(studySel);
+  const studySolid = studyLoading || justSaved || studyPending;
 
   return (
     <View className="flex-1 bg-bg-secondary">
@@ -134,19 +148,29 @@ export default function SettingsScreen(): React.JSX.Element {
             학습
           </AppText>
           {studySel ? <StudySelector value={studySel} onChange={changeStudy} /> : null}
-          <Pressable
+          <PressableScale
             onPress={applyStudyChange}
-            disabled={!isPendingStudyChange() || !isStudyValid(studySel!) || updateProfile.isPending || abandonQuizSet.isPending}
-            className="mt-md items-center rounded-lg active:opacity-60"
+            disabled={!studyPending || studyLoading}
+            pressedScale={0.99}
             style={{
-              backgroundColor: c['brand'],
-              paddingVertical: 18,
-              opacity: (!isPendingStudyChange() || !isStudyValid(studySel!)) ? 0.4 : 1,
+              marginTop: 8,
+              borderRadius: 14,
+              paddingVertical: 17,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              backgroundColor: studySolid ? c.brand : c.brand + '24',
             }}>
-            <AppText variant="subheading" className="text-white">
-              {updateProfile.isPending || abandonQuizSet.isPending ? '변경 중...' : '새 설정으로 시작'}
+            <AppText variant="subheading" style={{ color: studySolid ? '#FFFFFF' : c.brand, fontWeight: '700' }}>
+              {studyLoading ? '저장 중…' : justSaved ? '설정되었습니다' : '이 설정으로 학습하기'}
             </AppText>
-          </Pressable>
+            {justSaved ? (
+              <Animated.View entering={ZoomIn.springify().damping(13).stiffness(200)}>
+                <Icon name="check" size={18} color="#FFFFFF" strokeWidth={3} />
+              </Animated.View>
+            ) : null}
+          </PressableScale>
         </View>
 
         {/* 캐시 · 내역 */}

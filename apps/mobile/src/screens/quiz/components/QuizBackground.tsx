@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { ImageBackground, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useQuizTheme } from '../../../theme/quiz/useQuizTheme';
@@ -16,6 +16,22 @@ export function QuizBackground(): React.JSX.Element {
   // solid: 단색 면만
   if (bg.kind === 'solid') {
     return <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.bg }]} pointerEvents="none" />;
+  }
+
+  // image: 내장 이미지 풀배경 + 가독성용 오버레이
+  if (bg.kind === 'image') {
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <ImageBackground
+          source={bg.source}
+          resizeMode="cover"
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.bg }]}>
+          {bg.overlay ? (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: bg.overlay }]} />
+          ) : null}
+        </ImageBackground>
+      </View>
+    );
   }
 
   return (
