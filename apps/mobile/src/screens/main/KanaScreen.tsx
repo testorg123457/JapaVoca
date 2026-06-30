@@ -6,8 +6,9 @@
  *
  * ⚠️ 서버 퀴즈는 word/kanji만 지원 → 가나는 프론트 로컬(data/kana.ts) + KanaQuiz.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import Tts from 'react-native-tts';
 
 import { AppHeader, AppText, Button, SectionHeader } from '../../components';
 import { hairline } from '../../theme/tokens';
@@ -40,7 +41,11 @@ function Cell({
   }
   return (
     <Pressable
-      onPress={() => onSelect(cell.romaji)}
+      onPress={() => {
+        onSelect(cell.romaji);
+        Tts.stop();
+        Tts.speak(glyph(cell, script));
+      }}
       className="flex-1 items-center justify-center active:opacity-70"
       style={{
         margin: hairline,
@@ -96,6 +101,10 @@ function Grid({
 }
 
 export default function KanaScreen(): React.JSX.Element {
+  useEffect(() => {
+    Tts.setDefaultLanguage('ja-JP');
+  }, []);
+
   const [script, setScript] = useState<KanaScript>('hira');
   const [selected, setSelected] = useState<string | null>(null);
   const [quizOpen, setQuizOpen] = useState(false);

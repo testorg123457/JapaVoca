@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
 /**
  * 상시 학습 알림 포그라운드 서비스.
  * 앱 실행/종료 무관하게 상단 알림바에 항상 고정 알림을 표시한다.
- * 탭하면 MainActivity를 열며, ongoing = true 로 스와이프 제거 불가.
+ * 탭하면 MainActivity를 연다.
  */
 class StudyNotificationService : Service() {
 

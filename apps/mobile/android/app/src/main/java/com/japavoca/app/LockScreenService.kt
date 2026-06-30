@@ -90,7 +90,7 @@ class LockScreenService : Service() {
       .setContentTitle("잠금화면 학습 켜짐")
       .setContentText("화면을 켤 때 일본어 퀴즈가 나와요")
       .setSmallIcon(R.mipmap.ic_launcher)
-      .setOngoing(true)
+      .setOngoing(false)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
   }

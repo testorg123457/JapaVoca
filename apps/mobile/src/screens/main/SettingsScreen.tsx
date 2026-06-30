@@ -134,17 +134,19 @@ export default function SettingsScreen(): React.JSX.Element {
             학습
           </AppText>
           {studySel ? <StudySelector value={studySel} onChange={changeStudy} /> : null}
-          {isPendingStudyChange() && isStudyValid(studySel!) ? (
-            <Pressable
-              onPress={applyStudyChange}
-              disabled={updateProfile.isPending || abandonQuizSet.isPending}
-              className="mt-md items-center rounded-2xl py-md active:opacity-60"
-              style={{ backgroundColor: c['brand'] }}>
-              <AppText variant="subheading" className="text-white">
-                {updateProfile.isPending || abandonQuizSet.isPending ? '변경 중...' : '새 설정으로 시작'}
-              </AppText>
-            </Pressable>
-          ) : null}
+          <Pressable
+            onPress={applyStudyChange}
+            disabled={!isPendingStudyChange() || !isStudyValid(studySel!) || updateProfile.isPending || abandonQuizSet.isPending}
+            className="mt-md items-center rounded-lg active:opacity-60"
+            style={{
+              backgroundColor: c['brand'],
+              paddingVertical: 18,
+              opacity: (!isPendingStudyChange() || !isStudyValid(studySel!)) ? 0.4 : 1,
+            }}>
+            <AppText variant="subheading" className="text-white">
+              {updateProfile.isPending || abandonQuizSet.isPending ? '변경 중...' : '새 설정으로 시작'}
+            </AppText>
+          </Pressable>
         </View>
 
         {/* 캐시 · 내역 */}
