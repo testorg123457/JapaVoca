@@ -51,6 +51,8 @@ export type MainStackParamList = {
   AccountSettings: undefined;
   /** 잠금화면 학습 설정(설정 > 잠금화면 설정). */
   LockSettings: undefined;
+  /** 잠금화면 퀴즈 테마 선택(잠금화면 설정 > 잠금화면 디자인). */
+  LockTheme: undefined;
   /** 약관/개인정보 전문(계정 설정에서 진입). 온보딩과 동일 화면 재사용. */
   TermsDetail: { kind: TermKind };
   /** 기프티콘 교환. */

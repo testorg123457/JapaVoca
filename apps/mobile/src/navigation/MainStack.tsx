@@ -17,6 +17,7 @@ import AttendanceScreen from '../screens/main/AttendanceScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import AccountSettingsScreen from '../screens/main/AccountSettingsScreen';
 import LockSettingsScreen from '../screens/main/LockSettingsScreen';
+import LockThemeScreen from '../screens/main/LockThemeScreen';
 import TermsDetailScreen from '../screens/onboarding/TermsDetailScreen';
 import ExchangeScreen from '../screens/main/ExchangeScreen';
 import LedgerScreen from '../screens/main/LedgerScreen';
@@ -48,6 +49,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <Stack.Screen name="LockSettings" component={LockSettingsScreen} />
+      <Stack.Screen name="LockTheme" component={LockThemeScreen} />
       <Stack.Screen name="TermsDetail" component={TermsDetailScreen} />
       <Stack.Screen name="Exchange" component={ExchangeScreen} />
       <Stack.Screen name="Ledger" component={LedgerScreen} />
