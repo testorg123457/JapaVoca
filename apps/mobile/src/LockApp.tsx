@@ -19,6 +19,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './api/queryClient';
 import { AuthProvider } from './store/AuthContext';
 import { ThemeProvider } from './theme/ThemeProvider';
+import { QuizThemeProvider } from './theme/quiz/QuizThemeProvider';
 import { LockQuizView } from './screens/quiz/LockQuizScreen';
 import { openAppFromLock, unlockLockQuiz } from './lib/lockScreen';
 
@@ -29,11 +30,13 @@ export default function LockApp(): React.JSX.Element {
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <LockQuizView
-                onUnlock={unlockLockQuiz}
-                onOpenApp={openAppFromLock}
-                onOpenBoxes={openAppFromLock}
-              />
+              <QuizThemeProvider>
+                <LockQuizView
+                  onUnlock={unlockLockQuiz}
+                  onOpenApp={openAppFromLock}
+                  onOpenBoxes={openAppFromLock}
+                />
+              </QuizThemeProvider>
             </AuthProvider>
           </QueryClientProvider>
         </ThemeProvider>

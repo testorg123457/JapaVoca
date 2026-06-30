@@ -18,11 +18,9 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  type LayoutChangeEvent,
 } from 'react-native';
 import Tts from 'react-native-tts';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { AppText, Icon, PressableScale } from '../../components';
@@ -54,72 +52,18 @@ import {
   setCursor,
 } from '../../store/quizSet';
 import type { MainStackScreenProps } from '../../navigation/types';
+import { QuizThemeProvider } from '../../theme/quiz/QuizThemeProvider';
+import { useQuizTheme } from '../../theme/quiz/useQuizTheme';
+import { withAlpha } from '../../theme/quiz/withAlpha';
+import { ChoiceCard } from './components/ChoiceCard';
+import { QuizBackground } from './components/QuizBackground';
+import { AudioButton } from './components/AudioButton';
 
 export type LockQuizActions = {
   onUnlock: () => void;
   onOpenApp: () => void;
   onOpenBoxes: (boxes: { id: number; grade: BoxGrade }[]) => void;
 };
-
-// ── 다크 팔레트 ──────────────────────────────────────────────────────────────────
-
-const LOCK = {
-  bg: '#0C0D10',
-  surface: '#181B21',
-  surface2: '#1E222A',
-  surface3: '#252930',
-  line: 'rgba(255,255,255,0.07)',
-  line2: 'rgba(255,255,255,0.10)',
-  t1: '#EDEEF0',
-  t2: '#9A9EA7',
-  t3: '#6A6E78',
-  brand: '#35B98A',
-  brandText: '#7FE6BE',
-  brandBg: 'rgba(53,185,138,0.16)',
-  brandBorder: 'rgba(53,185,138,0.38)',
-  amber: '#FFCE00',
-  success: '#33C97A',
-  successBg: 'rgba(51,201,122,0.12)',
-  successBorder: 'rgba(51,201,122,0.5)',
-  danger: '#FF5A45',
-  dangerBg: 'rgba(255,90,69,0.12)',
-  dangerBorder: 'rgba(255,90,69,0.5)',
-};
-
-// ── 배경 ─────────────────────────────────────────────────────────────────────────
-
-function LockBackground(): React.JSX.Element {
-  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const onLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    setSize((p) => (p?.w === width && p?.h === height ? p : { w: width, h: height }));
-  };
-  return (
-    <View style={StyleSheet.absoluteFill} onLayout={onLayout} pointerEvents="none">
-      {size && size.w > 0 && size.h > 0 ? (
-        <Svg width={size.w} height={size.h}>
-          <Defs>
-            <LinearGradient id="lockBg" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#14161B" />
-              <Stop offset="1" stopColor="#0C0D10" />
-            </LinearGradient>
-            <RadialGradient id="lockGlow" cx="50%" cy="2%" rx="82%" ry="44%" fx="50%" fy="2%">
-              <Stop offset="0" stopColor="#1F9660" stopOpacity="0.32" />
-              <Stop offset="1" stopColor="#1F9660" stopOpacity="0" />
-            </RadialGradient>
-            <RadialGradient id="lockVig" cx="50%" cy="116%" rx="120%" ry="52%" fx="50%" fy="116%">
-              <Stop offset="0" stopColor="#000000" stopOpacity="0.5" />
-              <Stop offset="1" stopColor="#000000" stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-          <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockBg)" />
-          <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockGlow)" />
-          <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#lockVig)" />
-        </Svg>
-      ) : null}
-    </View>
-  );
-}
 
 // ── 시계 ─────────────────────────────────────────────────────────────────────────
 
@@ -144,128 +88,6 @@ function formatRemaining(until: string): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── 음성 버튼 (TTS 연동 전 비활성) ────────────────────────────────────────────────
-
-// TTS 초기화 (앱 기동 시 1회)
-Tts.setDefaultLanguage('ja-JP');
-
-function AudioButton({ text }: { text: string }): React.JSX.Element {
-  const [speaking, setSpeaking] = useState(false);
-  const cancelRef = useRef(false);
-  const subRef = useRef<{ remove: () => void } | null>(null);
-
-  useEffect(() => {
-    return () => {
-      cancelRef.current = true;
-      subRef.current?.remove();
-      subRef.current = null;
-      Tts.stop();
-    };
-  }, []);
-
-  const handlePress = useCallback(() => {
-    if (speaking) {
-      cancelRef.current = true;
-      subRef.current?.remove();
-      subRef.current = null;
-      Tts.stop();
-      setSpeaking(false);
-      return;
-    }
-
-    // ウ・ユウ 형태로 여러 발음이 있을 때 순차 재생 (700ms 간격)
-    const readings = text.split('・').map(r => r.trim()).filter(Boolean);
-    if (readings.length === 0) { return; }
-
-    cancelRef.current = false;
-    setSpeaking(true);
-
-    const playNext = (index: number) => {
-      if (cancelRef.current || index >= readings.length) {
-        setSpeaking(false);
-        return;
-      }
-      Tts.speak(readings[index]);
-      let sub: { remove: () => void } | null = null;
-      const onFinish = () => {
-        sub?.remove();
-        subRef.current = null;
-        if (index + 1 < readings.length) {
-          setTimeout(() => playNext(index + 1), 600);
-        } else {
-          setSpeaking(false);
-        }
-      };
-      // NativeEventEmitter.addListener 반환값 사용 (removeListener는 RN 0.65+ 제거됨)
-      sub = Tts.addEventListener('tts-finish', onFinish) as unknown as { remove: () => void };
-      subRef.current = sub;
-    };
-
-    playNext(0);
-  }, [text, speaking]);
-
-  return (
-    <TouchableOpacity
-      style={{
-        flexDirection: 'row', alignItems: 'center', gap: 5,
-        paddingHorizontal: 12, paddingVertical: 6,
-        backgroundColor: speaking ? LOCK.brandText + '22' : 'rgba(255,255,255,0.05)',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: speaking ? LOCK.brandText : LOCK.line,
-      }}
-      onPress={handlePress}>
-      <Icon name="volume" size={14} color={LOCK.brandText} strokeWidth={2} />
-      <AppText variant="caption" style={{ color: LOCK.brandText }}>
-        {speaking ? '■' : '듣기'}
-      </AppText>
-    </TouchableOpacity>
-  );
-}
-
-// ── 선택지 카드 ───────────────────────────────────────────────────────────────────
-
-type ChoiceVisual = 'default' | 'correct' | 'wrong' | 'dimmed';
-
-function ChoiceCard({
-  text, visual, disabled, onPress,
-}: {
-  text: string; visual: ChoiceVisual; disabled: boolean; onPress: () => void;
-}): React.JSX.Element {
-  const style = {
-    default: { bg: LOCK.surface2, border: LOCK.line, text: LOCK.t1 },
-    correct: { bg: LOCK.successBg, border: LOCK.successBorder, text: '#6FE3A4' },
-    wrong:   { bg: LOCK.dangerBg, border: LOCK.dangerBorder, text: '#FF8C7B' },
-    dimmed:  { bg: LOCK.surface, border: LOCK.line, text: LOCK.t3 },
-  }[visual];
-
-  return (
-    <PressableScale
-      onPress={onPress}
-      disabled={disabled}
-      pressedScale={0.985}
-      style={{ width: '48.5%' }}>
-      <View style={{
-        height: 66,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-        paddingHorizontal: 14,
-        backgroundColor: style.bg,
-        borderWidth: 1, borderColor: style.border,
-        borderRadius: 16,
-      }}>
-        {visual === 'correct' && <Icon name="check" size={16} color="#6FE3A4" strokeWidth={2.8} />}
-        {visual === 'wrong'   && <Icon name="close" size={16} color="#FF8C7B" strokeWidth={2.8} />}
-        <AppText
-          variant="subheading"
-          numberOfLines={1}
-          style={{ color: style.text, fontSize: 18, lineHeight: 24 }}>
-          {text}
-        </AppText>
-      </View>
-    </PressableScale>
-  );
-}
-
 // ── 구성자 트리 모달 ────────────────────────────────────────────────────────────────
 
 function NodeRow({
@@ -279,6 +101,8 @@ function NodeRow({
   nodes: Record<string, ComponentNode>;
   visited: Set<string>;
 }): React.JSX.Element | null {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const node = nodes[char];
   const alreadySeen = visited.has(char);
   const newVisited = new Set([...visited, char]);
@@ -293,12 +117,12 @@ function NodeRow({
         paddingVertical: 8,
         flexDirection: 'row', alignItems: 'center', gap: 12,
         borderLeftWidth: depth > 0 ? 1 : 0,
-        borderLeftColor: LOCK.line,
+        borderLeftColor: c.line,
         marginLeft: depth > 0 ? depth * 20 : 0,
         paddingLeft: depth > 0 ? 12 : 0,
       }}>
         <AppText style={{
-          color: depth === 0 ? '#fff' : LOCK.t2,
+          color: depth === 0 ? c.textPrimary : c.textSecondary,
           fontSize: depth === 0 ? 36 : 28,
           fontWeight: '700', lineHeight: depth === 0 ? 44 : 36,
           paddingBottom: 4,
@@ -307,11 +131,11 @@ function NodeRow({
           {char}
         </AppText>
         <View style={{ flex: 1 }}>
-          <AppText variant="body" style={{ color: LOCK.t1, fontWeight: depth === 0 ? '700' : '400' }}>
+          <AppText variant="body" style={{ color: c.textPrimary, fontWeight: depth === 0 ? '700' : '400' }}>
             {node.meaning_ko}
           </AppText>
           {!!readings && (
-            <AppText variant="caption" style={{ color: LOCK.t3 }}>{readings}</AppText>
+            <AppText variant="caption" style={{ color: c.textTertiary }}>{readings}</AppText>
           )}
         </View>
       </View>
@@ -333,6 +157,8 @@ function KanjiPane({
 }: {
   character: string;
 }): React.JSX.Element {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const [data, setData] = useState<ComponentTreeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -360,20 +186,20 @@ function KanjiPane({
   if (loading) {
     return (
       <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-        <ActivityIndicator color={LOCK.brand} />
+        <ActivityIndicator color={c.brand} />
       </View>
     );
   }
   if (error) {
     return (
-      <AppText variant="body" style={{ color: LOCK.t3, textAlign: 'center', paddingVertical: 40 }}>
+      <AppText variant="body" style={{ color: c.textTertiary, textAlign: 'center', paddingVertical: 40 }}>
         구성 정보를 불러오지 못했어요
       </AppText>
     );
   }
   if (!data || data.root_components.length === 0) {
     return (
-      <AppText variant="body" style={{ color: LOCK.t3 }}>구성 정보 없음</AppText>
+      <AppText variant="body" style={{ color: c.textTertiary }}>구성 정보 없음</AppText>
     );
   }
   return (
@@ -398,6 +224,8 @@ function ComponentTreeModal({
   characters: string[];
   onClose: () => void;
 }): React.JSX.Element {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const { height: screenH } = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const sheetH = screenH * 0.68;
@@ -420,20 +248,20 @@ function ComponentTreeModal({
 
         <View style={{
           height: sheetH,
-          backgroundColor: LOCK.surface,
+          backgroundColor: c.surface,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          borderTopWidth: 1, borderColor: LOCK.line,
+          borderTopWidth: 1, borderColor: c.line,
         }}>
           {/* 핸들 */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
-            <View style={{ width: 36, height: 4, backgroundColor: LOCK.line, borderRadius: 2 }} />
+            <View style={{ width: 36, height: 4, backgroundColor: c.line, borderRadius: 2 }} />
           </View>
 
           {/* 헤더: 탭(한자 여러 개) + 닫기 */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
             paddingHorizontal: 20, paddingTop: 8, paddingBottom: 0,
-            borderBottomWidth: 1, borderBottomColor: LOCK.line,
+            borderBottomWidth: 1, borderBottomColor: c.line,
           }}>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {characters.map((char, i) => {
@@ -443,10 +271,10 @@ function ComponentTreeModal({
                     <View style={{
                       paddingHorizontal: 16, paddingVertical: 10,
                       borderBottomWidth: 2.5,
-                      borderBottomColor: active ? LOCK.brand : 'transparent',
+                      borderBottomColor: active ? c.brand : 'transparent',
                     }}>
                       <AppText style={{
-                        color: active ? '#fff' : LOCK.t3,
+                        color: active ? c.textPrimary : c.textTertiary,
                         fontSize: 28, fontWeight: '700', lineHeight: 34,
                       }}>
                         {char}
@@ -459,11 +287,11 @@ function ComponentTreeModal({
             <PressableScale onPress={onClose}>
               <View style={{
                 width: 32, height: 32, borderRadius: 16,
-                backgroundColor: LOCK.surface2,
+                backgroundColor: c.surface,
                 alignItems: 'center', justifyContent: 'center',
                 marginBottom: 10,
               }}>
-                <Icon name="close" size={16} color={LOCK.t2} strokeWidth={2.5} />
+                <Icon name="close" size={16} color={c.textSecondary} strokeWidth={2.5} />
               </View>
             </PressableScale>
           </View>
@@ -474,7 +302,7 @@ function ComponentTreeModal({
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
             key={activeChar}>
-            <AppText variant="caption" style={{ color: LOCK.t3, marginBottom: 12 }}>구성</AppText>
+            <AppText variant="caption" style={{ color: c.textTertiary, marginBottom: 12 }}>구성</AppText>
             <KanjiPane character={activeChar} />
           </ScrollView>
         </View>
@@ -508,6 +336,8 @@ function AnswerReveal({
   totalQuestions: number;
   onShowComponents: (chars: string[]) => void;
 }): React.JSX.Element {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const { detail } = question;
   const [bookmarked, setBookmarked] = useState(false);
 
@@ -521,14 +351,14 @@ function AnswerReveal({
     }
   };
 
-  const correctText = question.choices.find(c => c.index === question.answer_index)?.text ?? '';
+  const correctText = question.choices.find(ch => ch.index === question.answer_index)?.text ?? '';
   const selectedText = selectedIndex !== null
-    ? (question.choices.find(c => c.index === selectedIndex)?.text ?? '')
+    ? (question.choices.find(ch => ch.index === selectedIndex)?.text ?? '')
     : '';
 
-  const accentBg     = isCorrect ? LOCK.successBg     : LOCK.dangerBg;
-  const accentBorder = isCorrect ? LOCK.successBorder  : LOCK.dangerBorder;
-  const accentColor  = isCorrect ? LOCK.success        : LOCK.danger;
+  const accentBg     = isCorrect ? withAlpha(c.correct, 0.12) : withAlpha(c.wrong, 0.12);
+  const accentBorder = isCorrect ? withAlpha(c.correct, 0.5)  : withAlpha(c.wrong, 0.5);
+  const accentColor  = isCorrect ? c.correct                  : c.wrong;
 
   return (
     <ScrollView
@@ -554,26 +384,26 @@ function AnswerReveal({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {isCorrect && boxGrade && !offlineMode && (
             <View style={{
-              backgroundColor: LOCK.amber + '22',
+              backgroundColor: withAlpha(c.amber, 0.13),
               borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3,
-              borderWidth: 1, borderColor: LOCK.amber + '66',
+              borderWidth: 1, borderColor: withAlpha(c.amber, 0.4),
             }}>
-              <AppText variant="caption" style={{ color: LOCK.amber, fontWeight: '700' }}>
+              <AppText variant="caption" style={{ color: c.amber, fontWeight: '700' }}>
                 상자 +1
               </AppText>
             </View>
           )}
           {offlineMode && (
-            <AppText variant="caption" style={{ color: LOCK.t3 }}>오프라인</AppText>
+            <AppText variant="caption" style={{ color: c.textTertiary }}>오프라인</AppText>
           )}
-          <AppText variant="caption" style={{ color: LOCK.t3 }}>
+          <AppText variant="caption" style={{ color: c.textTertiary }}>
             {cursor + 1} / {totalQuestions}
           </AppText>
           <PressableScale onPress={handleBookmark}>
             <Icon
               name={bookmarked ? 'bookmark-filled' : 'bookmark'}
               size={20}
-              color={bookmarked ? LOCK.amber : LOCK.t3}
+              color={bookmarked ? c.amber : c.textTertiary}
               strokeWidth={2}
             />
           </PressableScale>
@@ -587,7 +417,7 @@ function AnswerReveal({
       }}>
         {/* 한자 크게 */}
         <AppText style={{
-          color: '#fff', fontSize: 76, lineHeight: 84,
+          color: c.textPrimary, fontSize: 76, lineHeight: 84,
           letterSpacing: -3, fontWeight: '700',
         }}>
           {detail.surface}
@@ -596,20 +426,20 @@ function AnswerReveal({
         {/* 읽기·급수·듣기 */}
         <View style={{ flex: 1, gap: 4 }}>
           {!!detail.meaning && (
-            <AppText variant="subheading" style={{ color: LOCK.t1, fontWeight: '700' }}>
+            <AppText variant="subheading" style={{ color: c.textPrimary, fontWeight: '700' }}>
               {detail.meaning}
             </AppText>
           )}
           {!!detail.on_reading && (
-            <AppText variant="caption" style={{ color: LOCK.t2 }}>{detail.on_reading}</AppText>
+            <AppText variant="caption" style={{ color: c.textSecondary }}>{detail.on_reading}</AppText>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
             {!!question.jlpt_level && (
               <View style={{
-                backgroundColor: LOCK.brand + '22',
+                backgroundColor: withAlpha(c.brand, 0.13),
                 borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
               }}>
-                <AppText variant="micro" style={{ color: LOCK.brand, fontWeight: '700' }}>
+                <AppText variant="micro" style={{ color: c.brand, fontWeight: '700' }}>
                   {question.jlpt_level}
                 </AppText>
               </View>
@@ -621,36 +451,36 @@ function AnswerReveal({
 
       {/* ── 설명 카드 ── */}
       <View style={{
-        backgroundColor: LOCK.surface2,
+        backgroundColor: c.surface,
         borderRadius: 14,
-        borderWidth: 1, borderColor: LOCK.line,
+        borderWidth: 1, borderColor: c.line,
         paddingHorizontal: 14, paddingVertical: 12,
         gap: 8, marginBottom: 12,
       }}>
         {!!detail.stroke_count && (
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-            <AppText variant="caption" style={{ color: LOCK.t3, width: 44 }}>획수</AppText>
-            <AppText variant="body" style={{ color: LOCK.t2 }}>{detail.stroke_count}획</AppText>
+            <AppText variant="caption" style={{ color: c.textTertiary, width: 44 }}>획수</AppText>
+            <AppText variant="body" style={{ color: c.textSecondary }}>{detail.stroke_count}획</AppText>
           </View>
         )}
         {!!detail.components && (
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-            <AppText variant="caption" style={{ color: LOCK.t3, width: 44 }}>구성</AppText>
+            <AppText variant="caption" style={{ color: c.textTertiary, width: 44 }}>구성</AppText>
             <View style={{ flex: 1, gap: 6 }}>
-              <AppText variant="body" style={{ color: LOCK.t2 }}>{detail.components}</AppText>
+              <AppText variant="body" style={{ color: c.textSecondary }}>{detail.components}</AppText>
               <PressableScale onPress={() => {
-                const chars = [...detail.surface].filter(c => c >= '一' && c <= '鿿');
+                const chars = [...detail.surface].filter(ch => ch >= '一' && ch <= '鿿');
                 onShowComponents(chars.length > 0 ? chars : [detail.surface]);
               }}>
                 <View style={{
                   flexDirection: 'row', alignItems: 'center', gap: 5,
                   alignSelf: 'flex-start',
-                  backgroundColor: LOCK.surface3,
+                  backgroundColor: c.surfaceAlt,
                   borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
-                  borderWidth: 1, borderColor: LOCK.line,
+                  borderWidth: 1, borderColor: c.line,
                 }}>
-                  <AppText variant="caption" style={{ color: LOCK.t2 }}>구성 자세히 보기</AppText>
-                  <AppText variant="caption" style={{ color: LOCK.t3 }}>›</AppText>
+                  <AppText variant="caption" style={{ color: c.textSecondary }}>구성 자세히 보기</AppText>
+                  <AppText variant="caption" style={{ color: c.textTertiary }}>›</AppText>
                 </View>
               </PressableScale>
             </View>
@@ -661,11 +491,11 @@ function AnswerReveal({
       {/* ── 다음 버튼 ── */}
       <PressableScale onPress={onNext}>
         <View style={{
-          backgroundColor: LOCK.brand,
+          backgroundColor: c.brand,
           borderRadius: 16, paddingVertical: 15,
           alignItems: 'center',
         }}>
-          <AppText variant="label" style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+          <AppText variant="label" style={{ color: c.textPrimary, fontWeight: '700', fontSize: 16 }}>
             {isLast ? '완료' : '다음 문제'}
           </AppText>
         </View>
@@ -697,11 +527,13 @@ export default function LockQuizScreen({
   navigation,
 }: MainStackScreenProps<'LockQuiz'>): React.JSX.Element {
   return (
-    <LockQuizView
-      onUnlock={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
-      onOpenApp={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
-      onOpenBoxes={(boxes) => navigation.navigate('BoxOpen', { boxes })}
-    />
+    <QuizThemeProvider>
+      <LockQuizView
+        onUnlock={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+        onOpenApp={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
+        onOpenBoxes={(boxes) => navigation.navigate('BoxOpen', { boxes })}
+      />
+    </QuizThemeProvider>
   );
 }
 
@@ -710,6 +542,8 @@ export default function LockQuizScreen({
 export function LockQuizView({
   onUnlock, onOpenApp, onOpenBoxes,
 }: LockQuizActions): React.JSX.Element {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const boxes = useBoxes();
   const boxCount = boxes.data?.length ?? 0;
   const { width: screenW } = useWindowDimensions();
@@ -766,8 +600,8 @@ export function LockQuizView({
       const kanjiChars = new Set<string>();
       for (const q of set.questions) {
         const surface = q.detail?.surface ?? '';
-        for (const c of surface) {
-          if (c >= '一' && c <= '鿿') { kanjiChars.add(c); }
+        for (const ch of surface) {
+          if (ch >= '一' && ch <= '鿿') { kanjiChars.add(ch); }
         }
       }
       for (const char of kanjiChars) {
@@ -952,7 +786,7 @@ export function LockQuizView({
   const cursorDisplay =
     (phase.type === 'playing' || phase.type === 'reveal') ? phase.cursor + 1 : 0;
 
-  function choiceVisual(index: number, selectedIndex: number | null, correctIndex: number): ChoiceVisual {
+  function choiceVisual(index: number, selectedIndex: number | null, correctIndex: number) {
     if (selectedIndex === null) { return 'default'; }
     if (index === correctIndex) { return 'correct'; }
     if (index === selectedIndex) { return 'wrong'; }
@@ -971,7 +805,7 @@ export function LockQuizView({
     if (phase.type === 'loading') {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={LOCK.brand} />
+          <ActivityIndicator color={c.brand} />
         </View>
       );
     }
@@ -979,8 +813,8 @@ export function LockQuizView({
     if (phase.type === 'noContent') {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Icon name="sparkles" size={44} color={LOCK.amber} />
-          <AppText variant="title" style={{ color: LOCK.t1, textAlign: 'center' }}>
+          <Icon name="sparkles" size={44} color={c.amber} />
+          <AppText variant="title" style={{ color: c.textPrimary, textAlign: 'center' }}>
             오늘 복습할 문제가 없어요
           </AppText>
         </View>
@@ -990,8 +824,8 @@ export function LockQuizView({
     if (phase.type === 'cooldown') {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          <Icon name="clock" size={40} color={LOCK.t3} />
-          <AppText variant="subheading" style={{ color: LOCK.t1, textAlign: 'center' }}>
+          <Icon name="clock" size={40} color={c.textTertiary} />
+          <AppText variant="subheading" style={{ color: c.textPrimary, textAlign: 'center' }}>
             다음 세트까지
           </AppText>
           <CooldownTimer until={phase.cooldownUntil} />
@@ -1029,7 +863,7 @@ export function LockQuizView({
         {/* 진행 표시 */}
         <AppText
           variant="caption"
-          style={{ color: LOCK.t3, textAlign: 'center', marginBottom: 6 }}>
+          style={{ color: c.textTertiary, textAlign: 'center', marginBottom: 6 }}>
           {cursorDisplay} / {totalQuestions}
         </AppText>
 
@@ -1037,7 +871,7 @@ export function LockQuizView({
         {!!currentQuestion.reading && (
           <AppText
             variant="caption"
-            style={{ color: LOCK.t3, textAlign: 'center', letterSpacing: 1.5, marginBottom: 2 }}>
+            style={{ color: c.textTertiary, textAlign: 'center', letterSpacing: 1.5, marginBottom: 2 }}>
             {currentQuestion.reading}
           </AppText>
         )}
@@ -1046,7 +880,7 @@ export function LockQuizView({
         <AppText
           variant="hero"
           style={{
-            color: '#fff', fontSize: 52, lineHeight: 58,
+            color: c.textPrimary, fontSize: 52, lineHeight: 58,
             letterSpacing: -1, textAlign: 'center', marginBottom: 6,
           }}>
           {currentQuestion.prompt}
@@ -1062,7 +896,7 @@ export function LockQuizView({
         {/* 지시문 */}
         <AppText
           variant="label"
-          style={{ color: LOCK.t2, textAlign: 'center', marginBottom: 16 }}>
+          style={{ color: c.textSecondary, textAlign: 'center', marginBottom: 16 }}>
           {quizInstruction(currentQuestion.item_type, currentQuestion.question_type)}
         </AppText>
 
@@ -1088,8 +922,8 @@ export function LockQuizView({
   // ── 전체 레이아웃 ──────────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1, backgroundColor: LOCK.bg }}>
-      <LockBackground />
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <QuizBackground />
       <GestureDetector gesture={pan}>
         <Animated.View style={{ flex: 1, opacity, transform: [{ translateX: dragX }] }}>
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
@@ -1102,34 +936,34 @@ export function LockQuizView({
             <View>
               <AppText
                 variant="hero"
-                style={{ color: '#fff', fontSize: 50, letterSpacing: -1.5 }}>
+                style={{ color: c.textPrimary, fontSize: 50, letterSpacing: -1.5 }}>
                 {clock.time}
               </AppText>
-              <AppText variant="caption" style={{ color: LOCK.t2, marginTop: 8 }}>
+              <AppText variant="caption" style={{ color: c.textSecondary, marginTop: 8 }}>
                 {clock.date}
               </AppText>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <PressableScale onPress={onOpenApp}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 46 }}>
-                  <AppText variant="label" style={{ color: LOCK.t2 }}>앱 열기</AppText>
-                  <Icon name="chevron-right" size={15} color={LOCK.t2} strokeWidth={2.4} />
+                  <AppText variant="label" style={{ color: c.textSecondary }}>앱 열기</AppText>
+                  <Icon name="chevron-right" size={15} color={c.textSecondary} strokeWidth={2.4} />
                 </View>
               </PressableScale>
               <PressableScale onPress={openBoxes} disabled={boxCount === 0}>
                 <View style={{
                   width: 46, height: 46, borderRadius: 23,
                   alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: LOCK.surface2,
+                  backgroundColor: c.surface,
                   borderWidth: 1, borderColor: 'rgba(255,206,0,0.45)',
                   opacity: boxCount === 0 ? 0.45 : 1,
                 }}>
-                  <Icon name="gift" size={20} color={LOCK.amber} strokeWidth={2} />
+                  <Icon name="gift" size={20} color={c.amber} strokeWidth={2} />
                   {boxCount > 0 && (
                     <View style={{
                       position: 'absolute', top: -5, right: -5,
                       minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5,
-                      backgroundColor: LOCK.amber,
+                      backgroundColor: c.amber,
                       alignItems: 'center', justifyContent: 'center',
                     }}>
                       <AppText variant="micro" style={{ color: '#241b00', fontWeight: '800' }}>
@@ -1150,14 +984,14 @@ export function LockQuizView({
           {/* 하단: 밀어서 잠금해제 */}
           <View style={{ paddingBottom: 26, alignItems: 'center', paddingTop: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <AppText variant="caption" style={{ color: LOCK.t3, letterSpacing: 0.3 }}>
+              <AppText variant="caption" style={{ color: c.textTertiary, letterSpacing: 0.3 }}>
                 밀어서 잠금해제
               </AppText>
-              <Icon name="chevron-right" size={14} color={LOCK.t3} strokeWidth={2.2} />
+              <Icon name="chevron-right" size={14} color={c.textTertiary} strokeWidth={2.2} />
             </View>
             <View style={{
               marginTop: 12, width: 128, height: 5, borderRadius: 3,
-              backgroundColor: 'rgba(255,255,255,0.16)',
+              backgroundColor: withAlpha(c.textTertiary, 0.5),
             }} />
           </View>
 
@@ -1179,13 +1013,15 @@ export function LockQuizView({
 // ── 쿨다운 카운터 ─────────────────────────────────────────────────────────────────
 
 function CooldownTimer({ until }: { until: string }): React.JSX.Element {
+  const theme = useQuizTheme();
+  const c = theme.colors;
   const [remaining, setRemaining] = useState(() => formatRemaining(until));
   useEffect(() => {
     const id = setInterval(() => setRemaining(formatRemaining(until)), 1000);
     return () => clearInterval(id);
   }, [until]);
   return (
-    <AppText variant="display" style={{ color: LOCK.brand, fontWeight: '700', letterSpacing: 2 }}>
+    <AppText variant="display" style={{ color: c.brand, fontWeight: '700', letterSpacing: 2 }}>
       {remaining}
     </AppText>
   );
