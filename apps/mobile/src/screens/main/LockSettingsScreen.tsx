@@ -16,12 +16,11 @@ import {
   isLockScreenEnabled,
   lockScreenAvailable,
 } from '../../lib/lockScreen';
+import type { MainStackScreenProps } from '../../navigation/types';
 
-function comingSoon() {
-  Alert.alert('준비 중', '곧 제공될 기능이에요.');
-}
-
-export default function LockSettingsScreen(): React.JSX.Element {
+export default function LockSettingsScreen({
+  navigation,
+}: MainStackScreenProps<'LockSettings'>): React.JSX.Element {
   const [lockEnabled, setLockEnabled] = useState(false);
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export default function LockSettingsScreen(): React.JSX.Element {
                 leftIcon="sparkles"
                 title="잠금화면 디자인"
                 subtitle="배경·테마 바꾸기"
-                onPress={comingSoon}
+                onPress={() => navigation.navigate('LockTheme')}
                 last
               />
             </ListSection>
