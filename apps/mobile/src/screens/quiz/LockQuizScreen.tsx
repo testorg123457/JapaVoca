@@ -629,9 +629,19 @@ export function LockQuizView({
 
   // 세트 로드
   const loadSet = useCallback(async () => {
-    setPhase({ type: 'loading' });
     submitLockRef.current = false;
     reviewEntriesRef.current = [];
+
+    // 캐시된 세트가 있고 아직 안 끝났으면 서버 요청 없이 즉시 재개
+    const cached = getCachedSet();
+    const savedCursor = getCursor();
+    if (cached && savedCursor < cached.questions.length) {
+      startRef.current = Date.now();
+      setPhase({ type: 'playing', cursor: savedCursor, set: cached });
+      return;
+    }
+
+    setPhase({ type: 'loading' });
 
     try {
       const set = await getQuizSet();

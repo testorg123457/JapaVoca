@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
+import LottieView from 'lottie-react-native';
 
 import {
   AppHeader,
@@ -156,11 +157,12 @@ export default function HomeScreen(): React.JSX.Element {
               onPress={boxCount > 0 ? openBoxes : undefined}
               className="items-center gap-md py-3xl"
               style={boxCount === 0 ? { opacity: 0.55 } : undefined}>
-              <View
-                className="items-center justify-center rounded-full"
-                style={{ width: 96, height: 96, backgroundColor: c['brand-subtle'] }}>
-                <Icon name="gift" size={52} color={boxCount > 0 ? c.brand : c['text-tertiary']} />
-              </View>
+              <LottieView
+                source={require('../../assets/gift-animation.json')}
+                autoPlay
+                loop
+                style={{ width: 96, height: 96 }}
+              />
               <AppText variant="display" className="text-text-primary">
                 보유 상자 {boxCount}개
               </AppText>
