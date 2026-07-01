@@ -15,6 +15,7 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
+import LottieView from 'lottie-react-native';
 
 import { AppText } from '../../components';
 import { mint } from '../../theme/tokens';
@@ -123,6 +124,14 @@ export default function LoginScreen(): React.JSX.Element {
               borderRadius: 180,
               backgroundColor: mint[100],
             }}
+          />
+
+          {/* 우상단 Lottie 장식 — 모서리에서 거리를 두고 배치 */}
+          <LottieView
+            source={require('../../assets/message-sent-animation.json')}
+            autoPlay
+            loop
+            style={{ position: 'absolute', top: 44, right: 30, width: 160, height: 160, zIndex: 1 }}
           />
 
           {/* 타이포 — 남은 공간 아래 정렬 */}
