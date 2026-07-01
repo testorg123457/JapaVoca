@@ -80,7 +80,7 @@ export default function BoxOpenScreen({
       try {
         const [res] = await Promise.all([
           openBox(box.id, adShown),
-          new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+          new Promise<void>((resolve) => setTimeout(resolve, 1800)),
         ]);
         if (!mountedRef.current) { return; }
         setResult(res as OpenBoxResult);
