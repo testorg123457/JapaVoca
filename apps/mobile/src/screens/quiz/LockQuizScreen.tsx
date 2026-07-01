@@ -633,10 +633,11 @@ export function LockQuizView({
     submitLockRef.current = false;
     reviewEntriesRef.current = [];
 
-    // 캐시된 세트가 있고 아직 안 끝났으면 서버 요청 없이 즉시 재개
+    // 캐시된 세트가 있고 마지막 문제 전이면 서버 요청 없이 즉시 재개.
+    // 마지막 문제(cursor === length-1)는 이전 세션에서 이미 제출됐을 수 있으므로 서버 확인.
     const cached = getCachedSet();
     const savedCursor = getCursor();
-    if (cached && savedCursor < cached.questions.length) {
+    if (cached && savedCursor < cached.questions.length - 1) {
       startRef.current = Date.now();
       setPhase({ type: 'playing', cursor: savedCursor, set: cached });
       return;
