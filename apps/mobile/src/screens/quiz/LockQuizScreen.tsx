@@ -42,6 +42,7 @@ import { useBoxes } from '../../api/hooks';
 import { quizInstruction } from '../../lib/quizCopy';
 import {
   addPendingAnswer,
+  clearCachedSet,
   clearPendingAnswers,
   getCachedSet,
   getCachedComponentTree,
@@ -807,6 +808,7 @@ export function LockQuizView({
 
     if (nextCursor >= set.questions.length) {
       // 세트 완료 → 복습 데이터 저장 후 즉시 복습 화면 열기, 쿨다운은 백그라운드 진행
+      clearCachedSet(); // 캐시 클리어: loadSet()이 캐시 히트 대신 서버 요청하도록
       if (reviewEntriesRef.current.length > 0) {
         const reviewData: ReviewData = {
           setId: set.set_id,

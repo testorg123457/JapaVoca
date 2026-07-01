@@ -14,6 +14,7 @@ import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySe
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
+import { clearCachedSet } from '../../store/quizSet';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -76,6 +77,7 @@ export default function SettingsScreen(): React.JSX.Element {
         onSuccess: () => {
           abandonQuizSet.mutate(undefined, {
             onSuccess: () => {
+              clearCachedSet(); // 학습 설정 변경 시 캐시 클리어: 다음 진입 시 새 세트 요청
               setJustSaved(true);
               if (savedTimer.current) { clearTimeout(savedTimer.current); }
               savedTimer.current = setTimeout(() => setJustSaved(false), 1500);
