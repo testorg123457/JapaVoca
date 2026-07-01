@@ -7,7 +7,7 @@
  * - componentTree: 한자별 구성 트리 캐시. 오프라인에서 구성 자세히 보기에 사용.
  */
 import { createMMKV } from 'react-native-mmkv';
-import type { QuizSetResponse, SyncItem } from '../api/quiz';
+import type { QuizSetQuestion, QuizSetResponse, SyncItem } from '../api/quiz';
 import type { ComponentTreeResponse } from '../api/content';
 
 const storage = createMMKV({ id: 'quiz' });
@@ -60,6 +60,36 @@ export function addPendingAnswer(answer: PendingAnswer): void {
 
 export function clearPendingAnswers(): void {
   storage.remove(PENDING_KEY);
+}
+
+// ── 복습 데이터 ──────────────────────────────────────────────────────────────────
+
+const REVIEW_KEY = 'quiz.lastReview';
+
+export type ReviewEntry = {
+  question: QuizSetQuestion;
+  selectedIndex: number;
+  isCorrect: boolean;
+};
+
+export type ReviewData = {
+  setId: number;
+  completedAt: string; // ISO
+  entries: ReviewEntry[];
+};
+
+export function getLastReview(): ReviewData | null {
+  const raw = storage.getString(REVIEW_KEY);
+  if (!raw) { return null; }
+  try { return JSON.parse(raw) as ReviewData; } catch { return null; }
+}
+
+export function setLastReview(data: ReviewData): void {
+  storage.set(REVIEW_KEY, JSON.stringify(data));
+}
+
+export function clearLastReview(): void {
+  storage.remove(REVIEW_KEY);
 }
 
 // ── 구성 트리 캐시 ───────────────────────────────────────────────────────────────

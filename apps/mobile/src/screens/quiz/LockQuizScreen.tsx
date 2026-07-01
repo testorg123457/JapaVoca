@@ -50,7 +50,11 @@ import {
   setCachedSet,
   setCachedComponentTree,
   setCursor,
+  setLastReview,
+  type ReviewEntry,
+  type ReviewData,
 } from '../../store/quizSet';
+import { QuizReviewModal } from './QuizReviewModal';
 import type { MainStackScreenProps } from '../../navigation/types';
 import { QuizThemeProvider } from '../../theme/quiz/QuizThemeProvider';
 import { useQuizTheme } from '../../theme/quiz/useQuizTheme';
@@ -603,6 +607,9 @@ export function LockQuizView({
   const submitLockRef = useRef(false);
   const mountedRef = useRef(true);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reviewEntriesRef = useRef<ReviewEntry[]>([]);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [lastReviewData, setLastReviewDataState] = useState<ReviewData | null>(null);
 
   // 분 단위 시계
   useEffect(() => {
@@ -624,6 +631,7 @@ export function LockQuizView({
   const loadSet = useCallback(async () => {
     setPhase({ type: 'loading' });
     submitLockRef.current = false;
+    reviewEntriesRef.current = [];
 
     try {
       const set = await getQuizSet();
@@ -712,6 +720,20 @@ export function LockQuizView({
     };
   }, [phase, loadSet]);
 
+  // 새 세트 시작 시 복습 화면 자동 닫힘
+  useEffect(() => {
+    if ((phase.type === 'playing' || phase.type === 'noContent') && reviewOpen) {
+      setReviewOpen(false);
+    }
+  }, [phase.type, reviewOpen]);
+
+  const recordEntry = useCallback((question: QuizSetQuestion, selectedIndex: number, isCorrect: boolean) => {
+    reviewEntriesRef.current = [
+      ...reviewEntriesRef.current.filter(e => e.question.question_token !== question.question_token),
+      { question, selectedIndex, isCorrect },
+    ];
+  }, []);
+
   const handleSelect = useCallback(async (choiceIndex: number) => {
     if (submitLockRef.current || phase.type !== 'playing') { return; }
     submitLockRef.current = true;
@@ -730,6 +752,7 @@ export function LockQuizView({
         if (!mountedRef.current) { return; }
         setIsOnline(true);
         if (res.box_id !== null) { boxes.refetch(); }
+        recordEntry(question, choiceIndex, res.is_correct);
         setPhase({
           type: 'reveal', cursor, set,
           selectedIndex: choiceIndex,
@@ -748,6 +771,7 @@ export function LockQuizView({
             answer_ms: answerMs,
             answered_at: new Date().toISOString(),
           });
+          recordEntry(question, choiceIndex, isCorrect);
           setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
         } else {
           submitLockRef.current = false;
@@ -761,9 +785,10 @@ export function LockQuizView({
         answer_ms: answerMs,
         answered_at: new Date().toISOString(),
       });
+      recordEntry(question, choiceIndex, isCorrect);
       setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
     }
-  }, [phase, isOnline, boxes]);
+  }, [phase, isOnline, boxes, recordEntry]);
 
   const handleNext = useCallback(() => {
     if (phase.type !== 'reveal') { return; }
@@ -771,7 +796,17 @@ export function LockQuizView({
     const nextCursor = cursor + 1;
 
     if (nextCursor >= set.questions.length) {
-      // 세트 완료 → 온라인이면 새 세트(서버가 쿨다운 반환), 오프라인이면 noContent
+      // 세트 완료 → 복습 데이터 저장 후 즉시 복습 화면 열기, 쿨다운은 백그라운드 진행
+      if (reviewEntriesRef.current.length > 0) {
+        const reviewData: ReviewData = {
+          setId: set.set_id,
+          completedAt: new Date().toISOString(),
+          entries: reviewEntriesRef.current,
+        };
+        setLastReview(reviewData);
+        setLastReviewDataState(reviewData);
+        setReviewOpen(true);
+      }
       loadSet();
     } else {
       setCursor(nextCursor);
@@ -1050,6 +1085,15 @@ export function LockQuizView({
         <ComponentTreeModal
           characters={componentChars}
           onClose={() => setComponentChars(null)}
+        />
+      )}
+
+      {/* 복습 화면 — 세트 완료 즉시 자동 열림, 새 세트 준비 시 자동 닫힘 */}
+      {reviewOpen && lastReviewData && (
+        <QuizReviewModal
+          data={lastReviewData}
+          cooldownUntil={phase.type === 'cooldown' ? phase.cooldownUntil : undefined}
+          onClose={() => setReviewOpen(false)}
         />
       )}
     </View>
