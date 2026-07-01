@@ -7,9 +7,9 @@
  * 잠금화면 모듈이 없는 환경(iOS/빌드 전)에서는 안내만 노출한다.
  */
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
-import { AppHeader, AppText, ListRow, ListSection, ToggleRow } from '../../components';
+import { AppHeader, AppText, ConfirmSheet, ListRow, ListSection, ToggleRow } from '../../components';
 import {
   disableLockScreen,
   enableLockScreen,
@@ -22,6 +22,7 @@ export default function LockSettingsScreen({
   navigation,
 }: MainStackScreenProps<'LockSettings'>): React.JSX.Element {
   const [lockEnabled, setLockEnabled] = useState(false);
+  const [lockSheetVisible, setLockSheetVisible] = useState(false);
 
   useEffect(() => {
     isLockScreenEnabled().then(setLockEnabled);
@@ -31,10 +32,7 @@ export default function LockSettingsScreen({
     setLockEnabled(next);
     if (next) {
       enableLockScreen();
-      Alert.alert(
-        '잠금화면 학습 켜짐',
-        '화면을 켜거나 잠금을 해제할 때 퀴즈가 떠요.\n삼성 기기는 설정에서 "자동 실행"·배터리 최적화 제외가 필요할 수 있어요.',
-      );
+      setLockSheetVisible(true);
     } else {
       disableLockScreen();
     }
@@ -73,6 +71,14 @@ export default function LockSettingsScreen({
           </View>
         )}
       </ScrollView>
+
+      <ConfirmSheet
+        visible={lockSheetVisible}
+        title="잠금화면 학습 켜짐"
+        message={'화면을 켜거나 잠금을 해제할 때 퀴즈가 떠요.\n\n삼성 기기는 설정에서 "자동 실행"·배터리 최적화 제외가 필요할 수 있어요.'}
+        confirmText="확인"
+        onConfirm={() => setLockSheetVisible(false)}
+      />
     </View>
   );
 }

@@ -6,11 +6,11 @@
  * 비즈니스 로직은 기존 훅(useUpdateProfile/useAuth) 그대로 — 화면은 호출만.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native'; // Alert는 오류 알림에만 유지
 import { useNavigation } from '@react-navigation/native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
-import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
+import { AppHeader, AppText, ConfirmSheet, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { useAuth } from '../../store/AuthContext';
@@ -31,6 +31,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const { signOut } = useAuth();
   const [studySel, setStudySel] = useState<StudySelection | null>(null);
   const studyInitialized = useRef(false);
+  const [logoutSheetVisible, setLogoutSheetVisible] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,10 +104,7 @@ export default function SettingsScreen(): React.JSX.Element {
     updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
 
   function confirmLogout() {
-    Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
-      { text: '취소', style: 'cancel' },
-      { text: '로그아웃', style: 'destructive', onPress: signOut },
-    ]);
+    setLogoutSheetVisible(true);
   }
 
   const studyLoading = updateProfile.isPending || abandonQuizSet.isPending;
@@ -241,6 +239,19 @@ export default function SettingsScreen(): React.JSX.Element {
         </AppText>
       </ScrollView>
 
+      <ConfirmSheet
+        visible={logoutSheetVisible}
+        title="로그아웃"
+        message="정말 로그아웃하시겠어요?"
+        cancelText="취소"
+        confirmText="로그아웃"
+        onCancel={() => setLogoutSheetVisible(false)}
+        onConfirm={() => {
+          setLogoutSheetVisible(false);
+          setTimeout(() => signOut(), 260);
+        }}
+        danger
+      />
     </View>
   );
 }

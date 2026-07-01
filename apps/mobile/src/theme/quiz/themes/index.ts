@@ -1,9 +1,13 @@
 import type { QuizTheme } from '../contract';
 import classic from './classic';
-import paper from './paper';
+import charcoal from './charcoal';
+import sky from './sky';
+import meadow from './meadow';
+import pink from './pink';
+import linen from './linen';
 
 /** 새 테마 추가 = 위에 import 1줄 + 아래 배열에 1개 추가. */
-const ALL: QuizTheme[] = [classic, paper];
+const ALL: QuizTheme[] = [classic, charcoal, sky, meadow, pink, linen];
 
 export const DEFAULT_THEME_ID = 'classic';
 

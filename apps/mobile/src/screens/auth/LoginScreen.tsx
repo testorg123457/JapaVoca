@@ -17,7 +17,7 @@ import {
 import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 import LottieView from 'lottie-react-native';
 
-import { AppText } from '../../components';
+import { AppText, ConfirmSheet } from '../../components';
 import { mint } from '../../theme/tokens';
 import { useAuth } from '../../store/AuthContext';
 
@@ -49,6 +49,7 @@ function KakaoIcon() {
 export default function LoginScreen(): React.JSX.Element {
   const { startOnboarding } = useAuth();
   const [loadingMethod, setLoadingMethod] = useState<'google' | 'kakao' | 'guest' | null>(null);
+  const [guestSheetVisible, setGuestSheetVisible] = useState(false);
   const isLoading = loadingMethod !== null;
 
   useEffect(() => {
@@ -91,17 +92,7 @@ export default function LoginScreen(): React.JSX.Element {
 
   function handleGuestLogin() {
     if (isLoading) { return; }
-    Alert.alert(
-      '게스트로 시작하기 전에',
-      '게스트는 이 기기에만 저장돼요.\n\n' +
-        '• 앱을 삭제하거나 기기를 바꾸면 캐시·학습 기록이 사라져요.\n' +
-        '• 게스트는 기프티콘 교환이 제한돼요.\n\n' +
-        '설정에서 구글·카카오 계정을 연결하면 기록을 보관할 수 있어요.',
-      [
-        { text: '취소', style: 'cancel' },
-        { text: '동의하고 시작', onPress: () => startOnboarding({ method: 'guest' }) },
-      ],
-    );
+    setGuestSheetVisible(true);
   }
 
   return (
@@ -131,7 +122,7 @@ export default function LoginScreen(): React.JSX.Element {
             source={require('../../assets/message-sent-animation.json')}
             autoPlay
             loop
-            style={{ position: 'absolute', top: 44, right: 30, width: 160, height: 160, zIndex: 1 }}
+            style={{ position: 'absolute', top: 40, right: 30, width: 175, height: 175, zIndex: 1 }}
           />
 
           {/* 타이포 — 남은 공간 아래 정렬 */}
@@ -224,6 +215,24 @@ export default function LoginScreen(): React.JSX.Element {
         </View>
 
       </SafeAreaView>
+
+      <ConfirmSheet
+        visible={guestSheetVisible}
+        title="게스트로 시작하기 전에"
+        message={
+          '게스트는 이 기기에만 저장돼요.\n\n' +
+          '• 앱을 삭제하거나 기기를 바꾸면 캐시·학습 기록이 사라져요.\n' +
+          '• 게스트는 기프티콘 교환이 제한돼요.\n\n' +
+          '설정에서 구글·카카오 계정을 연결하면 기록을 보관할 수 있어요.'
+        }
+        cancelText="취소"
+        confirmText="동의하고 시작"
+        onCancel={() => setGuestSheetVisible(false)}
+        onConfirm={() => {
+          setGuestSheetVisible(false);
+          setTimeout(() => startOnboarding({ method: 'guest' }), 260);
+        }}
+      />
     </View>
   );
 }

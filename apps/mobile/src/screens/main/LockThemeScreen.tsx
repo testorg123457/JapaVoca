@@ -4,7 +4,7 @@
  * 각 테마는 색 스와치 미니 프리뷰로 보여주고, 탭하면 선택·영속.
  */
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ImageBackground, ScrollView, View } from 'react-native';
 
 import { AppHeader, AppText, Icon, PressableScale } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
@@ -39,16 +39,30 @@ export default function LockThemeScreen(): React.JSX.Element {
                 borderWidth: 1.5,
                 borderColor: active ? c.brand : c['border-secondary'],
               }}>
-                {/* 미니 프리뷰: 배경 + 선택지 2개 + 브랜드 점 */}
-                <View style={{
-                  width: 56, height: 56, borderRadius: 12, overflow: 'hidden',
-                  backgroundColor: t.colors.bg,
-                  borderWidth: 1, borderColor: t.colors.line,
-                  alignItems: 'center', justifyContent: 'center', gap: 4,
-                }}>
-                  <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.surface }} />
-                  <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.brand }} />
-                </View>
+                {/* 미니 프리뷰: 실제 배경 위에 선택지 + 브랜드 버튼 */}
+                {t.shape.background.kind === 'image' ? (
+                  <ImageBackground
+                    source={t.shape.background.source}
+                    resizeMode="cover"
+                    style={{
+                      width: 56, height: 56, overflow: 'hidden',
+                      alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}
+                    imageStyle={{ borderRadius: 12 }}>
+                    <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.surface }} />
+                    <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.brand }} />
+                  </ImageBackground>
+                ) : (
+                  <View style={{
+                    width: 56, height: 56, borderRadius: 12, overflow: 'hidden',
+                    backgroundColor: t.colors.bg,
+                    borderWidth: 1, borderColor: t.colors.line,
+                    alignItems: 'center', justifyContent: 'center', gap: 4,
+                  }}>
+                    <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.surface }} />
+                    <View style={{ width: 34, height: 9, borderRadius: 4, backgroundColor: t.colors.brand }} />
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <AppText variant="subheading" style={{ color: c['text-primary'] }}>{t.name}</AppText>
                   <AppText variant="caption" style={{ color: c['text-tertiary'] }}>
