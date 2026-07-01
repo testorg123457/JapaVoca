@@ -37,6 +37,13 @@ export async function getNextQuiz(): Promise<QuizQuestion> {
 
 // ── 세트 출제 ────────────────────────────────────────────────────────────────────
 
+export type KanaExampleWord = {
+  surface: string;
+  /** 한자 표기. 없으면 빈 문자열 */
+  kanji: string;
+  meaning: string;
+};
+
 export type QuizSetDetail = {
   surface: string;
   reading: string;
@@ -47,6 +54,8 @@ export type QuizSetDetail = {
   kun_reading: string;
   /** 가나일 때 'hira'|'kata', 그 외 null */
   script: 'hira' | 'kata' | null;
+  /** 가나 퀴즈 전용 — 랜덤 풀에서 선택된 예시 단어 최대 2개 */
+  example_words?: KanaExampleWord[];
 };
 
 export type QuizSetQuestion = {

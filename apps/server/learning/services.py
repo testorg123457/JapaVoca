@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from content.models import Kana, Kanji, Word, WordMeaning
+from content.models import Kana, KanaExample, Kanji, Word, WordMeaning
 from rewards.models import CashBox
 
 from .models import Bookmark, ItemType, QuizLog, QuizSet, QuizSetItem, SrsState
@@ -90,6 +90,11 @@ def _item_detail(item_type, item_id, word_type=None):
         kana = Kana.objects.filter(id=item_id).first()
         if not kana:
             return {}
+        examples = KanaExample.objects.filter(kana_id=item_id).order_by('?')[:2]
+        example_words = [
+            {'surface': ex.surface, 'kanji': ex.kanji, 'meaning': ex.meaning_ko}
+            for ex in examples
+        ]
         return {
             'surface': kana.character,
             'reading': kana.romaji,
@@ -99,6 +104,7 @@ def _item_detail(item_type, item_id, word_type=None):
             'on_reading': '',
             'kun_reading': '',
             'script': kana.script,
+            'example_words': example_words,
         }
     if item_type == ItemType.KANJI:
         kanji = Kanji.objects.filter(id=item_id).first()

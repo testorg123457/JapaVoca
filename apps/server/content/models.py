@@ -128,3 +128,29 @@ class WordMeaning(models.Model):
 
     def __str__(self):
         return f'{self.word.surface} #{self.sense_no}: {self.meaning_ko[:20]}'
+
+
+class KanaExample(models.Model):
+    """가나 글자별 예시 단어 풀. 데이터는 외부 프로젝트에서 직접 삽입.
+
+    조회 시 order_by('?')[:2] 로 랜덤 2개 선택 — 글자당 단어 수 제한 없음.
+    """
+
+    kana = models.ForeignKey(Kana, on_delete=models.CASCADE, related_name='examples')
+    surface = models.CharField(max_length=20, help_text='단어 가나 표기 (예: あか)')
+    kanji = models.CharField(max_length=20, blank=True, help_text='한자 표기 (예: 赤), 없으면 빈 문자열')
+    meaning_ko = models.CharField(max_length=100, help_text='한국어 뜻 (예: 빨강)')
+
+    class Meta:
+        db_table = 'tbl_content_kanaexample'
+        verbose_name = '가나 예시 단어'
+        verbose_name_plural = '가나 예시 단어'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['kana', 'surface'], name='uniq_kanaexample_kana_surface',
+            ),
+        ]
+
+    def __str__(self):
+        kanji_part = f'({self.kanji})' if self.kanji else ''
+        return f'{self.kana.character} {self.surface}{kanji_part} : {self.meaning_ko}'

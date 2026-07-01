@@ -488,6 +488,52 @@ function AnswerReveal({
         )}
       </View>
 
+      {/* ── 사용 단어 (가나 퀴즈 전용) ── */}
+      {question.item_type === 'kana' && !!detail.example_words?.length && (
+        <View style={{
+          backgroundColor: c.surface,
+          borderRadius: 14,
+          borderWidth: 1, borderColor: c.line,
+          paddingHorizontal: 14, paddingVertical: 12,
+          marginBottom: 12,
+        }}>
+          <AppText variant="caption" style={{ color: c.textTertiary, marginBottom: 10 }}>
+            사용 단어
+          </AppText>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {detail.example_words.map((ex) => (
+              <PressableScale
+                key={ex.surface}
+                onPress={() => { Tts.speak(ex.surface); }}
+                pressedScale={0.96}
+                style={{ flex: 1 }}>
+                <View style={{
+                  backgroundColor: withAlpha(c.brand, 0.07),
+                  borderRadius: 10,
+                  borderWidth: 1, borderColor: withAlpha(c.brand, 0.15),
+                  paddingHorizontal: 12, paddingVertical: 10,
+                  gap: 2,
+                }}>
+                  <AppText style={{ color: c.textPrimary, fontSize: 22, fontWeight: '700', lineHeight: 28 }}>
+                    {ex.surface}
+                  </AppText>
+                  {!!ex.kanji && (
+                    <AppText variant="caption" style={{ color: c.textTertiary }}>
+                      {ex.kanji}
+                    </AppText>
+                  )}
+                  {!!ex.meaning && (
+                    <AppText variant="body" style={{ color: c.textSecondary }}>
+                      {ex.meaning}
+                    </AppText>
+                  )}
+                </View>
+              </PressableScale>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* ── 다음 버튼 ── */}
       <PressableScale onPress={onNext}>
         <View style={{
