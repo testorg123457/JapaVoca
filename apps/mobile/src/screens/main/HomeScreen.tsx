@@ -172,7 +172,11 @@ export default function HomeScreen(): React.JSX.Element {
             </Card>
 
             {/* 퀴즈 시작 — 핵심 액션 카드 */}
-            <Card onPress={() => navigation.navigate('LockQuiz')} className="flex-row items-center" style={{ gap: 14 }}>
+            <Card
+              variant="flat"
+              onPress={() => navigation.navigate('LockQuiz')}
+              className="flex-row items-center"
+              style={{ gap: 14 }}>
               <View
                 className="items-center justify-center rounded-md"
                 style={{ width: 48, height: 48, backgroundColor: c['brand-subtle'] }}>
