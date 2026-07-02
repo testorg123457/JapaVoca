@@ -329,6 +329,7 @@ function AnswerReveal({
   cursor,
   totalQuestions,
   onShowComponents,
+  onNetworkError,
 }: {
   question: QuizSetQuestion;
   isCorrect: boolean;
@@ -340,6 +341,7 @@ function AnswerReveal({
   cursor: number;
   totalQuestions: number;
   onShowComponents: (chars: string[]) => void;
+  onNetworkError: () => void;
 }): React.JSX.Element {
   const theme = useQuizTheme();
   const c = theme.colors;
@@ -351,8 +353,9 @@ function AnswerReveal({
     setBookmarked(next);
     try {
       await toggleBookmark(question.item_type, question.item_id, next);
-    } catch {
+    } catch (err: any) {
       setBookmarked(!next);
+      if (!err?.response) { onNetworkError(); }
     }
   };
 
@@ -404,7 +407,7 @@ function AnswerReveal({
           <AppText variant="caption" style={{ color: c.textTertiary }}>
             {cursor + 1} / {totalQuestions}
           </AppText>
-          <PressableScale onPress={handleBookmark}>
+          <PressableScale onPress={handleBookmark} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Icon
               name={bookmarked ? 'bookmark-filled' : 'bookmark'}
               size={20}
@@ -603,6 +606,7 @@ export function LockQuizView({
   const [phase, setPhase] = useState<Phase>({ type: 'loading' });
   const [isOnline, setIsOnline] = useState(true);
   const [componentChars, setComponentChars] = useState<string[] | null>(null);
+  const [networkNotice, setNetworkNotice] = useState(false);
 
   const startRef = useRef(0);
   const submitLockRef = useRef(false);
@@ -611,6 +615,13 @@ export function LockQuizView({
   const reviewEntriesRef = useRef<ReviewEntry[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [lastReviewData, setLastReviewDataState] = useState<ReviewData | null>(null);
+
+  // 네트워크 오류 배너 — 3초 후 자동으로 사라짐
+  useEffect(() => {
+    if (!networkNotice) { return; }
+    const id = setTimeout(() => setNetworkNotice(false), 2000);
+    return () => clearTimeout(id);
+  }, [networkNotice]);
 
   // 분 단위 시계
   useEffect(() => {
@@ -629,15 +640,16 @@ export function LockQuizView({
   }, []);
 
   // 세트 로드
-  const loadSet = useCallback(async () => {
+  const loadSet = useCallback(async (opts?: { forceServer?: boolean; notifyOnNetworkFailure?: boolean }) => {
     submitLockRef.current = false;
     reviewEntriesRef.current = [];
 
     // 캐시된 세트가 있고 마지막 문제 전이면 서버 요청 없이 즉시 재개.
     // 마지막 문제(cursor === length-1)는 이전 세션에서 이미 제출됐을 수 있으므로 서버 확인.
+    // forceServer면 캐시가 서버와 어긋났다고 이미 확인된 상태라 캐시를 건너뛰고 서버로 확인한다.
     const cached = getCachedSet();
     const savedCursor = getCursor();
-    if (cached && savedCursor < cached.questions.length - 1) {
+    if (!opts?.forceServer && cached && savedCursor < cached.questions.length - 1) {
       startRef.current = Date.now();
       setPhase({ type: 'playing', cursor: savedCursor, set: cached });
       return;
@@ -649,6 +661,7 @@ export function LockQuizView({
       const set = await getQuizSet();
       if (!mountedRef.current) { return; }
       setIsOnline(true);
+      setNetworkNotice(false);
       flushPending();
 
       if (set.cooldown_until && !set.questions.length) {
@@ -694,6 +707,7 @@ export function LockQuizView({
       // 네트워크 오류 → 캐시 세트로 오프라인 진행
       if (!err?.response) {
         setIsOnline(false);
+        if (opts?.notifyOnNetworkFailure) { setNetworkNotice(true); }
         const cached = getCachedSet();
         if (cached && cached.questions.length) {
           const cursor = getCursor();
@@ -763,6 +777,7 @@ export function LockQuizView({
         });
         if (!mountedRef.current) { return; }
         setIsOnline(true);
+        setNetworkNotice(false);
         if (res.box_id !== null) { boxes.refetch(); }
         recordEntry(question, choiceIndex, res.is_correct);
         setPhase({
@@ -786,7 +801,12 @@ export function LockQuizView({
           recordEntry(question, choiceIndex, isCorrect);
           setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
         } else {
+          // 서버가 토큰을 거부(만료/이미 채점됨 등) — 로컬 캐시 커서가 서버와 어긋난 상태다.
+          // 같은 토큰을 재시도해봐야 계속 실패하므로 캐시를 비우고 서버 기준으로 다시 불러온다.
+          // (재조회 자체가 네트워크 문제로 실패할 수 있으니 그 경우엔 배너로 안내한다.)
           submitLockRef.current = false;
+          clearCachedSet();
+          loadSet({ forceServer: true, notifyOnNetworkFailure: true });
         }
       }
     } else {
@@ -800,7 +820,7 @@ export function LockQuizView({
       recordEntry(question, choiceIndex, isCorrect);
       setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
     }
-  }, [phase, isOnline, boxes, recordEntry]);
+  }, [phase, isOnline, boxes, recordEntry, loadSet]);
 
   const handleNext = useCallback(() => {
     if (phase.type !== 'reveal') { return; }
@@ -943,6 +963,7 @@ export function LockQuizView({
           cursor={phase.cursor}
           totalQuestions={totalQuestions}
           onShowComponents={setComponentChars}
+          onNetworkError={() => setNetworkNotice(true)}
         />
       );
     }
@@ -1069,6 +1090,22 @@ export function LockQuizView({
               </PressableScale>
             </View>
           </View>
+
+          {/* 네트워크 오류 배너 */}
+          {networkNotice && (
+            <View style={{
+              marginHorizontal: 22, marginTop: 12,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: withAlpha(c.wrong, 0.12),
+              borderWidth: 1, borderColor: withAlpha(c.wrong, 0.4),
+              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+            }}>
+              <Icon name="close" size={16} color={c.wrong} strokeWidth={2.4} />
+              <AppText variant="label" style={{ color: c.wrong }}>
+                네트워크 연결을 확인해주세요
+              </AppText>
+            </View>
+          )}
 
           {/* 중앙: 퀴즈 */}
           <View style={{ flex: 1, paddingHorizontal: 22 }}>

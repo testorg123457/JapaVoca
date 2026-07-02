@@ -451,6 +451,7 @@ def build_quiz_set(user):
                 'order': d['order'],
                 'question_token': d['question_token'],
                 'item_type': d['item_type'],
+                'item_id': d['item_id'],
                 'word_type': d['word_type'],
                 'question_type': d['question_type'],
                 'prompt': d['prompt'],

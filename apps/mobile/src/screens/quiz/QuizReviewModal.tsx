@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -84,16 +84,24 @@ function SpeakButton({ text }: { text: string }): React.JSX.Element {
   );
 }
 
-function BookmarkButton({ itemType, itemId }: { itemType: QuizItemType; itemId: number }): React.JSX.Element {
+function BookmarkButton({
+  itemType, itemId, onNetworkError,
+}: { itemType: QuizItemType; itemId: number; onNetworkError: () => void }): React.JSX.Element {
   const [marked, setMarked] = useState(false);
   const onPress = async () => {
     const next = !marked;
     setMarked(next);
-    try { await toggleBookmark(itemType, itemId, next); } catch { setMarked(!next); }
+    try {
+      await toggleBookmark(itemType, itemId, next);
+    } catch (err: any) {
+      setMarked(!next);
+      if (!err?.response) { onNetworkError(); }
+    }
   };
   return (
     <TouchableOpacity
       onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={{
         flexDirection: 'row', alignItems: 'center', gap: 4,
         paddingHorizontal: 10, paddingVertical: 5,
@@ -109,7 +117,9 @@ function BookmarkButton({ itemType, itemId }: { itemType: QuizItemType; itemId: 
   );
 }
 
-function EntryRow({ entry }: { entry: ReviewEntry }): React.JSX.Element {
+function EntryRow({
+  entry, onNetworkError,
+}: { entry: ReviewEntry; onNetworkError: () => void }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const { question, selectedIndex, isCorrect } = entry;
   const { detail, choices, answer_index, item_type, item_id } = question;
@@ -205,7 +215,7 @@ function EntryRow({ entry }: { entry: ReviewEntry }): React.JSX.Element {
             )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <SpeakButton text={speakText} />
-              <BookmarkButton itemType={item_type} itemId={item_id} />
+              <BookmarkButton itemType={item_type} itemId={item_id} onNetworkError={onNetworkError} />
             </View>
           </View>
         </View>
@@ -228,6 +238,13 @@ export function QuizReviewModal({
 }): React.JSX.Element {
   const correct = data.entries.filter(e => e.isCorrect).length;
   const total = data.entries.length;
+
+  const [networkNotice, setNetworkNotice] = useState(false);
+  useEffect(() => {
+    if (!networkNotice) { return; }
+    const id = setTimeout(() => setNetworkNotice(false), 2000);
+    return () => clearTimeout(id);
+  }, [networkNotice]);
 
   return (
     <Modal
@@ -258,6 +275,22 @@ export function QuizReviewModal({
               <Icon name="close" size={20} color={C.onBrand} strokeWidth={2.2} />
             </TouchableOpacity>
           </View>
+
+          {/* 네트워크 오류 배너 */}
+          {networkNotice && (
+            <View style={{
+              marginHorizontal: 16, marginTop: 12,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: C.dangerBg,
+              borderWidth: 1, borderColor: C.danger,
+              borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10,
+            }}>
+              <Icon name="close" size={16} color={C.danger} strokeWidth={2.4} />
+              <AppText variant="label" style={{ color: C.danger }}>
+                네트워크 연결을 확인해주세요
+              </AppText>
+            </View>
+          )}
 
           {/* 리스트 */}
           <ScrollView
@@ -305,7 +338,11 @@ export function QuizReviewModal({
 
             {/* 문제 행들 */}
             {data.entries.map((entry, i) => (
-              <EntryRow key={entry.question.question_token ?? i} entry={entry} />
+              <EntryRow
+                key={entry.question.question_token ?? i}
+                entry={entry}
+                onNetworkError={() => setNetworkNotice(true)}
+              />
             ))}
           </ScrollView>
 
