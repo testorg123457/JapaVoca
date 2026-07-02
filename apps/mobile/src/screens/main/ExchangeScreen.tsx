@@ -76,14 +76,21 @@ export default function ExchangeScreen(): React.JSX.Element {
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="기프티콘 교환" showBack />
       <View className="flex-1">
-        {/* 보유 캐시 안내 */}
-        <View className="flex-row items-center gap-xs border-b border-border-tertiary bg-bg-primary px-xl py-lg">
-          <Icon name="coin" size={18} color={yellow[400]} />
-          <AppText variant="subheading" className="text-text-primary">
-            보유 캐시 {balance.toLocaleString()}C
+        {/* 보유 캐시 밴드 — 옅은 민트 면에 잔액을 크게 */}
+        <View
+          className="px-xl pb-lg pt-md"
+          style={{ backgroundColor: c['brand-subtle'], borderBottomWidth: 1, borderBottomColor: c['border-secondary'] }}>
+          <AppText variant="caption" className="text-text-secondary">
+            보유 캐시
           </AppText>
+          <View className="flex-row items-center" style={{ gap: 6 }}>
+            <Icon name="coin" size={22} color={yellow[400]} />
+            <AppText variant="display" className="text-text-primary">
+              {balance.toLocaleString()}C
+            </AppText>
+          </View>
         </View>
-        <AppText variant="caption" className="px-xl pt-md text-text-tertiary">
+        <AppText variant="caption" className="px-xl pb-sm pt-lg text-text-tertiary">
           상품을 선택하면 광고를 본 뒤 캐시로 교환돼요.
         </AppText>
 
@@ -112,31 +119,54 @@ export default function ExchangeScreen(): React.JSX.Element {
         {products.isLoading ? (
           <ActivityIndicator className="mt-2xl" color={c.brand} />
         ) : (
-          <View className="mt-sm">
+          <View>
             {(products.data ?? []).map((product) => {
               const affordable = balance >= product.price_cash;
+              // 보유율 — 살 수 있으면 100%, 못 사면 목표까지의 진척(회색 바).
+              const ratio = Math.max(0, Math.min(1, balance / product.price_cash));
               return (
                 <PressableScale
                   key={product.code}
                   onPress={() => handleSelect(product)}
                   pressedScale={0.98}
-                  className="flex-row items-center justify-between border-b border-border-tertiary bg-bg-primary px-xl py-lg"
-                  style={affordable ? undefined : { opacity: 0.5 }}>
-                  <View className="flex-row items-center" style={{ gap: 12 }}>
-                    <View
-                      className="items-center justify-center rounded-md"
-                      style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
-                      <Icon name="gift" size={24} color={c.brand} />
-                    </View>
-                    <AppText variant="subheading" className="text-text-primary">
+                  className="flex-row items-center border-b border-border-tertiary bg-bg-primary px-xl py-lg"
+                  style={{ gap: 12 }}>
+                  <View
+                    className="items-center justify-center rounded-md"
+                    style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
+                    <Icon name="gift" size={24} color={affordable ? c.brand : c['text-tertiary']} />
+                  </View>
+                  <View className="flex-1" style={{ gap: 6 }}>
+                    <AppText
+                      variant="subheading"
+                      style={affordable ? undefined : { color: c['text-tertiary'] }}>
                       {product.name}
                     </AppText>
+                    {/* 보유율 바 */}
+                    <View
+                      style={{
+                        height: 3, width: 120, borderRadius: 2,
+                        backgroundColor: c['bg-tertiary'], overflow: 'hidden',
+                      }}>
+                      <View
+                        style={{
+                          height: '100%', width: `${ratio * 100}%`,
+                          backgroundColor: affordable ? c.brand : c['text-tertiary'],
+                        }}
+                      />
+                    </View>
                   </View>
-                  <View className="flex-row items-center" style={{ gap: 4 }}>
-                    <Icon name="coin" size={15} color={yellow[400]} />
-                    <AppText variant="label" className="text-text-primary">
+                  <View className="items-end" style={{ gap: 2 }}>
+                    <AppText
+                      variant="label"
+                      style={affordable ? undefined : { color: c['text-tertiary'] }}>
                       {product.price_cash.toLocaleString()}C
                     </AppText>
+                    {!affordable && (
+                      <AppText variant="micro" style={{ color: c.danger }}>
+                        캐시 부족
+                      </AppText>
+                    )}
                   </View>
                 </PressableScale>
               );

@@ -11,6 +11,7 @@ import type {
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BoxGrade } from '../api/hooks';
+import type { GiftExchange } from '../api/exchange';
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
@@ -61,6 +62,10 @@ export type MainStackParamList = {
   Ledger: undefined;
   /** 구매(기프티콘 교환) 내역(설정 > 구매 내역). */
   ExchangeHistory: undefined;
+  /** 기프티콘 보관함 — 발급완료 기프티콘을 모아 바코드로 사용. */
+  GifticonWallet: undefined;
+  /** 기프티콘 상세 — 바코드/쿠폰번호/유효기간. */
+  GifticonDetail: { item: GiftExchange };
   /** 인앱 알림 목록. */
   Notifications: undefined;
   /** 고객 문의 목록 + 작성. */

@@ -176,6 +176,7 @@ export default function SettingsScreen(): React.JSX.Element {
         {/* 캐시 · 내역 */}
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
+          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} />
           <ListRow leftIcon="gift" title="구매 내역" onPress={() => navigation.navigate('ExchangeHistory')} last />
         </ListSection>
 

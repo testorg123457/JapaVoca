@@ -3,11 +3,11 @@
 환율과 상품 원가만 바꾸면 가격이 갱신되도록, 상품은 원화가로 정의하고
 price_cash 는 CASH_PER_KRW 로 환산한다.
 
-⚠️ 환율 기준(CLAUDE.md/지시서 본문): 12,000 캐시 = 100원 → 1원 = 120 캐시.
-   (지시서 예시 JSON 의 price_cash 60000 은 본문 환율과 10배 불일치하여, 본문
-    환율을 단일 기준으로 채택한다. 5,000원권 = 600,000 캐시.)
+⚠️ 환율 기준: 1만원권 = 22,300 캐시 기준 → 1원 = 2.23 캐시.
+   (price_krw 는 실제 발급사 연동에 쓰는 원화가라 유지하고, 캐시 표시가만 이 환율로 환산.
+    price_cash 는 정수로 반올림해 내려보낸다.)
 """
-CASH_PER_KRW = 120
+CASH_PER_KRW = 2.23
 
 # (code, name, 원화가, provider)
 _PRODUCTS = [
@@ -21,7 +21,7 @@ def _to_public(product: dict) -> dict:
     return {
         'code': product['code'],
         'name': product['name'],
-        'price_cash': product['price_krw'] * CASH_PER_KRW,
+        'price_cash': round(product['price_krw'] * CASH_PER_KRW),
         'provider': product['provider'],
     }
 
