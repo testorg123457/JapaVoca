@@ -17,9 +17,9 @@ describe('choiceCardStyle', () => {
   it('correct 배경은 base + 0.12 알파', () => {
     expect(choiceCardStyle(classic, 'correct').bg).toBe('rgba(51,201,122,0.12)');
   });
-  it('sky default(soft)는 brand 소프트 틴트', () => {
+  it('sky default(fill)는 surface 면 — 사진 배경 위 가독성 위해 불투명', () => {
     const s = choiceCardStyle(sky, 'default');
-    expect(s.bg).toBe('rgba(30,127,214,0.06)');
+    expect(s.bg).toBe('#FFFFFF');
     expect(s.text).toBe('#14202E');
   });
 });

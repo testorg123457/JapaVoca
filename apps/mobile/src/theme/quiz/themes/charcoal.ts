@@ -26,6 +26,7 @@ export default defineQuizTheme({
     choiceStyle: 'fill',
     choiceLayout: 'grid2x2',
     borderWidth: 1,
+    needsTextScrim: false,
     background: {
       kind: 'image',
       source: require('../../../assets/themes/charcoal-bg.jpg'),

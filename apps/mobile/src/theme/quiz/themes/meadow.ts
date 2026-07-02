@@ -23,9 +23,10 @@ export default defineQuizTheme({
   },
   shape: {
     radius: { choice: 18, card: 18, button: 14 },
-    choiceStyle: 'soft',
+    choiceStyle: 'fill',
     choiceLayout: 'grid2x2',
     borderWidth: 1,
+    needsTextScrim: true,
     background: {
       kind: 'image',
       source: require('../../../assets/themes/meadow-bg.jpg'),

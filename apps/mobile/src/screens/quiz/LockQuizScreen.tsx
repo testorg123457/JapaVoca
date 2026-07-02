@@ -982,24 +982,30 @@ export function LockQuizView({
           {cursorDisplay} / {totalQuestions}
         </AppText>
 
-        {/* 읽기 */}
-        {!!currentQuestion.reading && (
-          <AppText
-            variant="caption"
-            style={{ color: c.textTertiary, textAlign: 'center', letterSpacing: 1.5, marginBottom: 2 }}>
-            {currentQuestion.reading}
-          </AppText>
-        )}
+        {/* 읽기 + 문제 — 사진 배경 테마는 뒤에 스크림을 깔아 항상 읽히게 함 */}
+        <View style={theme.shape.needsTextScrim ? {
+          backgroundColor: withAlpha(c.surface, 0.88),
+          borderRadius: theme.shape.radius.card,
+          paddingVertical: 14,
+          marginBottom: 6,
+        } : { marginBottom: 6 }}>
+          {!!currentQuestion.reading && (
+            <AppText
+              variant="caption"
+              style={{ color: c.textTertiary, textAlign: 'center', letterSpacing: 1.5, marginBottom: 2 }}>
+              {currentQuestion.reading}
+            </AppText>
+          )}
 
-        {/* 문제 */}
-        <AppText
-          variant="hero"
-          style={{
-            color: c.textPrimary, fontSize: 52, lineHeight: 58,
-            letterSpacing: -1, textAlign: 'center', marginBottom: 6,
-          }}>
-          {currentQuestion.prompt}
-        </AppText>
+          <AppText
+            variant="hero"
+            style={{
+              color: c.textPrimary, fontSize: 52, lineHeight: 58,
+              letterSpacing: -1, textAlign: 'center',
+            }}>
+            {currentQuestion.prompt}
+          </AppText>
+        </View>
 
         {/* 음성 버튼 */}
         {showAudio && (

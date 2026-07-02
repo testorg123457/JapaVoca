@@ -25,6 +25,8 @@ export type QuizThemeShape = {
   choiceStyle: 'fill' | 'outline' | 'soft';
   choiceLayout: 'grid2x2' | 'list';
   borderWidth: number;
+  /** 문제 텍스트가 사진 배경 위에서 항상 읽히도록 뒤에 스크림 박스를 깔지 여부. */
+  needsTextScrim: boolean;
   background:
     | { kind: 'solid' }
     | { kind: 'gradient'; from: string; to: string }
