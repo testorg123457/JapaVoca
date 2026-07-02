@@ -14,7 +14,7 @@ import apiClient from './client';
 
 export type QuizItemType = 'word' | 'kanji' | 'kana';
 export type QuestionType = 'word_to_meaning' | 'meaning_to_word';
-export type BoxGrade = 'normal' | 'rare' | 'epic' | 'legendary' | 'jackpot';
+export type BoxGrade = 'normal' | 'purple';
 export type QuizChoice = { index: number; text: string };
 
 // ── 단발 출제 (기존 /next/ 경로, 잠금화면 Phase B 등) ────────────────────────────

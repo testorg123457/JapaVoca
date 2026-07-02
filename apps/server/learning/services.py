@@ -26,13 +26,10 @@ SET_SIZE = 10
 SET_BOX_CAP = 3
 SET_COOLDOWN = timedelta(seconds=30)
 
-# 정답 등급 가중치
+# 정답 시 상자 등급 가중치 (⚠️ 임시 테스트값 50/50 — 배포 전 90/10 원복)
 _BOX_GRADE_WEIGHTS = [
-    (CashBox.Grade.NORMAL, 140),
-    (CashBox.Grade.RARE, 28),
-    (CashBox.Grade.EPIC, 23),
-    (CashBox.Grade.LEGENDARY, 8),
-    (CashBox.Grade.JACKPOT, 1),
+    (CashBox.Grade.NORMAL, 50),
+    (CashBox.Grade.PURPLE, 50),
 ]
 
 

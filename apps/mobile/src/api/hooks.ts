@@ -133,7 +133,7 @@ export function useLedger(direction?: LedgerDirection) {
   });
 }
 
-export type BoxGrade = 'normal' | 'rare' | 'epic' | 'legendary' | 'jackpot';
+export type BoxGrade = 'normal' | 'purple';
 export type BoxItem = { id: number; grade: BoxGrade };
 
 /** 미개봉 캐시상자 인벤토리. */

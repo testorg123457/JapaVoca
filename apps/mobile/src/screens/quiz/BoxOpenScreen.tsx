@@ -12,7 +12,7 @@ import { AppText, Button, Icon } from '../../components';
 import { openBox, type OpenBoxResult } from '../../api/boxes';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
 import type { MainStackScreenProps } from '../../navigation/types';
-import { mint, yellow } from '../../theme/tokens';
+import { mint, primitives, yellow } from '../../theme/tokens';
 
 const AD_EVERY = 3;
 
@@ -37,6 +37,15 @@ export default function BoxOpenScreen({
   const box = boxes[currentIndex];
   const isLast = currentIndex >= boxes.length - 1;
   const remaining = boxes.length - currentIndex;
+
+  // 등급은 인벤토리에서 넘어온 box.grade로 개봉 전(밀봉)부터 공개.
+  const isPurple = box.grade === 'purple';
+  // ⚠️ require는 정적이어야 하므로 삼항으로 두 source를 미리 분기.
+  const boxAnim = isPurple
+    ? require('../../assets/purple-box-animation.json')
+    : require('../../assets/gift-box-animation.json');
+  const purpleColor = primitives.purple[500];
+  const bgColor = isPurple ? '#1C0B36' : mint[900]; // 보라 상자는 화면 배경도 보라로
 
   const doOpen = useCallback(
     async (adShown: boolean) => {
@@ -95,7 +104,7 @@ export default function BoxOpenScreen({
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: mint[900] }}
+      style={{ flex: 1, backgroundColor: bgColor }}
       edges={['top', 'bottom']}
     >
       {/* 상단 */}
@@ -146,23 +155,23 @@ export default function BoxOpenScreen({
           width: 360,
           height: 360,
           borderRadius: 180,
-          backgroundColor: mint[700],
-          opacity: 0.55,
+          backgroundColor: isPurple ? purpleColor : mint[700],
+          opacity: isPurple ? 0.4 : 0.55,
         }} />
         <View style={{
           position: 'absolute',
           width: 230,
           height: 230,
           borderRadius: 115,
-          backgroundColor: mint[500],
-          opacity: 0.12,
+          backgroundColor: isPurple ? purpleColor : mint[500],
+          opacity: isPurple ? 0.2 : 0.12,
         }} />
 
-        {/* Lottie */}
+        {/* Lottie — 등급별 연출. 보라 공개 시 key가 바뀌며 교체·재생됨 */}
         <LottieView
-          key={currentIndex}
+          key={`${currentIndex}-${isPurple ? 'p' : 'n'}`}
           ref={lottieRef}
-          source={require('../../assets/gift-box-animation.json')}
+          source={boxAnim}
           autoPlay={false}
           loop={false}
           speed={1.6}
@@ -175,6 +184,21 @@ export default function BoxOpenScreen({
             entering={FadeInUp.duration(380)}
             style={{ alignItems: 'center', marginTop: 16 }}
           >
+            {isPurple && (
+              <View style={{
+                borderRadius: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                marginBottom: 12,
+                backgroundColor: `${purpleColor}2E`,
+                borderWidth: 1,
+                borderColor: `${purpleColor}88`,
+              }}>
+                <AppText variant="caption" style={{ color: '#C9B4FF', fontWeight: '800' }}>
+                  ✦ 보라 상자
+                </AppText>
+              </View>
+            )}
             <AppText
               variant="label"
               style={{ color: 'rgba(255,255,255,0.38)', marginBottom: 14, letterSpacing: -0.2 }}

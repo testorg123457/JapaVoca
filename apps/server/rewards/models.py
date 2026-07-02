@@ -104,10 +104,7 @@ class CashBox(models.Model):
 
     class Grade(models.TextChoices):
         NORMAL = 'normal', '일반'
-        RARE = 'rare', '레어'
-        EPIC = 'epic', '에픽'
-        LEGENDARY = 'legendary', '전설'
-        JACKPOT = 'jackpot', '잭팟'
+        PURPLE = 'purple', '보라'
 
     class Status(models.TextChoices):
         UNOPENED = 'unopened', '미개봉'
