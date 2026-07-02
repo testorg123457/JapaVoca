@@ -63,7 +63,7 @@ wallet.balance = ledger의 earn합 − use합 이 항상 일치해야 한다.
 
 1인 1구글계정 기준. 일일 캐시 상한 적용(daily 테이블 기준).
 응답속도(answer_ms)·반복 패턴으로 자동클릭 탐지. Play Integrity로 비정상 기기 차단.
-quiz_log는 7일만 보관 후 자동 삭제(파티션 DROP 또는 배치 DELETE). 장기 통계는 daily 집계로 보존.
+quiz_log는 회원 탈퇴 후 1년 보관(부정 이용 방지 등 서비스 운영 목적) 후 파기한다.
 
 
 작업 범위 / 단계

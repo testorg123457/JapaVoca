@@ -249,10 +249,6 @@ KAKAO_API_BASE = os.environ.get('KAKAO_API_BASE', 'https://kapi.kakao.com')
 FCM_ENABLED = os.environ.get('FCM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 
 
-# QuizLog 7일 배치 삭제는 Cloud Scheduler + Cloud Run Job으로 처리.
-# (python manage.py delete_old_quiz_logs)
-
-
 # 기프티콘 교환 발급사 — URL 이 비어있으면(dev) exchange.providers 가 Mock 응답.
 GIFTICON_PROVIDER_URL = os.environ.get('GIFTICON_PROVIDER_URL', '')
 GIFTICON_PROVIDER_KEY = os.environ.get('GIFTICON_PROVIDER_KEY', '')

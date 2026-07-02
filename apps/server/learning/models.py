@@ -56,11 +56,7 @@ class SrsState(models.Model):
 
 
 class QuizLog(models.Model):
-    """문제 풀이 이력.
-
-    보관 정책: 7일 보관 — created_at < now()-7d 행은 배치로 삭제(파티션 DROP 또는 배치 DELETE).
-    장기 통계는 rewards.Daily 집계로 보존한다.
-    """
+    """문제 풀이 이력. 회원 탈퇴 후 1년간 보관(부정 이용 방지 등 서비스 운영 목적) 후 파기."""
 
     class Mode(models.TextChoices):
         WORD = 'word', '단어'
@@ -102,7 +98,6 @@ class QuizLog(models.Model):
         verbose_name_plural = '퀴즈 로그'
         indexes = [
             models.Index(fields=['user', 'created_at'], name='idx_quizlog_user_created'),
-            # 7일 배치 삭제용(created_at 단독).
             models.Index(fields=['created_at'], name='idx_quizlog_created'),
         ]
 
