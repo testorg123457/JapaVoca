@@ -423,11 +423,16 @@ function AnswerReveal({
         flexDirection: 'row', alignItems: 'center', gap: 16,
         marginBottom: 18,
       }}>
-        {/* 한자 크게 */}
-        <AppText style={{
-          color: c.textPrimary, fontSize: 76, lineHeight: 84,
-          letterSpacing: -3, fontWeight: '700',
-        }}>
+        {/* 한자 크게 — 긴 단어는 폭에 맞춰 자동 축소(최소 크기 바닥). flexShrink로 폭 제한 → 옆 정보 안 밀림. */}
+        <AppText
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+          style={{
+            color: c.textPrimary, fontSize: 76, lineHeight: 84,
+            letterSpacing: -3, fontWeight: '700',
+            flexShrink: 1, minWidth: 0,
+          }}>
           {detail.surface}
         </AppText>
 
@@ -999,6 +1004,9 @@ export function LockQuizView({
 
           <AppText
             variant="hero"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             style={{
               color: c.textPrimary, fontSize: 52, lineHeight: 58,
               letterSpacing: -1, textAlign: 'center',

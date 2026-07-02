@@ -44,16 +44,23 @@ export function ChoiceCard({
   return (
     <PressableScale onPress={onPress} disabled={disabled} pressedScale={0.985} style={{ width: widthPercent as any }}>
       <View style={{
-        height: 66,
+        // 고정 높이 대신 minHeight — 4장이 2줄 기준 같은 높이로 정렬되고(그리드 정돈),
+        // 긴 선택지는 2줄까지 늘어난다.
+        minHeight: 66,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-        paddingHorizontal: 14,
+        paddingHorizontal: 12, paddingVertical: 8,
         backgroundColor: s.bg,
         borderWidth: theme.shape.borderWidth, borderColor: s.border,
         borderRadius: theme.shape.radius.choice,
       }}>
         {visual === 'correct' && s.icon && <Icon name="check" size={16} color={s.icon} strokeWidth={2.8} />}
         {visual === 'wrong' && s.icon && <Icon name="close" size={16} color={s.icon} strokeWidth={2.8} />}
-        <AppText variant="subheading" numberOfLines={1} style={{ color: s.text, fontSize: 18, lineHeight: 24 }}>
+        <AppText
+          variant="subheading"
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+          style={{ color: s.text, fontSize: 18, lineHeight: 24, textAlign: 'center', flexShrink: 1 }}>
           {text}
         </AppText>
       </View>
