@@ -218,6 +218,35 @@ function EntryRow({
               <BookmarkButton itemType={item_type} itemId={item_id} onNetworkError={onNetworkError} />
             </View>
           </View>
+
+          {/* 예문 (가나 단어 전용) */}
+          {item_type === 'word' && question.word_type === 'kana' && !!detail.examples?.length && (
+            <>
+              <View style={{ height: 1, backgroundColor: C.line, marginHorizontal: 12 }} />
+              <View style={{ padding: 12, gap: 10 }}>
+                <AppText variant="micro" style={{ color: C.weak, letterSpacing: 0.6 }}>
+                  예문
+                </AppText>
+                {detail.examples.map((ex, i) => (
+                  <View key={i} style={{ gap: 2 }}>
+                    <AppText variant="body" style={{ color: C.ink, fontWeight: '600' }}>
+                      {ex.origin}
+                    </AppText>
+                    {!!ex.reading && ex.reading !== ex.origin && (
+                      <AppText variant="caption" style={{ color: C.weak }}>
+                        {ex.reading}
+                      </AppText>
+                    )}
+                    {!!ex.translation && (
+                      <AppText variant="caption" style={{ color: C.sub }}>
+                        {ex.translation}
+                      </AppText>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       )}
 

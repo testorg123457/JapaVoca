@@ -44,6 +44,15 @@ export type KanaExampleWord = {
   meaning: string;
 };
 
+export type WordExampleSentence = {
+  /** 한자 표기 일본어 문장 */
+  origin: string;
+  /** 전부 가나로 풀어쓴 읽기 */
+  reading: string;
+  /** 한국어 번역 */
+  translation: string;
+};
+
 export type QuizSetDetail = {
   surface: string;
   reading: string;
@@ -56,6 +65,8 @@ export type QuizSetDetail = {
   script: 'hira' | 'kata' | null;
   /** 가나 퀴즈 전용 — 랜덤 풀에서 선택된 예시 단어 최대 2개 */
   example_words?: KanaExampleWord[];
+  /** 가나 단어 전용 — 예문 최대 3개 */
+  examples?: WordExampleSentence[];
 };
 
 export type QuizSetQuestion = {

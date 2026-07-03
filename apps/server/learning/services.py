@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from content.models import Kana, KanaExample, Kanji, Word, WordMeaning
+from content.models import Kana, KanaExample, Kanji, Word, WordExample, WordMeaning
 from rewards.models import CashBox
 
 from .models import Bookmark, ItemType, QuizLog, QuizSet, QuizSetItem, SrsState
@@ -124,6 +124,7 @@ def _item_detail(item_type, item_id, word_type=None):
     wm = WordMeaning.objects.filter(word_id=item_id).order_by('sense_no').first()
     meaning = wm.meaning_ko if wm else ''
     components = ''
+    examples = []
     if word_type == 'kanji':
         kanji_chars = [c for c in word.surface if '一' <= c <= '鿿']
         parts = []
@@ -132,6 +133,13 @@ def _item_detail(item_type, item_id, word_type=None):
             if k and k.meaning_ko:
                 parts.append(f'{char} : {k.meaning_ko}')
         components = ' / '.join(parts)
+    elif word_type == 'kana':
+        # 가나 단어 예문(한자 단어는 row 자체가 없음). sort_no 순, 최대 3개.
+        examples = [
+            {'origin': ex.origin, 'reading': ex.reading, 'translation': ex.translation}
+            for ex in WordExample.objects.filter(word_id=item_id)
+            .order_by('sort_no')[:3]
+        ]
     return {
         'surface': word.surface,
         'reading': word.reading,
@@ -141,6 +149,7 @@ def _item_detail(item_type, item_id, word_type=None):
         'on_reading': '',
         'kun_reading': '',
         'script': None,
+        'examples': examples,
     }
 
 

@@ -547,6 +547,48 @@ function AnswerReveal({
         </View>
       )}
 
+      {/* ── 예문 (가나 단어 전용) ── */}
+      {question.item_type === 'word' && question.word_type === 'kana' && !!detail.examples?.length && (
+        <View style={{
+          backgroundColor: c.surface,
+          borderRadius: 14,
+          borderWidth: 1, borderColor: c.line,
+          paddingHorizontal: 14, paddingVertical: 12,
+          gap: 12, marginBottom: 12,
+        }}>
+          <AppText variant="caption" style={{ color: c.textTertiary }}>
+            예문
+          </AppText>
+          {detail.examples.map((ex, i) => (
+            <View
+              key={i}
+              style={{
+                gap: 3,
+                paddingTop: i === 0 ? 0 : 12,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: c.line,
+              }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                <AppText style={{ color: c.textPrimary, fontSize: 17, fontWeight: '700', lineHeight: 24, flex: 1 }}>
+                  {ex.origin}
+                </AppText>
+                <AudioButton text={ex.reading || ex.origin} />
+              </View>
+              {!!ex.reading && ex.reading !== ex.origin && (
+                <AppText variant="caption" style={{ color: c.textTertiary }}>
+                  {ex.reading}
+                </AppText>
+              )}
+              {!!ex.translation && (
+                <AppText variant="body" style={{ color: c.textSecondary }}>
+                  {ex.translation}
+                </AppText>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* ── 다음 버튼 ── */}
       <PressableScale onPress={onNext}>
         <View style={{

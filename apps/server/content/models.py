@@ -130,6 +130,36 @@ class WordMeaning(models.Model):
         return f'{self.word.surface} #{self.sense_no}: {self.meaning_ko[:20]}'
 
 
+class WordExample(models.Model):
+    """가나 단어 예문 (Word 1:N). 데이터는 외부 프로젝트에서 직접 삽입.
+
+    가나 단어에만 예문 row가 생긴다(한자 단어는 row 없음). 단어당 최대 3개.
+    origin(한자표기)·reading(가나읽기)은 같은 문장의 두 표기.
+    """
+
+    word = models.ForeignKey(
+        Word, on_delete=models.CASCADE, related_name='examples',
+    )
+    sort_no = models.PositiveIntegerField(help_text='단어 내 예문 순서(1,2,3)')
+    origin = models.TextField(help_text='한자 표기 일본어 문장')
+    reading = models.TextField(blank=True, default='', help_text='전부 가나로 풀어쓴 읽기')
+    translation = models.TextField(blank=True, default='', help_text='한국어 번역')
+
+    class Meta:
+        db_table = 'tbl_content_wordexample'
+        verbose_name = '단어 예문'
+        verbose_name_plural = '단어 예문'
+        ordering = ['word', 'sort_no']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['word', 'sort_no'], name='uniq_wordexample_word_sort_no',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.word.surface} #{self.sort_no}: {self.origin[:20]}'
+
+
 class KanaExample(models.Model):
     """가나 글자별 예시 단어 풀. 데이터는 외부 프로젝트에서 직접 삽입.
 
