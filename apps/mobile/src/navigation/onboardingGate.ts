@@ -16,6 +16,9 @@ import { computeGateStatus, type GateStatus } from './gateStatus';
 export { computeGateStatus };
 export type { GateStatus };
 
+/** 스플래시 최소 노출(ms) — 데이터가 빨리 와도 이 시간만큼은 스플래시 유지(브랜드 화면 깜빡임 방지). */
+const MIN_SPLASH_MS = 800;
+
 export function useOnboardingGate(isLoggedIn: boolean): {
   status: GateStatus;
   recheck: () => void;
@@ -24,6 +27,13 @@ export function useOnboardingGate(isLoggedIn: boolean): {
   const me = useMe();
   const queryClient = useQueryClient();
   const [permsGranted, setPermsGranted] = useState<boolean | null>(null);
+  // 앱 시작 시점 기준 1회만 — 최소 노출 시간이 지나기 전엔 계속 loading으로 잡는다.
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinSplashElapsed(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []);
   // study_mode 가 null 이면 학습 선택(온보딩) 미완료. me 로딩 전이면 undefined.
   const studyNeeded = me.data ? me.data.study_mode == null : undefined;
 
@@ -53,7 +63,7 @@ export function useOnboardingGate(isLoggedIn: boolean): {
     }
   }, [consent.isSuccess, consent.data]);
 
-  const status: GateStatus = !isLoggedIn
+  const computed: GateStatus = !isLoggedIn
     ? 'loading'
     : computeGateStatus({
         consentLoading: consent.isLoading,
@@ -61,6 +71,8 @@ export function useOnboardingGate(isLoggedIn: boolean): {
         permsGranted,
         studyNeeded,
       });
+  // 로그인 상태에서 최초 부팅 시, 최소 노출 시간 전엔 스플래시(loading) 유지.
+  const status: GateStatus = isLoggedIn && !minSplashElapsed ? 'loading' : computed;
 
   const recheck = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: CONSENT_QUERY_KEY });
