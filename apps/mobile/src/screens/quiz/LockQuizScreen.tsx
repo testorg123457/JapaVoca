@@ -368,6 +368,10 @@ function AnswerReveal({
   const accentBorder = isCorrect ? withAlpha(c.correct, 0.5)  : withAlpha(c.wrong, 0.5);
   const accentColor  = isCorrect ? c.correct                  : c.wrong;
 
+  // 정답 글자 크기 — 글자 수 기반(한자·가나 공통). 긴 단어일수록 작게, 단계는 완만하게.
+  const surfaceLen = [...detail.surface].length;
+  const surfaceFontSize = surfaceLen <= 4 ? 70 : surfaceLen <= 6 ? 56 : 44;
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -418,26 +422,23 @@ function AnswerReveal({
         </View>
       </View>
 
-      {/* ── 한자 + 정보 가로 배치 ── */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', gap: 16,
-        marginBottom: 18,
-      }}>
-        {/* 한자 크게 — 긴 단어는 폭에 맞춰 자동 축소(최소 크기 바닥). flexShrink로 폭 제한 → 옆 정보 안 밀림. */}
+      {/* ── 정답 글자(위) + 정보(아래) 세로 배치 ── */}
+      <View style={{ marginBottom: 18, gap: 12 }}>
+        {/* 정답 글자 — 글자 수 기반 크기(한자·가나 공통). adjustsFontSizeToFit은 극단(8자+) 안전망. */}
         <AppText
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.5}
+          minimumFontScale={0.6}
           style={{
-            color: c.textPrimary, fontSize: 76, lineHeight: 84,
-            letterSpacing: -3, fontWeight: '700',
-            flexShrink: 1, minWidth: 0,
+            color: c.textPrimary,
+            fontSize: surfaceFontSize, lineHeight: surfaceFontSize * 1.12,
+            letterSpacing: -1.5, fontWeight: '700',
           }}>
           {detail.surface}
         </AppText>
 
-        {/* 읽기·급수·듣기 */}
-        <View style={{ flex: 1, gap: 4 }}>
+        {/* 뜻·읽기·급수·듣기 — 글자 아래 */}
+        <View style={{ gap: 6 }}>
           {!!detail.meaning && (
             <AppText variant="subheading" style={{ color: c.textPrimary, fontWeight: '700' }}>
               {detail.meaning}
