@@ -23,6 +23,7 @@ import BootSplash from 'react-native-bootsplash';
 
 import { queryClient } from './src/api/queryClient';
 import { AuthProvider } from './src/store/AuthContext';
+import { ToastProvider } from './src/components';
 import { ThemeProvider } from './src/theme/ThemeProvider';
 import RootNavigator from './src/navigation/RootNavigator';
 import { startStudyNotification } from './src/lib/studyNotification';
@@ -48,13 +49,15 @@ function App(): React.JSX.Element {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <NavigationContainer>
-                <RootNavigator />
-              </NavigationContainer>
-            </AuthProvider>
-          </QueryClientProvider>
+          <ToastProvider>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <NavigationContainer>
+                  <RootNavigator />
+                </NavigationContainer>
+              </AuthProvider>
+            </QueryClientProvider>
+          </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

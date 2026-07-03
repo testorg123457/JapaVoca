@@ -7,7 +7,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText, Icon, PressableScale } from '../../components';
+import { AppText, Icon, PressableScale, ToastView } from '../../components';
+import { NETWORK_ERROR_MESSAGE } from '../../lib/toastBus';
 import { toggleBookmark, type QuizItemType } from '../../api/quiz';
 import { useSpeak } from '../../lib/useSpeak';
 import { gray, mint, red, yellow, primitives, radius, shadowStyle } from '../../theme/tokens';
@@ -268,10 +269,12 @@ export function QuizReviewModal({
   const correct = data.entries.filter(e => e.isCorrect).length;
   const total = data.entries.length;
 
+  // RN <Modal>은 별도 네이티브 윈도우라 루트 ToastProvider가 못 덮는다.
+  // 그래서 이 화면만은 공용 ToastView를 모달 안에서 직접 렌더한다(시각은 통일).
   const [networkNotice, setNetworkNotice] = useState(false);
   useEffect(() => {
     if (!networkNotice) { return; }
-    const id = setTimeout(() => setNetworkNotice(false), 2000);
+    const id = setTimeout(() => setNetworkNotice(false), 2500);
     return () => clearTimeout(id);
   }, [networkNotice]);
 
@@ -304,22 +307,6 @@ export function QuizReviewModal({
               <Icon name="close" size={20} color={C.onBrand} strokeWidth={2.2} />
             </TouchableOpacity>
           </View>
-
-          {/* 네트워크 오류 배너 */}
-          {networkNotice && (
-            <View style={{
-              marginHorizontal: 16, marginTop: 12,
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: C.dangerBg,
-              borderWidth: 1, borderColor: C.danger,
-              borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10,
-            }}>
-              <Icon name="close" size={16} color={C.danger} strokeWidth={2.4} />
-              <AppText variant="label" style={{ color: C.danger }}>
-                네트워크 연결을 확인해주세요
-              </AppText>
-            </View>
-          )}
 
           {/* 리스트 */}
           <ScrollView
@@ -376,6 +363,15 @@ export function QuizReviewModal({
           </ScrollView>
 
         </SafeAreaView>
+
+        {/* 네트워크 오류 토스트 — 모달 하단(루트 ToastProvider가 못 덮으므로 여기서 렌더) */}
+        {networkNotice && (
+          <View
+            pointerEvents="box-none"
+            style={{ position: 'absolute', left: 16, right: 16, bottom: 28, alignItems: 'center' }}>
+            <ToastView message={NETWORK_ERROR_MESSAGE} variant="error" />
+          </View>
+        )}
       </View>
     </Modal>
   );

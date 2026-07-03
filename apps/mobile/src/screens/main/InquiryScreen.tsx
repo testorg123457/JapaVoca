@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 
-import { AppHeader, AppText, Icon, PressableScale } from '../../components';
+import { AppHeader, AppText, Icon, PressableScale, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   useDeleteInquiry,
@@ -99,9 +99,8 @@ function SentCard({
 
 export default function InquiryScreen(): React.JSX.Element {
   const c = useThemeColors();
+  const { showToast } = useToast();
   const [text, setText] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
   const inquiries = useInquiries();
@@ -130,15 +129,8 @@ export default function InquiryScreen(): React.JSX.Element {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
     };
   }, []);
-
-  function showToast(msg: string) {
-    setToast(msg);
-    if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
-  }
 
   async function handleSend() {
     const trimmed = text.trim();
@@ -151,9 +143,9 @@ export default function InquiryScreen(): React.JSX.Element {
     } catch (err: any) {
       if (!mountedRef.current) return;
       if (err?.response?.status === 429) {
-        showToast('오늘 문의 한도에 도달했어요.');
+        showToast('오늘 문의 한도에 도달했어요.', 'error');
       } else {
-        showToast('문의 전송에 실패했어요. 다시 시도해주세요.');
+        showToast('문의 전송에 실패했어요. 다시 시도해주세요.', 'error');
       }
     }
   }
@@ -166,7 +158,7 @@ export default function InquiryScreen(): React.JSX.Element {
         style: 'destructive',
         onPress: () =>
           deleteInquiry.mutate(id, {
-            onError: () => showToast('삭제에 실패했어요. 다시 시도해주세요.'),
+            onError: () => showToast('삭제에 실패했어요. 다시 시도해주세요.', 'error'),
           }),
       },
     ]);
@@ -254,23 +246,6 @@ export default function InquiryScreen(): React.JSX.Element {
           </>
         ) : null}
       </ScrollView>
-
-      {/* 전송/삭제 토스트 */}
-      {toast ? (
-        <View
-          className="absolute left-xl right-xl px-lg py-md"
-          style={{
-            bottom: 28,
-            backgroundColor: c['bg-primary'],
-            borderRadius: RADIUS,
-            borderWidth: 1,
-            borderColor: c['border-secondary'],
-          }}>
-          <AppText variant="body" className="text-center text-text-primary">
-            {toast}
-          </AppText>
-        </View>
-      ) : null}
     </KeyboardAvoidingView>
   );
 }

@@ -23,7 +23,7 @@ import Tts from 'react-native-tts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
-import { AppText, Icon, PressableScale } from '../../components';
+import { AppText, Icon, PressableScale, useToast } from '../../components';
 import {
   getQuizSet,
   submitAnswer,
@@ -646,6 +646,7 @@ export function LockQuizView({
 }: LockQuizActions): React.JSX.Element {
   const theme = useQuizTheme();
   const c = theme.colors;
+  const { showNetworkError } = useToast();
   const boxes = useBoxes();
   const boxCount = boxes.data?.length ?? 0;
   const { width: screenW } = useWindowDimensions();
@@ -654,7 +655,6 @@ export function LockQuizView({
   const [phase, setPhase] = useState<Phase>({ type: 'loading' });
   const [isOnline, setIsOnline] = useState(true);
   const [componentChars, setComponentChars] = useState<string[] | null>(null);
-  const [networkNotice, setNetworkNotice] = useState(false);
 
   const startRef = useRef(0);
   const submitLockRef = useRef(false);
@@ -663,13 +663,6 @@ export function LockQuizView({
   const reviewEntriesRef = useRef<ReviewEntry[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [lastReviewData, setLastReviewDataState] = useState<ReviewData | null>(null);
-
-  // 네트워크 오류 배너 — 3초 후 자동으로 사라짐
-  useEffect(() => {
-    if (!networkNotice) { return; }
-    const id = setTimeout(() => setNetworkNotice(false), 2000);
-    return () => clearTimeout(id);
-  }, [networkNotice]);
 
   // 분 단위 시계
   useEffect(() => {
@@ -709,7 +702,6 @@ export function LockQuizView({
       const set = await getQuizSet();
       if (!mountedRef.current) { return; }
       setIsOnline(true);
-      setNetworkNotice(false);
       flushPending();
 
       if (set.cooldown_until && !set.questions.length) {
@@ -755,7 +747,7 @@ export function LockQuizView({
       // 네트워크 오류 → 캐시 세트로 오프라인 진행
       if (!err?.response) {
         setIsOnline(false);
-        if (opts?.notifyOnNetworkFailure) { setNetworkNotice(true); }
+        if (opts?.notifyOnNetworkFailure) { showNetworkError(); }
         const cached = getCachedSet();
         if (cached && cached.questions.length) {
           const cursor = getCursor();
@@ -770,7 +762,7 @@ export function LockQuizView({
       // 409: 콘텐츠 없음. 그 외 HTTP 오류(404, 500 등)도 noContent로 처리해 무한 로딩 방지.
       setPhase({ type: 'noContent' });
     }
-  }, [flushPending]);
+  }, [flushPending, showNetworkError]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -825,7 +817,6 @@ export function LockQuizView({
         });
         if (!mountedRef.current) { return; }
         setIsOnline(true);
-        setNetworkNotice(false);
         if (res.box_id !== null) { boxes.refetch(); }
         recordEntry(question, choiceIndex, res.is_correct);
         setPhase({
@@ -1011,7 +1002,7 @@ export function LockQuizView({
           cursor={phase.cursor}
           totalQuestions={totalQuestions}
           onShowComponents={setComponentChars}
-          onNetworkError={() => setNetworkNotice(true)}
+          onNetworkError={showNetworkError}
         />
       );
     }
@@ -1147,22 +1138,6 @@ export function LockQuizView({
               </PressableScale>
             </View>
           </View>
-
-          {/* 네트워크 오류 배너 */}
-          {networkNotice && (
-            <View style={{
-              marginHorizontal: 22, marginTop: 12,
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: withAlpha(c.wrong, 0.12),
-              borderWidth: 1, borderColor: withAlpha(c.wrong, 0.4),
-              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-            }}>
-              <Icon name="close" size={16} color={c.wrong} strokeWidth={2.4} />
-              <AppText variant="label" style={{ color: c.wrong }}>
-                네트워크 연결을 확인해주세요
-              </AppText>
-            </View>
-          )}
 
           {/* 중앙: 퀴즈 */}
           <View style={{ flex: 1, paddingHorizontal: 22 }}>
