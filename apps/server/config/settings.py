@@ -14,6 +14,7 @@ import os
 import urllib.parse
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -114,42 +115,26 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASE_URL (프로덕션/Supabase) 우선, 없으면 개별 DB_* 변수 사용.
-# DB_ENGINE=sqlite 이면 SQLite로 폴백(로컬 편의용).
+# DB는 DATABASE_URL(원격 Postgres/Supabase) 하나로만 지정한다. 로컬 DB 폴백 없음.
 _db_url = os.environ.get('DATABASE_URL', '')
-if _db_url:
-    _u = urllib.parse.urlparse(_db_url)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': _u.path.lstrip('/'),
-            'USER': _u.username,
-            'PASSWORD': _u.password,
-            'HOST': _u.hostname,
-            'PORT': _u.port or 5432,
-            # Supabase Transaction pooler(pgBouncer)는 연결 유지를 지원하지 않음.
-            'CONN_MAX_AGE': 0,
-            'OPTIONS': {'sslmode': 'require'},
-        }
+if not _db_url:
+    raise ImproperlyConfigured('DATABASE_URL 환경변수가 필요합니다 (.env 참고).')
+_u = urllib.parse.urlparse(_db_url)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': _u.path.lstrip('/'),
+        'USER': _u.username,
+        'PASSWORD': _u.password,
+        'HOST': _u.hostname,
+        'PORT': _u.port or 5432,
+        # Supabase Transaction pooler(pgBouncer, 6543)는 연결 유지·server-side
+        # cursor를 지원하지 않으므로 둘 다 끈다.
+        'CONN_MAX_AGE': 0,
+        'DISABLE_SERVER_SIDE_CURSORS': True,
+        'OPTIONS': {'sslmode': 'require'},
     }
-elif os.environ.get('DB_ENGINE', 'postgresql').lower() == 'sqlite':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'japavoca'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
-        }
-    }
+}
 
 
 # Password validation

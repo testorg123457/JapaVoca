@@ -87,7 +87,6 @@ class Kana(models.Model):
     romaji = models.CharField(max_length=8, help_text='로마자 읽기(예: a, kya)')
     script = models.CharField(max_length=4, choices=Script.choices)
     kind = models.CharField(max_length=8, choices=Kind.choices)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'tbl_content_kana'
