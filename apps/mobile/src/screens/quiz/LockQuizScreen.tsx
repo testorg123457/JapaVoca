@@ -360,6 +360,24 @@ function AnswerReveal({
   const accentBg    = isCorrect ? withAlpha(c.correct, 0.12) : withAlpha(c.wrong, 0.12);
   const accentColor = isCorrect ? c.correct                  : c.wrong;
 
+  // 정답 순간 연출 — 결과 아이콘 칩 pop(+정답 시 "상자 +1" 뱃지가 뒤이어 pop).
+  // 정답 글자·정보 블록은 아래에서 살짝 올라오며 fade-in. 마운트 시 1회.
+  const chipScale = useRef(new Animated.Value(0)).current;
+  const boxScale = useRef(new Animated.Value(0)).current;
+  const revealFade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(chipScale, { toValue: 1, friction: 5, tension: 160, useNativeDriver: true }).start();
+    Animated.timing(revealFade, { toValue: 1, duration: 260, delay: 80, useNativeDriver: true }).start();
+    if (isCorrect && boxGrade && !offlineMode) {
+      Animated.sequence([
+        Animated.delay(150),
+        Animated.spring(boxScale, { toValue: 1, friction: 4.5, tension: 170, useNativeDriver: true }),
+      ]).start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const revealTranslate = revealFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+
   // 정답 글자 크기 — 글자 수 기반(한자·가나 공통). 긴 단어일수록 작게, 단계는 완만하게.
   const surfaceLen = [...detail.surface].length;
   const surfaceFontSize = surfaceLen <= 4 ? 70 : surfaceLen <= 6 ? 56 : 44;
@@ -378,15 +396,16 @@ function AnswerReveal({
         paddingHorizontal: 14, paddingVertical: 12,
         marginBottom: 16,
       }}>
-        {/* 결과: 아이콘 칩 + 텍스트 */}
+        {/* 결과: 아이콘 칩(pop) + 텍스트 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-          <View style={{
+          <Animated.View style={{
             width: 26, height: 26, borderRadius: 13,
             backgroundColor: withAlpha(accentColor, 0.2),
             alignItems: 'center', justifyContent: 'center',
+            transform: [{ scale: chipScale }],
           }}>
             <Icon name={isCorrect ? 'check' : 'close'} size={15} color={accentColor} strokeWidth={3} />
-          </View>
+          </Animated.View>
           <AppText style={{ color: accentColor, fontWeight: '800', fontSize: 17 }}>
             {isCorrect ? '정답입니다!' : '아쉬워요'}
           </AppText>
@@ -395,14 +414,15 @@ function AnswerReveal({
         {/* 우측: 상자뱃지 + 북마크 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {isCorrect && boxGrade && !offlineMode && (
-            <View style={{
+            <Animated.View style={{
               backgroundColor: withAlpha(c.amber, 0.16),
               borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3,
+              transform: [{ scale: boxScale }], opacity: boxScale,
             }}>
               <AppText variant="caption" style={{ color: c.amber, fontWeight: '700' }}>
                 상자 +1
               </AppText>
-            </View>
+            </Animated.View>
           )}
           {offlineMode && (
             <AppText variant="caption" style={{ color: c.textTertiary }}>오프라인</AppText>
@@ -421,8 +441,8 @@ function AnswerReveal({
         </View>
       </View>
 
-      {/* ── 정답 글자(위) + 정보(아래) 세로 배치 ── */}
-      <View style={{ marginBottom: 18, gap: 12 }}>
+      {/* ── 정답 글자(위) + 정보(아래) — 아래에서 올라오며 fade-in ── */}
+      <Animated.View style={{ marginBottom: 18, gap: 12, opacity: revealFade, transform: [{ translateY: revealTranslate }] }}>
         {/* 정답 글자 — 글자 수 기반 크기(한자·가나 공통). adjustsFontSizeToFit은 극단(8자+) 안전망. */}
         <AppText
           numberOfLines={1}
@@ -460,7 +480,7 @@ function AnswerReveal({
             <AudioButton text={detail.on_reading || detail.surface} />
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* ── 설명 카드 ── */}
       <View style={{
