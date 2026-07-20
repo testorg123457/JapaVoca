@@ -10,9 +10,10 @@
 import React from 'react';
 import { View } from 'react-native';
 
-import { fontFamily, gray } from '../theme/tokens';
+import { fontFamily } from '../theme/tokens';
 import { useThemeColors } from '../theme/ThemeProvider';
 import AppText from './AppText';
+import Coin from './Coin';
 import Icon from './Icon';
 
 type Variant = 'cash' | 'earn';
@@ -37,12 +38,15 @@ const TEXT: Record<Variant, string> = {
 
 export function CashBadge({ amount, variant = 'cash', className = '' }: CashBadgeProps) {
   const c = useThemeColors();
-  const iconColor = variant === 'cash' ? gray[900] : c['brand-active'];
   return (
     <View
       className={`flex-row items-center rounded-full px-md py-xs ${BOX[variant]} ${className}`}
       style={{ gap: 5 }}>
-      <Icon name={variant === 'cash' ? 'coin' : 'arrow-up-right'} size={15} color={iconColor} />
+      {variant === 'cash' ? (
+        <Coin size={15} />
+      ) : (
+        <Icon name="arrow-up-right" size={15} color={c['brand-active']} />
+      )}
       <AppText variant="label" className={TEXT[variant]} style={{ fontFamily: fontFamily.bold }}>
         {amount}
       </AppText>

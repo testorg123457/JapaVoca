@@ -8,6 +8,8 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 export { CashBadge } from './CashBadge';
 export type { CashBadgeProps } from './CashBadge';
+export { Coin } from './Coin';
+export type { CoinProps } from './Coin';
 export { Icon } from './Icon';
 export type { IconName, IconProps } from './Icon';
 export { PressableScale } from './PressableScale';

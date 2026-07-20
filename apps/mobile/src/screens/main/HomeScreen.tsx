@@ -24,6 +24,7 @@ import LottieView from 'lottie-react-native';
 import {
   AppText,
   Card,
+  Coin,
   Icon,
   ListRow,
   ListSection,
@@ -122,14 +123,11 @@ export default function HomeScreen(): React.JSX.Element {
             hitSlop={8}
             className="flex-row items-center active:opacity-60"
             style={{ gap: 6 }}>
-            <Icon name="coin" size={22} color={c.amber} />
+            <Coin size={24} />
             <AppText
               className="text-text-primary"
               style={{ fontFamily: fontFamily.bold, fontSize: 20, letterSpacing: -0.3 }}>
               {balance.toLocaleString()}
-            </AppText>
-            <AppText variant="title" style={{ color: c['amber-strong'] }}>
-              C
             </AppText>
           </Pressable>
           <View className="flex-row items-center" style={{ gap: 18 }}>

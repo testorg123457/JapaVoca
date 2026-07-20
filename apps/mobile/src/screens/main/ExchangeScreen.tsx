@@ -15,7 +15,7 @@ import type { AxiosError } from 'axios';
 
 import { useNavigation } from '@react-navigation/native';
 
-import { AppHeader, AppText, Icon, PressableScale } from '../../components';
+import { AppHeader, AppText, Coin, Icon, PressableScale } from '../../components';
 import type { IconName } from '../../components/Icon';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
@@ -95,13 +95,10 @@ export default function ExchangeScreen(): React.JSX.Element {
           <AppText variant="caption" className="text-text-tertiary">
             보유 캐시
           </AppText>
-          <View className="flex-row items-end" style={{ gap: 6, marginTop: 2 }}>
-            <Icon name="coin" size={24} color={c.amber} />
+          <View className="flex-row items-center" style={{ gap: 8, marginTop: 4 }}>
+            <Coin size={32} />
             <AppText variant="display" className="text-text-primary">
               {balance.toLocaleString()}
-            </AppText>
-            <AppText variant="title" style={{ color: c['amber-strong'], marginBottom: 1 }}>
-              C
             </AppText>
           </View>
         </View>

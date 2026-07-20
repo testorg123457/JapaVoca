@@ -18,8 +18,8 @@ import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
-import { AppText, Button, Gradient, Icon } from '../../components';
-import { gradients, scrim, yellow } from '../../theme/tokens';
+import { AppText, Button, Coin, Gradient, Icon } from '../../components';
+import { gradients, scrim } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   useLedger,
@@ -130,7 +130,7 @@ export default function WalletScreen(): React.JSX.Element {
               }}>
               <Gradient colors={gradients.brand} direction="diagonal" />
               <View className="flex-row items-center" style={{ gap: 6 }}>
-                <Icon name="coin" size={18} color={yellow[400]} />
+                <Coin size={18} />
                 <AppText variant="label" style={{ color: 'rgba(255,255,255,0.92)' }}>
                   보유 캐시
                 </AppText>
@@ -248,7 +248,7 @@ export default function WalletScreen(): React.JSX.Element {
                     </AppText>
                   </View>
                   <View className="flex-row items-center" style={{ gap: 4 }}>
-                    <Icon name="coin" size={15} color={yellow[400]} />
+                    <Coin size={16} />
                     <AppText variant="label" className="text-text-primary">
                       {product.price_cash.toLocaleString()}C
                     </AppText>

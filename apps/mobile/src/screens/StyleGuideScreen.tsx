@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   CashBadge,
+  Coin,
   Gradient,
   Icon,
   ProgressBar,
@@ -94,7 +95,7 @@ export default function StyleGuideScreen() {
           <Gradient colors={gradients.brand} direction="diagonal" />
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center" style={{ gap: 6 }}>
-              <Icon name="coin" size={18} color={yellow[400]} />
+              <Coin size={18} />
               <AppText variant="label" style={{ color: 'rgba(255,255,255,0.92)' }}>
                 내 캐시
               </AppText>
