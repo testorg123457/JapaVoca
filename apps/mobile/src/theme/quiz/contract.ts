@@ -25,6 +25,8 @@ export type QuizThemeShape = {
   choiceStyle: 'fill' | 'outline' | 'soft';
   choiceLayout: 'grid2x2' | 'list';
   borderWidth: number;
+  /** fill 스타일에서 기본 선택지에도 테두리를 그릴지(배경-면 대비가 약한 테마용). 기본 false. */
+  choiceOutline?: boolean;
   /** 문제 텍스트가 사진 배경 위에서 항상 읽히도록 뒤에 스크림 박스를 깔지 여부. */
   needsTextScrim: boolean;
   background:

@@ -3,17 +3,19 @@ import {
 } from '../src/theme/quiz/themes';
 
 describe('quiz theme registry', () => {
-  it('classic/paper 둘 다 등록', () => {
+  it('현재 등록된 테마 목록', () => {
     expect(themesById.classic).toBeDefined();
-    expect(themesById.paper).toBeDefined();
-    expect(themeList.map((t) => t.id)).toEqual(['classic', 'paper']);
+    expect(themesById.pink).toBeDefined();
+    expect(themeList.map((t) => t.id)).toEqual([
+      'classic', 'forest', 'olive', 'dracula', 'sage', 'pink',
+    ]);
   });
   it('기본 테마는 classic', () => {
     expect(DEFAULT_THEME_ID).toBe('classic');
     expect(getTheme('없는id').id).toBe('classic');
   });
   it('resolveThemeId: 유효하면 그대로, 아니면 classic', () => {
-    expect(resolveThemeId('paper')).toBe('paper');
+    expect(resolveThemeId('forest')).toBe('forest');
     expect(resolveThemeId('xxx')).toBe('classic');
     expect(resolveThemeId(undefined)).toBe('classic');
   });

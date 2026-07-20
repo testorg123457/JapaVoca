@@ -33,7 +33,8 @@ export function choiceCardStyle(
       return { bg: withAlpha(c.brand, 0.06), border: 'transparent', text: c.textPrimary, icon: null };
     case 'fill':
     default:
-      return { bg: c.surface, border: 'transparent', text: c.textPrimary, icon: null };
+      // choiceOutline 테마(대비 약한 다크)는 기본 선택지에도 line 테두리를 그려 구분.
+      return { bg: c.surface, border: theme.shape.choiceOutline ? c.line : 'transparent', text: c.textPrimary, icon: null };
   }
 }
 

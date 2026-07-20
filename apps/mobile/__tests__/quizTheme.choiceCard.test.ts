@@ -1,6 +1,6 @@
 import { choiceCardStyle } from '../src/screens/quiz/components/ChoiceCard';
 import classic from '../src/theme/quiz/themes/classic';
-import sky from '../src/theme/quiz/themes/sky';
+import pink from '../src/theme/quiz/themes/pink';
 
 describe('choiceCardStyle', () => {
   it('classic default(fill)는 surface 면', () => {
@@ -17,9 +17,9 @@ describe('choiceCardStyle', () => {
   it('correct 배경은 base + 0.12 알파', () => {
     expect(choiceCardStyle(classic, 'correct').bg).toBe('rgba(70,208,138,0.12)');
   });
-  it('sky default(fill)는 surface 면 — 사진 배경 위 가독성 위해 불투명', () => {
-    const s = choiceCardStyle(sky, 'default');
+  it('pink default(fill)는 surface 면 — 사진 배경 위 가독성 위해 불투명', () => {
+    const s = choiceCardStyle(pink, 'default');
     expect(s.bg).toBe('#FFFFFF');
-    expect(s.text).toBe('#14202E');
+    expect(s.text).toBe('#3A2129');
   });
 });
