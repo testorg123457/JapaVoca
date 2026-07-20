@@ -60,7 +60,6 @@ export type MainStackParamList = {
   Exchange: undefined;
   /** 캐시 적립/사용 내역(설정 > 내역). */
   Ledger: undefined;
-  /** 구매(기프티콘 교환) 내역(설정 > 구매 내역). */
   /** 기프티콘 보관함 — 발급완료 기프티콘을 모아 바코드로 사용. */
   GifticonWallet: undefined;
   /** 기프티콘 상세 — 바코드/쿠폰번호/유효기간. */
@@ -69,6 +68,8 @@ export type MainStackParamList = {
   Notifications: undefined;
   /** 고객 문의 목록 + 작성. */
   Inquiry: undefined;
+  /** 일본어 번역 — 카메라로 촬영해 번역. */
+  JapaneseTranslate: undefined;
   /** 북마크 목록. */
   Bookmarks: undefined;
   /** DEBUG 전용 — 디자인 시스템 쇼케이스. */

@@ -52,7 +52,8 @@ export type IconName =
   | 'clock'
   | 'coffee'
   | 'store'
-  | 'alert';
+  | 'alert'
+  | 'camera';
 
 export interface IconProps {
   name: IconName;
@@ -313,6 +314,13 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
                 <Path d="M12 4.2 L20.5 19 a1 1 0 0 1-.9 1.5 H4.4 a1 1 0 0 1-.9-1.5z" {...s} />
                 <Path d="M12 10 V14" {...s} />
                 <Circle cx="12" cy="16.8" r="0.95" {...fill} />
+              </>
+            );
+          case 'camera': // 일본어 번역 — 카메라
+            return (
+              <>
+                <Path d="M4 8.5 a1.5 1.5 0 0 1 1.5-1.5 H8 L9.2 5 h5.6 L16 7 h2.5 A1.5 1.5 0 0 1 20 8.5 v8 a1.5 1.5 0 0 1-1.5 1.5 H5.5 A1.5 1.5 0 0 1 4 16.5z" {...s} />
+                <Circle cx="12" cy="12.5" r="3.2" {...s} />
               </>
             );
           default:

@@ -276,6 +276,11 @@ export default function HomeScreen(): React.JSX.Element {
               onPress={() => navigation.navigate('Exchange')}
             />
             <ListRow
+              leftIcon="camera"
+              title="일본어 번역"
+              onPress={() => navigation.navigate('JapaneseTranslate')}
+            />
+            <ListRow
               leftIcon="bookmark"
               title="북마크"
               onPress={() => navigation.navigate('Bookmarks')}
