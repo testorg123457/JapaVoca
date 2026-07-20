@@ -1105,7 +1105,9 @@ export function LockQuizView({
                 style={{ color: c.textPrimary, fontSize: 54, letterSpacing: -1.5 }}>
                 {clock.time}
               </AppText>
-              <AppText variant="caption" style={{ color: c.textSecondary, marginTop: 8 }}>
+              <AppText
+                variant="caption"
+                style={{ color: c.textSecondary, marginTop: 8, fontSize: 16, lineHeight: 21 }}>
                 {clock.date}
               </AppText>
             </View>
