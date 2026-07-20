@@ -31,6 +31,9 @@ export default function SettingsScreen(): React.JSX.Element {
   const [studySel, setStudySel] = useState<StudySelection | null>(null);
   const studyInitialized = useRef(false);
   const [justSaved, setJustSaved] = useState(false);
+  // 학습 저장 전용 로딩 — updateProfile은 알림 토글과 공유하므로 그 isPending을 쓰면
+  // 토글만 눌러도 학습 버튼이 "저장 중"이 된다. 학습 저장 액션에만 반응하는 별도 상태.
+  const [studySaving, setStudySaving] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const m = me.data;
@@ -65,6 +68,7 @@ export default function SettingsScreen(): React.JSX.Element {
 
   function applyStudyChange() {
     if (!studySel || !isStudyValid(studySel)) return;
+    setStudySaving(true);
     updateProfile.mutate(
       {
         study_mode: studySel.mode,
@@ -77,13 +81,16 @@ export default function SettingsScreen(): React.JSX.Element {
           abandonQuizSet.mutate(undefined, {
             onSuccess: () => {
               clearCachedSet(); // 학습 설정 변경 시 캐시 클리어: 다음 진입 시 새 세트 요청
+              setStudySaving(false);
               setJustSaved(true);
               if (savedTimer.current) { clearTimeout(savedTimer.current); }
               savedTimer.current = setTimeout(() => setJustSaved(false), 1500);
             },
+            onError: () => setStudySaving(false),
           });
         },
         onError: () => {
+          setStudySaving(false);
           Alert.alert('오류', '설정 변경에 실패했어요.');
           if (m) {
             setStudySel({
@@ -101,7 +108,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const patch = (data: ProfileUpdate) =>
     updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
 
-  const studyLoading = updateProfile.isPending || abandonQuizSet.isPending;
+  const studyLoading = studySaving;
   const studyPending = isPendingStudyChange() && !!studySel && isStudyValid(studySel);
   const studySolid = studyLoading || justSaved || studyPending;
 
@@ -170,8 +177,7 @@ export default function SettingsScreen(): React.JSX.Element {
         {/* 캐시 · 내역 */}
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
-          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} />
-          <ListRow leftIcon="document" title="구매 내역" onPress={() => navigation.navigate('ExchangeHistory')} last />
+          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} last />
         </ListSection>
 
         {/* 알림 */}

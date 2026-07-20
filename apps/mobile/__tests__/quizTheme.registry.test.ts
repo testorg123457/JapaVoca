@@ -5,9 +5,8 @@ import {
 describe('quiz theme registry', () => {
   it('현재 등록된 테마 목록', () => {
     expect(themesById.classic).toBeDefined();
-    expect(themesById.pink).toBeDefined();
     expect(themeList.map((t) => t.id)).toEqual([
-      'classic', 'forest', 'olive', 'dracula', 'sage', 'pink',
+      'classic', 'forest', 'olive', 'dracula', 'sage',
     ]);
   });
   it('기본 테마는 classic', () => {

@@ -57,7 +57,7 @@ export default function ExchangeScreen(): React.JSX.Element {
     if (isGuest) {
       Alert.alert('게스트는 교환 불가', '구글/카카오 계정을 연결하면 교환할 수 있어요.', [
         { text: '나중에', style: 'cancel' },
-        { text: '계정 연결', onPress: () => navigation.navigate('Settings') },
+        { text: '계정 연결', onPress: () => navigation.navigate('AccountSettings') },
       ]);
       return;
     }
@@ -106,43 +106,38 @@ export default function ExchangeScreen(): React.JSX.Element {
           </View>
         </View>
 
-        {/* 게스트 안내 — 큰 버튼 대신 눌러서 연결되는 안내 카드 하나 */}
+        {/* 게스트 안내 — 눌러서 연결. 짧은 문구 + 민트 pill 버튼 */}
         {isGuest ? (
           <PressableScale
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => navigation.navigate('AccountSettings')}
             pressedScale={0.99}
-            className="mx-xl mt-lg flex-row items-center rounded-lg bg-bg-primary px-lg py-md"
-            style={{ gap: 12, borderWidth: hairline, borderColor: c['border-secondary'] }}>
+            className="mx-xl mt-lg flex-row items-center rounded-lg bg-bg-primary px-lg py-lg"
+            style={{ gap: 13, borderWidth: hairline, borderColor: c['border-secondary'] }}>
             <View
               className="items-center justify-center rounded-full"
-              style={{ width: 38, height: 38, backgroundColor: c['brand-subtle'] }}>
-              <Icon name="lock" size={19} color={c.brand} />
+              style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
+              <Icon name="lock" size={22} color={c.brand} />
             </View>
             <View className="flex-1">
-              <AppText variant="label" className="text-text-primary">
-                계정을 연결하면 교환할 수 있어요
+              <AppText variant="subheading" className="text-text-primary">
+                로그인하고 교환하기
               </AppText>
-              <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 1 }}>
-                게스트는 모은 캐시를 기프티콘으로 바꿀 수 없어요
+              <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 2 }}>
+                게스트는 교환할 수 없어요
               </AppText>
             </View>
-            <View className="flex-row items-center" style={{ gap: 2 }}>
-              <AppText variant="label" className="text-brand">
+            <View className="rounded-full bg-brand" style={{ paddingHorizontal: 18, paddingVertical: 9 }}>
+              <AppText variant="label" style={{ color: c['on-brand'] }}>
                 연결
               </AppText>
-              <Icon name="chevron-right" size={16} color={c.brand} strokeWidth={2.4} />
             </View>
           </PressableScale>
         ) : null}
 
-        <AppText variant="caption" className="px-xl pb-sm pt-lg text-text-tertiary">
-          상품을 선택하면 광고를 본 뒤 캐시로 교환돼요.
-        </AppText>
-
         {products.isLoading ? (
           <ActivityIndicator className="mt-2xl" color={c.brand} />
         ) : (
-          <View>
+          <View className="mt-lg">
             {(products.data ?? []).map((product) => {
               const affordable = balance >= product.price_cash;
               const short = Math.max(0, product.price_cash - balance);

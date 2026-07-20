@@ -21,7 +21,6 @@ import LockThemeScreen from '../screens/main/LockThemeScreen';
 import TermsDetailScreen from '../screens/onboarding/TermsDetailScreen';
 import ExchangeScreen from '../screens/main/ExchangeScreen';
 import LedgerScreen from '../screens/main/LedgerScreen';
-import ExchangeHistoryScreen from '../screens/main/ExchangeHistoryScreen';
 import GifticonWalletScreen from '../screens/main/GifticonWalletScreen';
 import GifticonDetailScreen from '../screens/main/GifticonDetailScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
@@ -55,7 +54,6 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="TermsDetail" component={TermsDetailScreen} />
       <Stack.Screen name="Exchange" component={ExchangeScreen} />
       <Stack.Screen name="Ledger" component={LedgerScreen} />
-      <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} />
       <Stack.Screen name="GifticonWallet" component={GifticonWalletScreen} />
       <Stack.Screen name="GifticonDetail" component={GifticonDetailScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

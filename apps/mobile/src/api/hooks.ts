@@ -70,6 +70,20 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: async (data: ProfileUpdate) =>
       (await apiClient.patch<MeResponse>('/api/auth/me/', data)).data,
+    // Optimistic — 토글/설정을 누르는 즉시 반영(스위치 깜빡임 방지). 실패 시 롤백.
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['me'] });
+      const prev = queryClient.getQueryData<MeResponse>(['me']);
+      if (prev) {
+        queryClient.setQueryData<MeResponse>(['me'], { ...prev, ...data });
+      }
+      return { prev };
+    },
+    onError: (_err, _data, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(['me'], ctx.prev);
+      }
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(['me'], data);
     },

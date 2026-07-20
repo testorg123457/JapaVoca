@@ -1,7 +1,7 @@
 /**
  * GifticonWalletScreen — 기프티콘 보관함.
  *
- * "구매 내역"(거래 로그, ExchangeHistoryScreen)과 별개로, *발급완료된 기프티콘*만
+ * 교환 거래 로그와 별개로, *발급완료된 기프티콘*만
  * 모아 바코드를 꺼내 쓰는 화면. 목록은 실제 교환 내역(/api/exchange/history/)에서
  * status='issued' 를 필터해 구성한다.
  *

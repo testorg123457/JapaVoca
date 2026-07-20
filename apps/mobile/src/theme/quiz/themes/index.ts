@@ -4,10 +4,9 @@ import forest from './forest';
 import olive from './olive';
 import dracula from './dracula';
 import sage from './sage';
-import pink from './pink';
 
 /** 새 테마 추가 = 위에 import 1줄 + 아래 배열에 1개 추가. */
-const ALL: QuizTheme[] = [classic, forest, olive, dracula, sage, pink];
+const ALL: QuizTheme[] = [classic, forest, olive, dracula, sage];
 
 export const DEFAULT_THEME_ID = 'classic';
 
