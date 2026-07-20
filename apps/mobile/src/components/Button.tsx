@@ -28,7 +28,7 @@ const SIZE: Record<Size, { height: number; fontSize: number; radius: string; px:
 };
 
 const BOX: Record<Variant, string> = {
-  filled: 'bg-brand active:bg-brand-active', // 눌림 = vermilion-600
+  filled: 'bg-brand active:bg-brand-active', // 눌림 = mint-600
   soft: 'bg-brand-subtle',
   outline: 'bg-bg-primary border border-brand',
   ghost: 'bg-transparent',

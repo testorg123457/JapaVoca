@@ -21,6 +21,8 @@ export type Product = {
   name: string;
   price_cash: number;
   provider: string;
+  /** 상품 이미지 URL(기프티콘 썸네일). 백엔드 미제공 시 카테고리 아이콘으로 폴백. */
+  image_url?: string;
 };
 
 export function useProducts() {

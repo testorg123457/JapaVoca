@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
+import { radius } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { clearCachedSet } from '../../store/quizSet';
@@ -147,20 +148,20 @@ export default function SettingsScreen(): React.JSX.Element {
             pressedScale={0.99}
             style={{
               marginTop: 8,
-              borderRadius: 14,
+              borderRadius: radius.md,
               paddingVertical: 17,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 7,
-              backgroundColor: studySolid ? c.brand : c.brand + '24',
+              backgroundColor: studySolid ? c.brand : c['brand-subtle'],
             }}>
-            <AppText variant="subheading" style={{ color: studySolid ? '#FFFFFF' : c.brand, fontWeight: '700' }}>
+            <AppText variant="subheading" style={{ color: studySolid ? c['on-brand'] : c.brand, fontWeight: '700' }}>
               {studyLoading ? '저장 중…' : justSaved ? '설정되었습니다' : '이 설정으로 학습하기'}
             </AppText>
             {justSaved ? (
               <Animated.View entering={ZoomIn.springify().damping(13).stiffness(200)}>
-                <Icon name="check" size={18} color="#FFFFFF" strokeWidth={3} />
+                <Icon name="check" size={18} color={c['on-brand']} strokeWidth={3} />
               </Animated.View>
             ) : null}
           </PressableScale>
@@ -170,7 +171,7 @@ export default function SettingsScreen(): React.JSX.Element {
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
           <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} />
-          <ListRow leftIcon="gift" title="구매 내역" onPress={() => navigation.navigate('ExchangeHistory')} last />
+          <ListRow leftIcon="document" title="구매 내역" onPress={() => navigation.navigate('ExchangeHistory')} last />
         </ListSection>
 
         {/* 알림 */}

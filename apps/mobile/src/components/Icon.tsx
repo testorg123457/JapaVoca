@@ -49,7 +49,10 @@ export type IconName =
   | 'bookmark'
   | 'bookmark-filled'
   | 'volume'
-  | 'clock';
+  | 'clock'
+  | 'coffee'
+  | 'store'
+  | 'alert';
 
 export interface IconProps {
   name: IconName;
@@ -286,6 +289,30 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
               <>
                 <Circle cx="12" cy="12" r="10" {...s} />
                 <Path d="M12 6v6l4 2" {...s} />
+              </>
+            );
+          case 'coffee': // 커피 기프티콘 — 머그+김
+            return (
+              <>
+                <Path d="M5 8.5 H16.5 V13 a5 5 0 0 1-5 5 H10 a5 5 0 0 1-5-5 V8.5z" {...s} />
+                <Path d="M16.5 9.5 H18.5 a2.4 2.4 0 0 1 0 4.8 H16.5" {...s} />
+                <Path d="M8.5 3.5 V5.2 M12 3.5 V5.2" {...s} />
+              </>
+            );
+          case 'store': // 편의점 기프티콘 — 차양+상점
+            return (
+              <>
+                <Path d="M4 9 L5.6 4.8 H18.4 L20 9" {...s} />
+                <Path d="M4.8 9 H19.2 V19 a1 1 0 0 1-1 1 H5.8 a1 1 0 0 1-1-1 V9z" {...s} />
+                <Path d="M9 13 H15" {...s} />
+              </>
+            );
+          case 'alert': // 경고 — 삼각형+느낌표(토스트 error)
+            return (
+              <>
+                <Path d="M12 4.2 L20.5 19 a1 1 0 0 1-.9 1.5 H4.4 a1 1 0 0 1-.9-1.5z" {...s} />
+                <Path d="M12 10 V14" {...s} />
+                <Circle cx="12" cy="16.8" r="0.95" {...fill} />
               </>
             );
           default:

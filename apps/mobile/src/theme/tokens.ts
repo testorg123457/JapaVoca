@@ -8,7 +8,7 @@
  * - 캐시/리워드 전용: 옐로 yellow-400 `#FFCE00`.
  * - 텍스트: Ink gray-900 `#1A1A1A` 기본 — 메인색을 글자색으로 쓰지 않는다.
  * - 뉴트럴: 핑크 틴트 없는 그레이(#FFFFFF 흰 배경 → #1A1A1A Ink 텍스트).
- * - 적당히 둥근 라운드(버튼 14 / 카드 18), 옅고 넓게 퍼지는 그림자, Pretendard.
+ * - 단단하고 절제된 라운드(버튼 12 / 카드 16), 옅고 넓게 퍼지는 그림자, Pretendard.
  *
  * 구조는 2-tier:
  *   1) primitives — 색 스케일 자체(mint/yellow/gray + green/blue). 모드 무관 고정.
@@ -40,7 +40,7 @@ export const mint = {
   100: '#C8EDD8',
   200: '#90D4B0',
   300: '#4DB882',
-  400: '#34A06A', // 보조 민트(coral 역할) — Primary보다 밝게
+  400: '#34A06A', // 보조 민트 — Primary보다 밝게 (다크 모드 brand)
   500: '#1F9660', // Primary — 메인 CTA/버튼/활성 탭
   600: '#0F7048', // Pressed
   700: '#084D32', // 진한 강조(brand-strong)
@@ -73,10 +73,7 @@ export const gray = {
   900: '#1A1A1A', // Ink — 기본 텍스트
 } as const;
 
-/**
- * Danger Red — 경고/오답/캐시 사용(−)/로그아웃 전용. 브랜드(민트)와 분리된 기능색.
- * (브랜드가 민트로 바뀌며 danger를 brand에서 분리. 값은 기존 mint 레드를 승계.)
- */
+/** Danger Red — 경고/오답/캐시 사용(−)/로그아웃 전용. 브랜드(민트)와 분리된 기능색. */
 export const red = {
   50: '#FFF0ED',
   400: '#FF6B50', // 다크 모드 danger(밝은 레드)
@@ -91,9 +88,8 @@ export const primitives = {
   gray,
   // 단색 기능색(스케일 불필요) — 500=메인, 50=옅은 배경
   green: { 50: '#E6F9EE', 500: '#2AC171' }, // success
-  blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info / 상자 레어색
-  purple: { 50: '#F3EEFE', 500: '#7C4DFF' }, // 상자 에픽색
-  brown: { 50: '#F5EFE8', 500: '#B07B4F' }, // 상자 일반색(우드 브라운)
+  blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info
+  purple: { 50: '#F3EEFE', 500: '#7C4DFF' }, // 상자 등급색(purple — BoxOpenScreen)
   white: '#FFFFFF',
   black: '#000000',
 } as const;
@@ -118,7 +114,7 @@ const lightSemantic = {
   // 보더
   'border-tertiary': gray[100],
   'border-secondary': gray[200],
-  // 브랜드 (Vermilion) — 주액션/활성/선택에만
+  // 브랜드 (Forest Mint) — 주액션/활성/선택에만
   brand: mint[500], // Primary CTA
   'brand-active': mint[600], // 눌림
   'brand-strong': mint[700], // 그라데이션 끝/진한 강조
@@ -128,9 +124,6 @@ const lightSemantic = {
   // 앱 상단 헤더 — 포레스트 민트(브랜드와 통일)
   header: mint[500], // #1F9660
   'on-header': gray[0], // 헤더 위 텍스트/아이콘(흰색)
-  // 보조 강조 (밝은 민트) — primary(민트)와 같은 계열의 두 번째 포인트
-  coral: mint[400],
-  'coral-subtle': mint[100], // 옅은 민트 틴트(브랜드 흡수)
   // 기능색
   amber: yellow[400], // 캐시/리워드/출석 강조
   'amber-subtle': yellow[50],
@@ -139,11 +132,6 @@ const lightSemantic = {
   'danger-subtle': red[50],
   info: primitives.blue[500],
   'info-subtle': primitives.blue[50],
-  // 상자 등급색 (normal=box / rare=info / epic / legendary=amber / jackpot=danger)
-  epic: primitives.purple[500],
-  'epic-subtle': primitives.purple[50],
-  box: primitives.brown[500],
-  'box-subtle': primitives.brown[50],
 
   /* ── 백워드 호환 별칭 (기존 화면/컴포넌트 className·colors.* 키) ── */
   bg: gray[0],
@@ -163,53 +151,45 @@ const lightSemantic = {
 } as const satisfies SemanticSet;
 
 const darkSemantic = {
-  // 배경 — 따뜻한 다크
-  'bg-primary': '#241F1E',
-  'bg-secondary': '#1A1716',
-  'bg-tertiary': '#332B29',
+  // 배경 — 쿨 잉크 다크(라이트의 쿨 뉴트럴·그림자 잉크 #0B1220과 온도 통일)
+  'bg-primary': '#1F2023',
+  'bg-secondary': '#161719',
+  'bg-tertiary': '#2A2B2F',
   // 텍스트
   'text-primary': gray[100],
   'text-secondary': gray[400],
   'text-tertiary': gray[500],
   // 보더
-  'border-tertiary': '#332B29',
-  'border-secondary': '#4A4442',
-  // 브랜드 — 다크에선 밝은 Coral 계열
+  'border-tertiary': '#2A2B2F',
+  'border-secondary': '#3E4045',
+  // 브랜드 — 다크에선 밝은 민트
   brand: mint[400],
   'brand-active': mint[300],
   'brand-strong': mint[500],
-  'brand-subtle': '#3A1A14',
-  'brand-subtle-active': '#4D241C',
+  'brand-subtle': '#10301F', // 다크 민트 틴트
+  'brand-subtle-active': '#164028',
   'on-brand': gray[0], // 브랜드 면 위는 흰 텍스트
   // 앱 상단 헤더 — 포레스트 민트(다크에서도 동일 유지)
   header: mint[500],
   'on-header': gray[0],
-  // 보조 강조 (밝은 민트)
-  coral: mint[300],
-  'coral-subtle': '#123A28', // 다크 민트 틴트
   // 기능색
   amber: yellow[400],
   'amber-subtle': '#3A330F',
   'amber-strong': yellow[200],
   danger: red[400], // 다크 모드용 밝은 레드(브랜드와 분리)
-  'danger-subtle': '#3A1A14',
+  'danger-subtle': '#3A1A14', // 레드 틴트(danger 전용 — 정상)
   info: '#6AA6E8',
   'info-subtle': '#16243A',
-  // 상자 등급색 (다크에선 약간 밝게)
-  epic: '#A07BFF',
-  'epic-subtle': '#241A3A',
-  box: '#C99B73',
-  'box-subtle': '#2E2620',
 
   /* ── 백워드 호환 별칭 ── */
-  bg: '#1A1716',
-  surface: '#241F1E',
-  border: '#4A4442',
+  bg: '#161719',
+  surface: '#1F2023',
+  border: '#3E4045',
   'text-strong': gray[100],
   text: gray[400],
   'text-weak': gray[500],
   'brand-dark': mint[300],
-  'brand-soft': '#3A1A14',
+  'brand-soft': '#10301F',
   success: '#3FD487',
   'success-subtle': '#143524',
   warning: yellow[400],
@@ -258,17 +238,18 @@ export const colors = {
 } as const;
 
 /* ─────────────────────────────────────────────────────────────────────────
- * 라운드 — 배민식(적당히 둥글게). 인풋·태그 8 / 버튼 12 / 카드 16.
- * pill 은 full 별칭(기존 className rounded-pill 호환).
+ * 라운드 — 단단하고 절제된 톤(사용자 취향: 둥글둥글 X, 직각 X).
+ * 인풋·태그 8 / 버튼 12 / 카드 16 / 시트 24. 부드러움은 라운드가 아니라
+ * 그림자·여백·위계로 낸다. pill 은 full 별칭(기존 className rounded-pill 호환).
  * ──────────────────────────────────────────────────────────────────────── */
 export const radius = {
   none: 0,
-  xs: 6,
-  sm: 10, // 인풋/태그/작은 칩
-  md: 14, // 버튼 기본
-  lg: 18, // 카드 기본
-  xl: 24, // 큰 카드/바텀시트
-  '2xl': 28,
+  xs: 4,
+  sm: 8, // 인풋/태그/작은 칩
+  md: 12, // 버튼 기본
+  lg: 16, // 카드 기본
+  xl: 20, // 큰 카드/바텀시트
+  '2xl': 24, // 시트/히어로 겹침 코너
   full: 9999,
   pill: 9999, // = full (백워드 호환)
 } as const;
@@ -315,7 +296,6 @@ export const gradients = {
 
 /** 모달/바텀시트 스크림(반투명 검정). 라이트/다크 공통. */
 export const scrim = 'rgba(15, 18, 22, 0.55)';
-
 /**
  * 타이포 — 폰트: Pretendard (Regular 400 / Medium 500 / SemiBold 600 / Bold 700).
  * 배민 한나체는 브랜드 전용이라 미적용.

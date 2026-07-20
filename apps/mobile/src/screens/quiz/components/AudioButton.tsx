@@ -15,15 +15,15 @@ export function AudioButton({ text }: { text: string }): React.JSX.Element {
     <TouchableOpacity
       style={{
         flexDirection: 'row', alignItems: 'center', gap: 5,
-        paddingHorizontal: 12, paddingVertical: 6,
-        backgroundColor: speaking ? withAlpha(theme.colors.brandSoft, 0.13) : withAlpha(theme.colors.textPrimary, 0.05),
+        paddingHorizontal: 13, paddingVertical: 7,
+        backgroundColor: speaking
+          ? withAlpha(theme.colors.brandSoft, 0.18)
+          : withAlpha(theme.colors.textPrimary, 0.07),
         borderRadius: 20,
-        borderWidth: 1,
-        borderColor: speaking ? theme.colors.brandSoft : theme.colors.line,
       }}
       onPress={toggle}>
       <Icon name="volume" size={14} color={theme.colors.brandSoft} strokeWidth={2} />
-      <AppText variant="caption" style={{ color: theme.colors.brandSoft }}>
+      <AppText variant="caption" style={{ color: theme.colors.brandSoft, fontWeight: '700' }}>
         {speaking ? '■' : '듣기'}
       </AppText>
     </TouchableOpacity>

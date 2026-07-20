@@ -11,7 +11,8 @@
  *                   Query onError 포함) 뜬 토스트를 화면 하단 오버레이로 렌더한다.
  *  - useToast()   : 화면에서 토스트를 띄우는 훅. { showToast, showNetworkError }.
  *
- * 색·라운드·그림자는 토큰(theme/tokens.ts)만 사용. error=danger 계열, info=중립 면.
+ * 색·라운드·그림자는 토큰(theme/tokens.ts)만 사용. 흰 면 카드 + 좌측 원형 아이콘 칩
+ * (error=경고/danger, info=반짝/brand)에 그림자로 살짝 띄운 밝은 스낵바.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
@@ -27,6 +28,7 @@ import {
   type ToastVariant,
 } from '../lib/toastBus';
 import { AppText } from './AppText';
+import Icon from './Icon';
 
 export interface ToastViewProps {
   message: string;
@@ -50,19 +52,20 @@ export function ToastView({ message, variant = 'info', style }: ToastViewProps):
     }).start();
   }, [anim]);
 
+  // 흰 카드 + 좌측 원형 아이콘 칩(토스풍). error=경고(danger), info=반짝(brand).
+  // 밝은 면 위에 뜨는 깨끗한 스낵바 — 그림자로 살짝 띄운다.
   const isError = variant === 'error';
-  const backgroundColor = isError ? c['danger-subtle'] : c['bg-primary'];
-  const borderColor = isError ? c.danger : c['border-secondary'];
-  const textColor = isError ? c.danger : c['text-primary'];
+  const chipBg = isError ? c['danger-subtle'] : c['brand-subtle'];
+  const chipFg = isError ? c.danger : c.brand;
 
   return (
     <Animated.View
       style={[
         styles.card,
-        shadowStyle('md'),
+        shadowStyle('lg'),
         {
-          backgroundColor,
-          borderColor,
+          backgroundColor: c['bg-primary'],
+          borderColor: c['border-tertiary'],
           opacity: anim,
           transform: [
             {
@@ -72,7 +75,18 @@ export function ToastView({ message, variant = 'info', style }: ToastViewProps):
         },
         style,
       ]}>
-      <AppText variant="label" style={{ color: textColor, textAlign: 'center' }}>
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 9,
+          backgroundColor: chipBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <Icon name={isError ? 'alert' : 'sparkles'} size={17} color={chipFg} strokeWidth={2.2} />
+      </View>
+      <AppText variant="label" style={{ color: c['text-primary'], flex: 1 }}>
         {message}
       </AppText>
     </Animated.View>
@@ -141,10 +155,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    borderWidth: 0.5,
     borderRadius: radius.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
     maxWidth: 420,
   },
 });

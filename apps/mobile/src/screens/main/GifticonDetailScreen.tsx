@@ -49,8 +49,8 @@ export default function GifticonDetailScreen({
         {/* 아이콘 */}
         <View
           className="items-center justify-center rounded-xl"
-          style={{ width: 56, height: 56, backgroundColor: c['brand-subtle'], marginBottom: 10 }}>
-          <Icon name="gift" size={28} color={c.brand} />
+          style={{ width: 56, height: 56, backgroundColor: c['amber-subtle'], marginBottom: 10 }}>
+          <Icon name="gift" size={28} color={c['amber-strong']} />
         </View>
         <AppText variant="title" className="text-text-primary">
           {name}

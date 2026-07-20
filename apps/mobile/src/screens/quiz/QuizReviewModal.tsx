@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText, Icon, PressableScale, ToastView } from '../../components';
+import { AppText, Icon, ToastView } from '../../components';
 import { NETWORK_ERROR_MESSAGE } from '../../lib/toastBus';
 import { toggleBookmark, type QuizItemType } from '../../api/quiz';
 import { useSpeak } from '../../lib/useSpeak';

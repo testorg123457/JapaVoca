@@ -240,8 +240,8 @@ export default function WalletScreen(): React.JSX.Element {
                   <View className="flex-row items-center" style={{ gap: 12 }}>
                     <View
                       className="items-center justify-center rounded-md"
-                      style={{ width: 40, height: 40, backgroundColor: c['brand-subtle'] }}>
-                      <Icon name="gift" size={22} color={c.brand} />
+                      style={{ width: 40, height: 40, backgroundColor: c['amber-subtle'] }}>
+                      <Icon name="gift" size={22} color={c['amber-strong']} />
                     </View>
                     <AppText variant="subheading" className="text-text-primary">
                       {product.name}

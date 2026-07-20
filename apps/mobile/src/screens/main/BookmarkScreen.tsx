@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { AppHeader, AppText, Icon } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { radius, spacing } from '../../theme/tokens';
 import { getBookmarks, toggleBookmark, type BookmarkItem } from '../../api/quiz';
-import type { MainStackScreenProps } from '../../navigation/types';
 import PressableScale from '../../components/PressableScale';
 
 const ITEM_TYPE_LABEL: Record<string, string> = {
@@ -74,9 +73,9 @@ function BookmarkRow({
         ) : null}
       </View>
 
-      {/* 북마크 해제 버튼 */}
+      {/* 북마크 해제 버튼 — 활성 북마크 = amber (퀴즈/복습 화면과 통일) */}
       <PressableScale onPress={() => onRemove(item)} hitSlop={10}>
-        <Icon name="bookmark-filled" size={22} color={c.brand} />
+        <Icon name="bookmark-filled" size={22} color={c.amber} />
       </PressableScale>
     </View>
   );
@@ -84,7 +83,6 @@ function BookmarkRow({
 
 export default function BookmarkScreen(): React.JSX.Element {
   const c = useThemeColors();
-  const navigation = useNavigation<MainStackScreenProps<'Bookmarks'>['navigation']>();
 
   const [items, setItems] = useState<BookmarkItem[]>([]);
   const [loading, setLoading] = useState(true);

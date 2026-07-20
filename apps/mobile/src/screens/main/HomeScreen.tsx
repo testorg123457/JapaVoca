@@ -1,19 +1,20 @@
 /**
  * 홈 화면 — 앱의 메인 단일 스크롤.
  *
- * 위→아래: 버밀리온 헤더(좌:내 캐시 / 우:설정) → 상자 섹션(메인) → 퀴즈 시작 CTA →
- * 가나·출석·교환 진입(리스트) → 하단 얇은 앵커 배너.
+ * 구조(화이트 톱 — 상단에 민트 블록 없음. 프리미엄 핀테크 톤):
+ *   흰 헤더(잉크 워드마크 / 알림·설정 23px 잉크 아이콘) →
+ *   자산 블록(좌정렬 스택: "내 캐시" 캡션 위, 잔액 display 잉크 + C 앰버 아래,
+ *   우측 조용한 "내역 ›", 탭 → 캐시 내역) →
+ *   퀴즈 CTA(주액션) → 상자 카드(보유 수 스택 레이어) → 진입 리스트(inset) → 앵커 배너.
  *
- * 카드 절제: 카드는 "누르는 액션 단위"에만(상자 섹션·퀴즈 CTA). 가나/출석/교환 진입은
- * 가벼운 리스트 행(ListRow). 캐시 갯수는 카드가 아니라 헤더 안 텍스트 계층.
- *
- * 상자 열기 인터랙션은 Phase 3, 각 진입 화면 내용은 Phase 4~6에서 채운다.
+ * 민트는 상단이 아니라 퀴즈 타일·CTA에만 — 색은 기능 신호(원칙 문서 §2).
+ * 상자 카드 뒤 스택 레이어(2개↑ 한 장, 4개↑ 두 장)는 재고를 구조로 보여주는 장치.
  *
  * 에러는 각 훅의 isError를 보지 않고 ?? 기본값으로 조용히 fallback한다 —
  * 홈은 어떤 API가 실패해도 크래시 없이 항상 떠 있어야 한다.
  */
 import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
@@ -21,18 +22,21 @@ import Config from 'react-native-config';
 import LottieView from 'lottie-react-native';
 
 import {
-  AppHeader,
   AppText,
   Card,
   Icon,
   ListRow,
   ListSection,
 } from '../../components';
-import { hairline, spacing, yellow } from '../../theme/tokens';
-import { useThemeColors } from '../../theme/ThemeProvider';
+import { fontFamily, hairline, spacing } from '../../theme/tokens';
+import { useColorSchemeMode, useThemeColors } from '../../theme/ThemeProvider';
 import { useAttendanceStatus, useBoxes, useWallet } from '../../api/hooks';
 import { useUnreadCount } from '../../api/notifications';
 import type { MainStackScreenProps } from '../../navigation/types';
+
+// 오늘의 진행 문구용 하드코딩 값. TODO(백엔드): daily/today 응답으로 교체.
+const DAILY_GOAL = 10;
+const TODAY_SOLVED = 3;
 
 /**
  * 하단 앵커 배너 — ScrollView 바깥 sibling. AdMob 정책 준수:
@@ -69,6 +73,8 @@ function BottomAnchorBanner(): React.JSX.Element {
 export default function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'Home'>['navigation']>();
   const c = useThemeColors();
+  const scheme = useColorSchemeMode();
+  const insets = useSafeAreaInsets();
 
   const wallet = useWallet();
   const boxes = useBoxes();
@@ -78,8 +84,9 @@ export default function HomeScreen(): React.JSX.Element {
   const balance = wallet.data?.balance ?? 0;
   const boxCount = boxes.data?.length ?? 0;
   const streak = attendance.data?.streak_count ?? 0;
+  const hasBoxes = boxCount > 0;
 
-  // 상자 섹션 탭 → BoxOpen(전체 미개봉 상자). 개봉 화면이 광고/연출/잔액 invalidate를
+  // 상자 카드 탭 → BoxOpen(전체 미개봉 상자). 개봉 화면이 광고/연출/잔액 invalidate를
   // 담당하므로 여기선 진입만. navLock으로 연타 시 중복 push 방지(홈 복귀 시 해제).
   const navLockRef = useRef(false);
   useFocusEffect(
@@ -97,27 +104,40 @@ export default function HomeScreen(): React.JSX.Element {
     });
   }
 
+  // 상자 스택 레이어 — 2개↑ 한 장, 4개↑ 두 장이 카드 위로 살짝 보인다.
+  const stackPad = boxCount >= 4 ? 12 : boxCount >= 2 ? 7 : 0;
+
   return (
     <View className="flex-1 bg-bg-secondary">
-      <AppHeader
-        left={
-          <View className="flex-row items-center" style={{ gap: 6 }}>
-            <Icon name="coin" size={20} color={yellow[400]} />
-            <AppText variant="title" style={{ color: c['on-header'] }}>
+      <StatusBar
+        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={c['bg-secondary']}
+      />
+
+      {/* 화이트 헤더 — 좌: 캐시 보유량(탭→내역) / 우: 알림·설정. 상태바 inset 소유. */}
+      <View style={{ paddingTop: insets.top }}>
+        <View className="h-14 flex-row items-center justify-between px-xl">
+          <Pressable
+            onPress={() => navigation.navigate('Ledger')}
+            hitSlop={8}
+            className="flex-row items-center active:opacity-60"
+            style={{ gap: 6 }}>
+            <Icon name="coin" size={22} color={c.amber} />
+            <AppText
+              className="text-text-primary"
+              style={{ fontFamily: fontFamily.bold, fontSize: 20, letterSpacing: -0.3 }}>
               {balance.toLocaleString()}
             </AppText>
-            <AppText variant="subheading" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            <AppText variant="title" style={{ color: c['amber-strong'] }}>
               C
             </AppText>
-          </View>
-        }
-        right={
+          </Pressable>
           <View className="flex-row items-center" style={{ gap: 18 }}>
             <Pressable
               onPress={() => navigation.navigate('Notifications')}
               hitSlop={10}
               className="active:opacity-60">
-              <Icon name="bell" size={22} color={c['on-header']} />
+              <Icon name="bell" size={23} color={c['text-primary']} />
               {(unread.data ?? 0) > 0 && (
                 <View
                   className="absolute items-center justify-center rounded-full"
@@ -139,63 +159,108 @@ export default function HomeScreen(): React.JSX.Element {
               onPress={() => navigation.navigate('Settings')}
               hitSlop={10}
               className="active:opacity-60">
-              <Icon name="settings" size={22} color={c['on-header']} />
+              <Icon name="settings" size={23} color={c['text-primary']} />
             </Pressable>
           </View>
-        }
-      />
+        </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing['4xl'] }}>
-        <View className="gap-2xl pt-xl">
-          {/* 상자 섹션 + 퀴즈 CTA (패딩 블록) */}
-          <View className="gap-xl px-xl">
-            {/* 상자 섹션 — 메인 기능, 가장 큼/중앙(elevated hero). 탭 → BoxOpen 개봉. */}
-            <Card
-              variant="elevated"
-              onPress={boxCount > 0 ? openBoxes : undefined}
-              className="items-center gap-md py-3xl"
-              style={boxCount === 0 ? { opacity: 0.55 } : undefined}>
-              <LottieView
-                source={require('../../assets/gift-animation.json')}
-                autoPlay
-                loop
-                style={{ width: 96, height: 96 }}
-              />
-              <AppText variant="display" className="text-text-primary">
-                보유 상자 {boxCount}개
+        <View className="gap-2xl">
+          {/* 오늘의 진행 문구 — 캐시 아래. TODO(백엔드): daily/today로 실제 수치 교체(현재 하드코딩). */}
+          <View className="px-xl" style={{ paddingTop: spacing.md }}>
+            <AppText
+              className="text-text-primary"
+              style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
+              오늘 {TODAY_SOLVED}문제 풀었어요{'\n'}
+              <AppText
+                style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5, color: c.brand }}>
+                {DAILY_GOAL - TODAY_SOLVED}문제
               </AppText>
-              <AppText variant="subheading" className="text-center text-text-tertiary">
-                {boxCount > 0 ? '탭해서 상자를 열어보세요!' : '퀴즈를 풀고 상자를 받아보세요.'}
+              <AppText
+                className="text-text-primary"
+                style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
+                {' '}더 풀면 상자 하나
               </AppText>
-            </Card>
-
-            {/* 퀴즈 시작 — 핵심 액션 카드 */}
-            <Card
-              variant="flat"
-              onPress={() => navigation.navigate('LockQuiz')}
-              className="flex-row items-center"
-              style={{ gap: 14 }}>
-              <View
-                className="items-center justify-center rounded-md"
-                style={{ width: 48, height: 48, backgroundColor: c['brand-subtle'] }}>
-                <Icon name="book" size={26} color={c.brand} />
-              </View>
-              <View className="flex-1 gap-xs">
-                <AppText variant="heading" className="text-text-primary">
-                  단어 · 한자 퀴즈
-                </AppText>
-                <AppText variant="body" className="text-text-tertiary">
-                  4지선다로 풀고 캐시 상자 받기
-                </AppText>
-              </View>
-              <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />
-            </Card>
+            </AppText>
           </View>
 
-          {/* 가나 · 출석 · 교환 진입 — 가벼운 리스트(카드 X) */}
-          <ListSection>
+          <View className="gap-xl px-xl">
+            {/* 퀴즈 시작 — 주액션(민트 solid 액션 카드). 아이콘 배지 없이 타이포로 위계. */}
+            <Card
+              variant="brand"
+              onPress={() => navigation.navigate('LockQuiz')}
+              className="flex-row items-center"
+              style={{
+                gap: 14,
+                paddingVertical: 22,
+                shadowColor: c.brand,
+                shadowOpacity: 0.3,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 4,
+              }}>
+              <View className="flex-1" style={{ gap: 3 }}>
+                <AppText variant="title" style={{ color: c['on-brand'] }}>
+                  단어 · 한자 퀴즈 풀기
+                </AppText>
+                <AppText variant="body" style={{ color: 'rgba(255,255,255,0.82)' }}>
+                  한 문제 맞힐 때마다 캐시 상자가 쌓여요
+                </AppText>
+              </View>
+              <View
+                className="items-center justify-center rounded-full"
+                style={{ width: 42, height: 42, backgroundColor: c['on-brand'] }}>
+                <Icon name="chevron-right" size={22} color={c.brand} strokeWidth={2.6} />
+              </View>
+            </Card>
+
+            {/* 상자 카드 — 보유 수에 따라 뒤에 쌓인 레이어가 보인다 */}
+            <View style={{ paddingTop: stackPad }}>
+              {boxCount >= 4 ? (
+                <View
+                  pointerEvents="none"
+                  className="absolute rounded-lg border-border-secondary bg-bg-primary"
+                  style={{ top: 0, left: 24, right: 24, height: 24, borderWidth: hairline, opacity: 0.5 }}
+                />
+              ) : null}
+              {boxCount >= 2 ? (
+                <View
+                  pointerEvents="none"
+                  className="absolute rounded-lg border-border-secondary bg-bg-primary"
+                  style={{ top: stackPad - 7, left: 12, right: 12, height: 24, borderWidth: hairline, opacity: 0.8 }}
+                />
+              ) : null}
+              <Card
+                variant={hasBoxes ? 'default' : 'flat'}
+                onPress={hasBoxes ? openBoxes : undefined}
+                className="flex-row items-center"
+                style={{ gap: 14 }}>
+                <LottieView
+                  source={require('../../assets/gift-animation.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 64, height: 64 }}
+                />
+                <View className="flex-1 gap-xs">
+                  <AppText variant="title" className="text-text-primary">
+                    {hasBoxes ? `보유 상자 ${boxCount}개` : '상자가 아직 없어요'}
+                  </AppText>
+                  <AppText variant="body" className="text-text-tertiary">
+                    {hasBoxes ? '탭해서 바로 열어보세요' : '퀴즈 한 세트를 풀면 상자가 생겨요'}
+                  </AppText>
+                </View>
+                {hasBoxes ? (
+                  <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />
+                ) : null}
+              </Card>
+            </View>
+          </View>
+
+          {/* 가나 · 출석 · 교환 진입 — inset 그룹 */}
+          <ListSection inset>
             <ListRow
               leftIcon="pencil"
               title="히라가나 / 가타카나"

@@ -1,7 +1,7 @@
 /**
  * StyleGuideScreen — 디자인 시스템 쇼케이스(합격 기준 화면).
  *
- * Vermilion 테마: Primary mint + Cash 옐로 + 따뜻한 그레이(Ink 텍스트) + Pretendard.
+ * Forest Mint 테마: Primary 민트 + Cash 옐로 + 뉴트럴 그레이(Ink 텍스트) + Pretendard.
  * 토큰/컴포넌트가 실제로 어떻게 조립되는지 한눈에 본다. 기기 테마를 바꾸면
  * 라이트/다크 양쪽을 확인할 수 있다(semantic 토큰이 한 곳에서 전환됨).
  */
@@ -80,10 +80,10 @@ export default function StyleGuideScreen() {
         <View className="gap-sm">
           <Tag label="JapaVoca · 디자인 시스템" variant="brand" leftIcon="sparkles" />
           <AppText variant="display" className="text-text-primary mt-sm">
-            Vermilion 스타일 가이드
+            JapaVoca 스타일 가이드
           </AppText>
           <AppText variant="caption" className="text-text-tertiary">
-            Vermilion Primary · Cash 옐로 · Ink 텍스트 · 흰 배경 · Pretendard · 현재 모드: {scheme}
+            Forest Mint Primary · Cash 옐로 · Ink 텍스트 · 흰 배경 · Pretendard · 현재 모드: {scheme}
           </AppText>
         </View>
 
@@ -235,15 +235,15 @@ export default function StyleGuideScreen() {
         <Section title="글자색">
           <Card className="gap-sm">
             <AppText variant="subheading" className="text-text-primary">Primary — Ink #1A1A1A (기본)</AppText>
-            <AppText variant="subheading" className="text-text-secondary">Secondary — gray-600 #666060</AppText>
-            <AppText variant="subheading" className="text-text-tertiary">Caption — gray-500 #8A8280</AppText>
+            <AppText variant="subheading" className="text-text-secondary">Secondary — gray-600 #5C5C62</AppText>
+            <AppText variant="subheading" className="text-text-tertiary">Caption — gray-500 #7E7E85</AppText>
             <AppText variant="subheading" className="text-brand">Brand — mint-500 (강조에만)</AppText>
             <AppText variant="subheading" style={{ color: yellow[600] }}>Cash — yellow-600 #B38F00 (캐시 글자)</AppText>
           </Card>
         </Section>
 
         {/* 색 팔레트 */}
-        <Section title="Vermilion (Primary · 9단계)">
+        <Section title="Forest Mint (Primary · 9단계)">
           <SwatchRow entries={(['50', '100', '200', '300', '400', '500', '600', '700', '900'] as const).map((k) => [k, mint[k]])} />
         </Section>
         <Section title="Cash Yellow (7단계)">

@@ -3,17 +3,21 @@
  *
  * 상품 선택 → 보상형 광고 → 교환 요청. 보상/차감/멱등은 서버가 확정(useRequestExchange).
  * 비즈니스 로직(상품·광고 SSV·교환)은 기존 훅 그대로 — 화면은 호출만.
+ *
+ * 상품 행: 좌측 이미지 슬롯(썸네일 있으면 사진, 없으면 카테고리 아이콘) + 이름·카테고리
+ * + 우측 캐시가·교환 상태. 게스트는 상단 안내 카드 하나로 계정 연결을 유도한다.
  */
 import React, { useRef } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, View } from 'react-native';
 import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
 import { useNavigation } from '@react-navigation/native';
 
-import { AppHeader, AppText, Button, Icon, PressableScale } from '../../components';
-import { yellow } from '../../theme/tokens';
+import { AppHeader, AppText, Icon, PressableScale } from '../../components';
+import type { IconName } from '../../components/Icon';
+import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useWallet } from '../../api/hooks';
 import { useProducts, useRequestExchange, type Product } from '../../api/exchange';
@@ -23,6 +27,14 @@ import type { MainStackScreenProps } from '../../navigation/types';
 /** 네트워크 재시도 멱등용 키(unique 문자열이면 충분). */
 function genIdempotencyKey(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** 상품 코드 → 카테고리 아이콘·라벨(썸네일 없을 때의 시각 구분). */
+function categoryOf(code: string): { icon: IconName; label: string } {
+  if (code.startsWith('COFFEE')) {
+    return { icon: 'coffee', label: '커피' };
+  }
+  return { icon: 'store', label: '편의점' };
 }
 
 export default function ExchangeScreen(): React.JSX.Element {
@@ -76,45 +88,56 @@ export default function ExchangeScreen(): React.JSX.Element {
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="기프티콘 교환" showBack />
       <View className="flex-1">
-        {/* 보유 캐시 밴드 — 옅은 민트 면에 잔액을 크게 */}
+        {/* 보유 캐시 — 흰 면에 잔액을 크게, 하단 헤어라인 */}
         <View
-          className="px-xl pb-lg pt-md"
-          style={{ backgroundColor: c['brand-subtle'], borderBottomWidth: 1, borderBottomColor: c['border-secondary'] }}>
-          <AppText variant="caption" className="text-text-secondary">
+          className="bg-bg-primary px-xl pb-lg pt-lg"
+          style={{ borderBottomWidth: hairline, borderBottomColor: c['border-secondary'] }}>
+          <AppText variant="caption" className="text-text-tertiary">
             보유 캐시
           </AppText>
-          <View className="flex-row items-center" style={{ gap: 6 }}>
-            <Icon name="coin" size={22} color={yellow[400]} />
+          <View className="flex-row items-end" style={{ gap: 6, marginTop: 2 }}>
+            <Icon name="coin" size={24} color={c.amber} />
             <AppText variant="display" className="text-text-primary">
-              {balance.toLocaleString()}C
+              {balance.toLocaleString()}
+            </AppText>
+            <AppText variant="title" style={{ color: c['amber-strong'], marginBottom: 1 }}>
+              C
             </AppText>
           </View>
         </View>
+
+        {/* 게스트 안내 — 큰 버튼 대신 눌러서 연결되는 안내 카드 하나 */}
+        {isGuest ? (
+          <PressableScale
+            onPress={() => navigation.navigate('Settings')}
+            pressedScale={0.99}
+            className="mx-xl mt-lg flex-row items-center rounded-lg bg-bg-primary px-lg py-md"
+            style={{ gap: 12, borderWidth: hairline, borderColor: c['border-secondary'] }}>
+            <View
+              className="items-center justify-center rounded-full"
+              style={{ width: 38, height: 38, backgroundColor: c['brand-subtle'] }}>
+              <Icon name="lock" size={19} color={c.brand} />
+            </View>
+            <View className="flex-1">
+              <AppText variant="label" className="text-text-primary">
+                계정을 연결하면 교환할 수 있어요
+              </AppText>
+              <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 1 }}>
+                게스트는 모은 캐시를 기프티콘으로 바꿀 수 없어요
+              </AppText>
+            </View>
+            <View className="flex-row items-center" style={{ gap: 2 }}>
+              <AppText variant="label" className="text-brand">
+                연결
+              </AppText>
+              <Icon name="chevron-right" size={16} color={c.brand} strokeWidth={2.4} />
+            </View>
+          </PressableScale>
+        ) : null}
+
         <AppText variant="caption" className="px-xl pb-sm pt-lg text-text-tertiary">
           상품을 선택하면 광고를 본 뒤 캐시로 교환돼요.
         </AppText>
-
-        {/* 게스트 안내 — 교환은 실계정 연결 후 가능 */}
-        {isGuest ? (
-          <View
-            className="mx-xl mt-md flex-row items-center rounded-lg px-lg py-md"
-            style={{ gap: 10, backgroundColor: c['amber-subtle'] }}>
-            <Icon name="lock" size={18} color={c.amber} />
-            <View className="flex-1">
-              <AppText variant="label" className="text-text-primary">
-                게스트는 교환할 수 없어요
-              </AppText>
-              <AppText variant="caption" className="text-text-secondary">
-                구글/카카오 계정을 연결하면 모은 캐시로 교환할 수 있어요.
-              </AppText>
-            </View>
-          </View>
-        ) : null}
-        {isGuest ? (
-          <View className="px-xl pt-md">
-            <Button title="계정 연결하러 가기" onPress={() => navigation.navigate('Settings')} />
-          </View>
-        ) : null}
 
         {products.isLoading ? (
           <ActivityIndicator className="mt-2xl" color={c.brand} />
@@ -122,49 +145,53 @@ export default function ExchangeScreen(): React.JSX.Element {
           <View>
             {(products.data ?? []).map((product) => {
               const affordable = balance >= product.price_cash;
-              // 보유율 — 살 수 있으면 100%, 못 사면 목표까지의 진척(회색 바).
-              const ratio = Math.max(0, Math.min(1, balance / product.price_cash));
+              const short = Math.max(0, product.price_cash - balance);
+              const cat = categoryOf(product.code);
               return (
                 <PressableScale
                   key={product.code}
                   onPress={() => handleSelect(product)}
                   pressedScale={0.98}
                   className="flex-row items-center border-b border-border-tertiary bg-bg-primary px-xl py-lg"
-                  style={{ gap: 12 }}>
+                  style={{ gap: 13, opacity: affordable ? 1 : 0.62 }}>
+                  {/* 이미지 슬롯 — 썸네일 있으면 사진, 없으면 카테고리 아이콘 */}
                   <View
-                    className="items-center justify-center rounded-md"
-                    style={{ width: 44, height: 44, backgroundColor: c['brand-subtle'] }}>
-                    <Icon name="gift" size={24} color={affordable ? c.brand : c['text-tertiary']} />
+                    className="items-center justify-center overflow-hidden rounded-md"
+                    style={{ width: 48, height: 48, backgroundColor: c['brand-subtle'] }}>
+                    {product.image_url ? (
+                      <Image source={{ uri: product.image_url }} style={{ width: 48, height: 48 }} />
+                    ) : (
+                      <Icon name={cat.icon} size={24} color={affordable ? c.brand : c['text-tertiary']} />
+                    )}
                   </View>
-                  <View className="flex-1" style={{ gap: 6 }}>
+                  <View className="flex-1" style={{ gap: 2 }}>
                     <AppText
                       variant="subheading"
                       style={affordable ? undefined : { color: c['text-tertiary'] }}>
                       {product.name}
                     </AppText>
-                    {/* 보유율 바 */}
-                    <View
-                      style={{
-                        height: 3, width: 120, borderRadius: 2,
-                        backgroundColor: c['bg-tertiary'], overflow: 'hidden',
-                      }}>
-                      <View
-                        style={{
-                          height: '100%', width: `${ratio * 100}%`,
-                          backgroundColor: affordable ? c.brand : c['text-tertiary'],
-                        }}
-                      />
-                    </View>
+                    <AppText variant="caption" className="text-text-tertiary">
+                      {cat.label}
+                    </AppText>
                   </View>
                   <View className="items-end" style={{ gap: 2 }}>
-                    <AppText
-                      variant="label"
-                      style={affordable ? undefined : { color: c['text-tertiary'] }}>
-                      {product.price_cash.toLocaleString()}C
-                    </AppText>
-                    {!affordable && (
-                      <AppText variant="micro" style={{ color: c.danger }}>
-                        캐시 부족
+                    <View className="flex-row items-center" style={{ gap: 2 }}>
+                      <AppText
+                        variant="label"
+                        style={affordable ? undefined : { color: c['text-tertiary'] }}>
+                        {product.price_cash.toLocaleString()}
+                      </AppText>
+                      <AppText variant="micro" style={{ color: c['amber-strong'] }}>
+                        C
+                      </AppText>
+                    </View>
+                    {affordable ? (
+                      <AppText variant="micro" style={{ color: c.brand }}>
+                        교환 가능
+                      </AppText>
+                    ) : (
+                      <AppText variant="micro" className="text-text-tertiary">
+                        {short.toLocaleString()} C 더 모으기
                       </AppText>
                     )}
                   </View>

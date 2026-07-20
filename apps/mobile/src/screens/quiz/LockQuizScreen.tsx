@@ -322,7 +322,6 @@ function AnswerReveal({
   question,
   isCorrect,
   boxGrade,
-  selectedIndex,
   offlineMode,
   onNext,
   isLast,
@@ -334,7 +333,6 @@ function AnswerReveal({
   question: QuizSetQuestion;
   isCorrect: boolean;
   boxGrade: BoxGrade | null;
-  selectedIndex: number | null;
   offlineMode: boolean;
   onNext: () => void;
   isLast: boolean;
@@ -359,14 +357,8 @@ function AnswerReveal({
     }
   };
 
-  const correctText = question.choices.find(ch => ch.index === question.answer_index)?.text ?? '';
-  const selectedText = selectedIndex !== null
-    ? (question.choices.find(ch => ch.index === selectedIndex)?.text ?? '')
-    : '';
-
-  const accentBg     = isCorrect ? withAlpha(c.correct, 0.12) : withAlpha(c.wrong, 0.12);
-  const accentBorder = isCorrect ? withAlpha(c.correct, 0.5)  : withAlpha(c.wrong, 0.5);
-  const accentColor  = isCorrect ? c.correct                  : c.wrong;
+  const accentBg    = isCorrect ? withAlpha(c.correct, 0.12) : withAlpha(c.wrong, 0.12);
+  const accentColor = isCorrect ? c.correct                  : c.wrong;
 
   // 정답 글자 크기 — 글자 수 기반(한자·가나 공통). 긴 단어일수록 작게, 단계는 완만하게.
   const surfaceLen = [...detail.surface].length;
@@ -378,27 +370,34 @@ function AnswerReveal({
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingTop: 24, paddingBottom: 16 }}>
 
-      {/* ── 풀 헤더 스트라이프 ── */}
+      {/* ── 결과 스트라이프 (아이콘 칩 + 텍스트, 테두리 없이 면만) ── */}
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: accentBg,
         borderRadius: 16,
-        borderWidth: 1, borderColor: accentBorder,
-        paddingHorizontal: 16, paddingVertical: 13,
+        paddingHorizontal: 14, paddingVertical: 12,
         marginBottom: 16,
       }}>
-        {/* 결과 텍스트 */}
-        <AppText style={{ color: accentColor, fontWeight: '800', fontSize: 17 }}>
-          {isCorrect ? '✓  정답입니다!' : '✗  아쉬워요'}
-        </AppText>
+        {/* 결과: 아이콘 칩 + 텍스트 */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+          <View style={{
+            width: 26, height: 26, borderRadius: 13,
+            backgroundColor: withAlpha(accentColor, 0.2),
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon name={isCorrect ? 'check' : 'close'} size={15} color={accentColor} strokeWidth={3} />
+          </View>
+          <AppText style={{ color: accentColor, fontWeight: '800', fontSize: 17 }}>
+            {isCorrect ? '정답입니다!' : '아쉬워요'}
+          </AppText>
+        </View>
 
         {/* 우측: 상자뱃지 + 북마크 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {isCorrect && boxGrade && !offlineMode && (
             <View style={{
-              backgroundColor: withAlpha(c.amber, 0.13),
+              backgroundColor: withAlpha(c.amber, 0.16),
               borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3,
-              borderWidth: 1, borderColor: withAlpha(c.amber, 0.4),
             }}>
               <AppText variant="caption" style={{ color: c.amber, fontWeight: '700' }}>
                 상자 +1
@@ -487,14 +486,13 @@ function AnswerReveal({
                 onShowComponents(chars.length > 0 ? chars : [detail.surface]);
               }}>
                 <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  flexDirection: 'row', alignItems: 'center', gap: 3,
                   alignSelf: 'flex-start',
                   backgroundColor: c.surfaceAlt,
-                  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
-                  borderWidth: 1, borderColor: c.line,
+                  borderRadius: 8, paddingHorizontal: 11, paddingVertical: 6,
                 }}>
-                  <AppText variant="caption" style={{ color: c.textSecondary }}>구성 자세히 보기</AppText>
-                  <AppText variant="caption" style={{ color: c.textTertiary }}>›</AppText>
+                  <AppText variant="caption" style={{ color: c.textSecondary, fontWeight: '600' }}>구성 자세히 보기</AppText>
+                  <Icon name="chevron-right" size={13} color={c.textTertiary} strokeWidth={2.4} />
                 </View>
               </PressableScale>
             </View>
@@ -591,13 +589,13 @@ function AnswerReveal({
       )}
 
       {/* ── 다음 버튼 ── */}
-      <PressableScale onPress={onNext}>
+      <PressableScale onPress={onNext} pressedScale={0.98}>
         <View style={{
           backgroundColor: c.brand,
-          borderRadius: 16, paddingVertical: 15,
+          borderRadius: 16, paddingVertical: 16,
           alignItems: 'center',
         }}>
-          <AppText variant="label" style={{ color: c.textPrimary, fontWeight: '700', fontSize: 16 }}>
+          <AppText variant="label" style={{ color: c.onBrand, fontWeight: '800', fontSize: 16 }}>
             {isLast ? '완료' : '다음 문제'}
           </AppText>
         </View>
@@ -939,13 +937,6 @@ export function LockQuizView({
   const cursorDisplay =
     (phase.type === 'playing' || phase.type === 'reveal') ? phase.cursor + 1 : 0;
 
-  function choiceVisual(index: number, selectedIndex: number | null, correctIndex: number) {
-    if (selectedIndex === null) { return 'default'; }
-    if (index === correctIndex) { return 'correct'; }
-    if (index === selectedIndex) { return 'wrong'; }
-    return 'dimmed';
-  }
-
   // reveal 단계에서 선택된 인덱스를 알아야 함 → reveal 시 question.answer_index가 correct
   // 사용자가 선택한 인덱스는 저장 안 함(정/오답만 저장). ChoiceVisual 계산을 단순화:
   // - 정답이면 answer_index만 correct, 나머지 dimmed
@@ -995,7 +986,6 @@ export function LockQuizView({
           question={currentQuestion}
           isCorrect={phase.isCorrect}
           boxGrade={phase.boxGrade}
-          selectedIndex={phase.selectedIndex}
           offlineMode={phase.offlineMode}
           onNext={handleNext}
           isLast={phase.cursor + 1 >= totalQuestions}
@@ -1013,14 +1003,7 @@ export function LockQuizView({
       currentQuestion.item_type === 'kana';
 
     return (
-      <View style={{ flex: 1, paddingTop: 12 }}>
-        {/* 진행 표시 */}
-        <AppText
-          variant="caption"
-          style={{ color: c.textTertiary, textAlign: 'center', marginBottom: 6 }}>
-          {cursorDisplay} / {totalQuestions}
-        </AppText>
-
+      <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 20 }}>
         {/* 읽기 + 문제 — 사진 배경 테마는 뒤에 스크림을 깔아 항상 읽히게 함 */}
         <View style={theme.shape.needsTextScrim ? {
           backgroundColor: withAlpha(c.surface, 0.88),
@@ -1042,8 +1025,8 @@ export function LockQuizView({
             adjustsFontSizeToFit
             minimumFontScale={0.6}
             style={{
-              color: c.textPrimary, fontSize: 52, lineHeight: 58,
-              letterSpacing: -1, textAlign: 'center',
+              color: c.textPrimary, fontSize: 58, lineHeight: 66,
+              letterSpacing: -1, textAlign: 'center', fontWeight: '700',
             }}>
             {currentQuestion.prompt}
           </AppText>
@@ -1059,14 +1042,14 @@ export function LockQuizView({
         {/* 지시문 */}
         <AppText
           variant="label"
-          style={{ color: c.textSecondary, textAlign: 'center', marginBottom: 16 }}>
+          style={{ color: c.textSecondary, textAlign: 'center', marginBottom: 22, fontSize: 15 }}>
           {quizInstruction(currentQuestion.item_type, currentQuestion.question_type)}
         </AppText>
 
         {/* 선택지 */}
         <View style={{
           flexDirection: 'row', flexWrap: 'wrap',
-          justifyContent: 'space-between', rowGap: 10,
+          justifyContent: 'space-between', rowGap: 12,
         }}>
           {currentQuestion.choices.map((choice) => (
             <ChoiceCard
@@ -1099,27 +1082,30 @@ export function LockQuizView({
             <View>
               <AppText
                 variant="hero"
-                style={{ color: c.textPrimary, fontSize: 50, letterSpacing: -1.5 }}>
+                style={{ color: c.textPrimary, fontSize: 54, letterSpacing: -1.5 }}>
                 {clock.time}
               </AppText>
               <AppText variant="caption" style={{ color: c.textSecondary, marginTop: 8 }}>
                 {clock.date}
               </AppText>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <PressableScale onPress={onOpenApp}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 46 }}>
-                  <AppText variant="label" style={{ color: c.textSecondary }}>앱 열기</AppText>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 3, height: 40,
+                  paddingHorizontal: 14, borderRadius: 20,
+                  backgroundColor: withAlpha(c.textPrimary, 0.07),
+                }}>
+                  <AppText variant="label" style={{ color: c.textSecondary, fontWeight: '700' }}>앱 열기</AppText>
                   <Icon name="chevron-right" size={15} color={c.textSecondary} strokeWidth={2.4} />
                 </View>
               </PressableScale>
               <PressableScale onPress={openBoxes} disabled={boxCount === 0}>
                 <View style={{
-                  width: 46, height: 46, borderRadius: 23,
+                  width: 40, height: 40, borderRadius: 20,
                   alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: c.surface,
-                  borderWidth: 1, borderColor: 'rgba(255,206,0,0.45)',
-                  opacity: boxCount === 0 ? 0.45 : 1,
+                  backgroundColor: withAlpha(c.amber, 0.15),
+                  opacity: boxCount === 0 ? 0.4 : 1,
                 }}>
                   <Icon name="gift" size={20} color={c.amber} strokeWidth={2} />
                   {boxCount > 0 && (
@@ -1138,6 +1124,31 @@ export function LockQuizView({
               </PressableScale>
             </View>
           </View>
+
+          {/* 진행 게이지 — 상단 정보. 지나온 문제=brand, 현재=brandSoft, 남은 것=옅게. */}
+          {(phase.type === 'playing' || phase.type === 'reveal') && (
+            <View style={{ paddingHorizontal: 24, marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ flex: 1, flexDirection: 'row', gap: 4 }}>
+                {Array.from({ length: totalQuestions }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      flex: 1, height: 6, borderRadius: 3,
+                      backgroundColor:
+                        i < phase.cursor
+                          ? c.brand
+                          : i === phase.cursor
+                            ? c.brandSoft
+                            : withAlpha(c.textTertiary, 0.28),
+                    }}
+                  />
+                ))}
+              </View>
+              <AppText variant="caption" style={{ color: c.textSecondary, fontWeight: '700' }}>
+                {cursorDisplay} / {totalQuestions}
+              </AppText>
+            </View>
+          )}
 
           {/* 중앙: 퀴즈 */}
           <View style={{ flex: 1, paddingHorizontal: 22 }}>

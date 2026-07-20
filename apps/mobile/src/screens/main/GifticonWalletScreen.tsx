@@ -43,8 +43,8 @@ export default function GifticonWalletScreen({
       {/* 아이콘 영역 */}
       <View
         className="items-center justify-center"
-        style={{ width: 60, backgroundColor: c['brand-subtle'] }}>
-        <Icon name="gift" size={26} color={c.brand} />
+        style={{ width: 60, backgroundColor: c['amber-subtle'] }}>
+        <Icon name="gift" size={26} color={c['amber-strong']} />
       </View>
       {/* 정보 */}
       <View className="flex-1 px-lg py-md">
