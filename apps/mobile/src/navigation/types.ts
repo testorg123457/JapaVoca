@@ -70,6 +70,10 @@ export type MainStackParamList = {
   Inquiry: undefined;
   /** 일본어 번역 — 카메라로 촬영해 번역. */
   JapaneseTranslate: undefined;
+  /** 번역할 사진의 범위 선택(크롭). */
+  TranslateCrop: { image: { uri: string; width: number; height: number } };
+  /** 번역 결과(원문 + 한국어). */
+  TranslateResult: { uri: string };
   /** 북마크 목록. */
   Bookmarks: undefined;
   /** DEBUG 전용 — 디자인 시스템 쇼케이스. */

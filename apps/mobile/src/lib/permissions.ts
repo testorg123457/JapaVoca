@@ -7,7 +7,6 @@
  */
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
-import { isIgnoringBatteryOptimizations } from './battery';
 export { isIgnoringBatteryOptimizations } from './battery';
 export { requestBatteryExemption } from './battery';
 
@@ -56,6 +55,14 @@ export async function requestPhone(): Promise<PermResult> {
     return 'granted';
   }
   const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS);
+  return mapAndroidResult(r);
+}
+
+export async function requestCamera(): Promise<PermResult> {
+  if (Platform.OS !== 'android') {
+    return 'granted';
+  }
+  const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
   return mapAndroidResult(r);
 }
 

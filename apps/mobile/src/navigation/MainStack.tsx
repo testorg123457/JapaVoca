@@ -27,6 +27,8 @@ import NotificationsScreen from '../screens/main/NotificationsScreen';
 import InquiryScreen from '../screens/main/InquiryScreen';
 import BookmarkScreen from '../screens/main/BookmarkScreen';
 import JapaneseTranslateScreen from '../screens/main/JapaneseTranslateScreen';
+import TranslateCropScreen from '../screens/main/TranslateCropScreen';
+import TranslateResultScreen from '../screens/main/TranslateResultScreen';
 import StyleGuideScreen from '../screens/StyleGuideScreen';
 import GestureDebugScreen from '../screens/GestureDebugScreen';
 
@@ -60,6 +62,8 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Inquiry" component={InquiryScreen} />
       <Stack.Screen name="JapaneseTranslate" component={JapaneseTranslateScreen} />
+      <Stack.Screen name="TranslateCrop" component={TranslateCropScreen} />
+      <Stack.Screen name="TranslateResult" component={TranslateResultScreen} />
       <Stack.Screen name="Bookmarks" component={BookmarkScreen} />
       {__DEV__ && (
         <Stack.Screen
