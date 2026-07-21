@@ -200,6 +200,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # ScopedRateThrottle는 throttle_scope를 지정한 뷰에만 적용된다(다른 뷰 영향 없음).
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        # 유료 AI(번역) 남용 방지 — 이미지+텍스트 엔드포인트가 이 스코프를 공유.
+        'translate': '20/min',
+    },
 }
 
 

@@ -13,7 +13,16 @@ import re
 
 logger = logging.getLogger(__name__)
 
-_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash']
+
+
+def _guess_mime(image_bytes: bytes) -> str:
+    """매직 바이트로 이미지 형식 추정(하드코딩 jpeg로 인한 오인식 방지)."""
+    if image_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'image/png'
+    if image_bytes[:4] == b'RIFF' and image_bytes[8:12] == b'WEBP':
+        return 'image/webp'
+    return 'image/jpeg'
 
 _IMAGE_PROMPT = (
     '이 이미지에서 일본어(한자·가나) 텍스트를 읽고 한국어로 번역하라. '
@@ -64,7 +73,7 @@ def _call_gemini(prompt: str, image_bytes: bytes | None) -> str | None:
             model = genai.GenerativeModel(name)
             if image_bytes:
                 resp = model.generate_content(
-                    [prompt, {'mime_type': 'image/jpeg', 'data': image_bytes}]
+                    [prompt, {'mime_type': _guess_mime(image_bytes), 'data': image_bytes}]
                 )
             else:
                 resp = model.generate_content(prompt)

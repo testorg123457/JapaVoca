@@ -5,10 +5,10 @@
  * 원문(일본어)은 표본처럼 크게 두고 수정 가능하며, 고친 뒤 "다시 번역"으로
  * 텍스트 재번역한다. 원문 → (연결 칩) → 번역 순서로 흐름을 보여준다.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 
-import { AppHeader, AppText, Button, Icon, PressableScale } from '../../components';
+import { AppHeader, AppText, Button, Icon, PressableScale, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { hairline, radius, shadowStyle } from '../../theme/tokens';
 import { translateImage, translateText } from '../../api/translate';
@@ -28,12 +28,21 @@ export default function TranslateResultScreen({
   navigation,
 }: MainStackScreenProps<'TranslateResult'>): React.JSX.Element {
   const c = useThemeColors();
+  const { showToast } = useToast();
   const { uri } = route.params;
   const [status, setStatus] = useState<Status>('uploading');
   const [source, setSource] = useState('');
   const [result, setResult] = useState('');
   const [translatedSource, setTranslatedSource] = useState('');
   const [errKind, setErrKind] = useState<TransErrorKind>('unknown');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -43,7 +52,7 @@ export default function TranslateResultScreen({
         if (!alive) {
           return;
         }
-        if (!original) {
+        if (!original.trim()) {
           setErrKind('no-text');
           setStatus('error');
           return;
@@ -69,14 +78,21 @@ export default function TranslateResultScreen({
     setStatus('translating');
     try {
       const { korean } = await translateText(text);
+      if (!mountedRef.current) {
+        return;
+      }
       setResult(korean);
       setTranslatedSource(text);
       setStatus('done');
     } catch (e) {
-      setErrKind(classifyTranslateError(e));
-      setStatus('error');
+      if (!mountedRef.current) {
+        return;
+      }
+      // 재번역 실패는 화면을 갈아엎지 않는다 — 기존 결과·편집 유지 + 토스트로만 알림.
+      setStatus('done');
+      showToast(errorMessage(classifyTranslateError(e)).message, 'error');
     }
-  }, [source]);
+  }, [source, showToast]);
 
   const busy = status === 'uploading' || status === 'translating';
   const edited = source.trim().length > 0 && source.trim() !== translatedSource;

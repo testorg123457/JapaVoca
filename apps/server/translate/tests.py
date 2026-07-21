@@ -54,3 +54,27 @@ class TranslateViewTest(TestCase):
         res = self.client.post('/api/translate/text/', {'text': '猫'}, format='json')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()['korean'], '고양이')
+
+    def test_image_over_8mb_400(self):
+        big = SimpleUploadedFile(
+            'big.jpg', b'\x00' * (8 * 1024 * 1024 + 1), content_type='image/jpeg')
+        res = self.client.post('/api/translate/image/', {'image': big}, format='multipart')
+        self.assertEqual(res.status_code, 400)
+
+    def test_text_too_long_400(self):
+        res = self.client.post('/api/translate/text/', {'text': '猫' * 2001}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    @patch('translate.views.ocr_and_translate', side_effect=RuntimeError('AI down'))
+    def test_image_ai_failure_502(self, _m):
+        img = SimpleUploadedFile('a.jpg', b'\xff\xd8\xff', content_type='image/jpeg')
+        res = self.client.post('/api/translate/image/', {'image': img}, format='multipart')
+        self.assertEqual(res.status_code, 502)
+
+    @patch('translate.views.ocr_and_translate', return_value={'original': '', 'korean': ''})
+    def test_image_empty_ocr_returns_blank_original(self, _m):
+        # 글자 없음: 서버는 original='' 그대로 전달(문구 처리는 클라이언트).
+        img = SimpleUploadedFile('a.jpg', b'\xff\xd8\xff', content_type='image/jpeg')
+        res = self.client.post('/api/translate/image/', {'image': img}, format='multipart')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['original'], '')

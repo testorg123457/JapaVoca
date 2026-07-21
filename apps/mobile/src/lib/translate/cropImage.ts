@@ -8,19 +8,6 @@ import ImageEditor from '@react-native-community/image-editor';
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
-/** 드래그 사각형을 뷰 경계 안으로 클램프하고 최소 크기를 보장. */
-export function clampRect(
-  rect: Rect,
-  bounds: { width: number; height: number },
-  min: number,
-): Rect {
-  const width = Math.max(min, Math.min(rect.width, bounds.width));
-  const height = Math.max(min, Math.min(rect.height, bounds.height));
-  const x = Math.max(0, Math.min(rect.x, bounds.width - width));
-  const y = Math.max(0, Math.min(rect.y, bounds.height - height));
-  return { x, y, width, height };
-}
-
 /** 오버레이(뷰 좌표) 사각형을 원본 이미지 픽셀 좌표로 변환. contain 레터박스 보정. */
 export function toPixelRect(
   overlay: Rect,
@@ -37,12 +24,12 @@ export function toPixelRect(
   const top = clamp(overlay.y - offsetY, 0, shownH);
   const right = clamp(overlay.x + overlay.width - offsetX, 0, shownW);
   const bottom = clamp(overlay.y + overlay.height - offsetY, 0, shownH);
-  return {
-    x: Math.round(left / scale),
-    y: Math.round(top / scale),
-    width: Math.round((right - left) / scale),
-    height: Math.round((bottom - top) / scale),
-  };
+  // 모서리를 각각 반올림한 뒤 폭·높이를 파생 — 독립 반올림으로 경계를 1px 넘는 것 방지.
+  const px = Math.round(left / scale);
+  const py = Math.round(top / scale);
+  const pr = Math.round(right / scale);
+  const pb = Math.round(bottom / scale);
+  return { x: px, y: py, width: pr - px, height: pb - py };
 }
 
 export async function cropToRect(uri: string, pixel: Rect): Promise<string> {

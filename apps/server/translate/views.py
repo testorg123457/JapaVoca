@@ -12,6 +12,7 @@ from .ai import ocr_and_translate, translate_text
 logger = logging.getLogger(__name__)
 
 _MAX_BYTES = 8 * 1024 * 1024  # 8MB 상한
+_MAX_TEXT_LEN = 2000  # 재번역 텍스트 길이 상한(유료 AI 남용 방지)
 
 
 class TranslateImageView(APIView):
@@ -19,6 +20,7 @@ class TranslateImageView(APIView):
 
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    throttle_scope = 'translate'
 
     def post(self, request):
         f = request.FILES.get('image')
@@ -42,11 +44,15 @@ class TranslateTextView(APIView):
 
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
+    throttle_scope = 'translate'
 
     def post(self, request):
         text = (request.data.get('text') or '').strip()
         if not text:
             return Response({'detail': '텍스트가 없습니다.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(text) > _MAX_TEXT_LEN:
+            return Response({'detail': '텍스트가 너무 깁니다.'},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
             korean = translate_text(text)
