@@ -1023,7 +1023,8 @@ export function LockQuizView({
       currentQuestion.item_type === 'kana';
 
     return (
-      <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 20 }}>
+      // 문제+선택지 블록을 약 6px 위로: 세로 중앙 정렬이라 하단 여백을 12 늘리면 중앙이 6 위로 이동.
+      <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 32 }}>
         {/* 읽기 + 문제 — 사진 배경 테마는 뒤에 스크림을 깔아 항상 읽히게 함 */}
         <View style={theme.shape.needsTextScrim ? {
           backgroundColor: withAlpha(c.surface, 0.88),
