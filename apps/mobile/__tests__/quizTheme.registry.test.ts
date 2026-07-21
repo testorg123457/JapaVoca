@@ -6,7 +6,8 @@ describe('quiz theme registry', () => {
   it('현재 등록된 테마 목록', () => {
     expect(themesById.classic).toBeDefined();
     expect(themeList.map((t) => t.id)).toEqual([
-      'classic', 'forest', 'olive', 'dracula', 'sage',
+      'classic', 'olive', 'dracula', 'sage',
+      'editorial', 'fintech', 'chrome', 'purple', 'luxury', 'mint',
     ]);
   });
   it('기본 테마는 classic', () => {
@@ -14,7 +15,7 @@ describe('quiz theme registry', () => {
     expect(getTheme('없는id').id).toBe('classic');
   });
   it('resolveThemeId: 유효하면 그대로, 아니면 classic', () => {
-    expect(resolveThemeId('forest')).toBe('forest');
+    expect(resolveThemeId('mint')).toBe('mint');
     expect(resolveThemeId('xxx')).toBe('classic');
     expect(resolveThemeId(undefined)).toBe('classic');
   });

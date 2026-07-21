@@ -53,7 +53,8 @@ export type IconName =
   | 'coffee'
   | 'store'
   | 'alert'
-  | 'camera';
+  | 'camera'
+  | 'image';
 
 export interface IconProps {
   name: IconName;
@@ -321,6 +322,14 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
               <>
                 <Path d="M4 8.5 a1.5 1.5 0 0 1 1.5-1.5 H8 L9.2 5 h5.6 L16 7 h2.5 A1.5 1.5 0 0 1 20 8.5 v8 a1.5 1.5 0 0 1-1.5 1.5 H5.5 A1.5 1.5 0 0 1 4 16.5z" {...s} />
                 <Circle cx="12" cy="12.5" r="3.2" {...s} />
+              </>
+            );
+          case 'image': // 사진에서 선택 — 갤러리
+            return (
+              <>
+                <Rect x="3.5" y="5" width="17" height="14" rx="2.5" {...s} />
+                <Circle cx="8.7" cy="9.7" r="1.5" {...s} />
+                <Path d="M4.5 17 L10 11.5 L13 14.5 L16 11.5 L19.5 15" {...s} />
               </>
             );
           default:

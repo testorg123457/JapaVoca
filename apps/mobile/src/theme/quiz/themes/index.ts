@@ -1,12 +1,19 @@
 import type { QuizTheme } from '../contract';
 import classic from './classic';
-import forest from './forest';
 import olive from './olive';
 import dracula from './dracula';
 import sage from './sage';
+import editorial from './editorial';
+import fintech from './fintech';
+import chrome from './chrome';
+import purple from './purple';
+import luxury from './luxury';
+import mint from './mint';
 
 /** 새 테마 추가 = 위에 import 1줄 + 아래 배열에 1개 추가. */
-const ALL: QuizTheme[] = [classic, forest, olive, dracula, sage];
+const ALL: QuizTheme[] = [
+  classic, olive, dracula, sage, editorial, fintech, chrome, purple, luxury, mint,
+];
 
 export const DEFAULT_THEME_ID = 'classic';
 

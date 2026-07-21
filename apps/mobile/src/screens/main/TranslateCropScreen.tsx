@@ -7,8 +7,10 @@
 import React, { useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
-import { AppHeader, Button } from '../../components';
+import { AppHeader, AppText, Button } from '../../components';
 import CropOverlay from './components/CropOverlay';
+import { hairline } from '../../theme/tokens';
+import { useThemeColors } from '../../theme/ThemeProvider';
 import { cropToRect, toPixelRect, type Rect } from '../../lib/translate/cropImage';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -16,9 +18,10 @@ export default function TranslateCropScreen({
   route,
   navigation,
 }: MainStackScreenProps<'TranslateCrop'>): React.JSX.Element {
+  const c = useThemeColors();
   const { image } = route.params;
   const { width } = useWindowDimensions();
-  const viewH = Math.round(width * 1.1);
+  const viewH = Math.round(width * 1.15);
   const rectRef = useRef<Rect>({ x: 0, y: 0, width: 0, height: 0 });
   const [busy, setBusy] = useState(false);
 
@@ -36,15 +39,25 @@ export default function TranslateCropScreen({
   return (
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="번역할 부분 선택" showBack />
-      <CropOverlay
-        uri={image.uri}
-        viewW={width}
-        viewH={viewH}
-        onRectChange={(r) => {
-          rectRef.current = r;
-        }}
-      />
-      <View className="px-xl" style={{ paddingTop: 16 }}>
+
+      <View className="flex-1 items-center justify-center">
+        <CropOverlay
+          uri={image.uri}
+          viewW={width}
+          viewH={viewH}
+          onRectChange={(r) => {
+            rectRef.current = r;
+          }}
+        />
+      </View>
+
+      {/* 하단 바 — 힌트 + 확정 */}
+      <View
+        className="bg-bg-primary px-xl"
+        style={{ paddingTop: 16, paddingBottom: 28, borderTopWidth: hairline, borderTopColor: c['border-tertiary'] }}>
+        <AppText variant="caption" className="text-text-tertiary" style={{ textAlign: 'center', marginBottom: 12 }}>
+          번역할 부분을 사각형 안에 맞춰 주세요
+        </AppText>
         <Button title="이 부분 번역" onPress={confirm} loading={busy} />
       </View>
     </View>

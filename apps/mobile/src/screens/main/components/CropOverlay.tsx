@@ -1,12 +1,12 @@
 /**
- * CropOverlay — 사진 위에 드래그로 이동하는 선택 사각형(범위 선택용).
+ * CropOverlay — 사진 위에서 번역할 부분을 사각형으로 고른다.
  *
- * 사진을 contain으로 깔고 전체를 살짝 어둡게 덮은 뒤, 그 위에 앱 브랜드색
- * 테두리 사각형을 그려 선택 영역을 표시한다. 드래그마다 clampRect로 경계 안에
- * 가둔다. 확정은 부모가 rect로 처리. (선택 영역만 밝히는 4-패치 dim은 추후 다듬기.)
+ * 사진을 contain으로 깔고, 선택 영역 밖은 4방향으로 어둡게 덮어(스포트라이트)
+ * 선택 부분만 밝게 남긴다. 사각형은 브랜드색 테두리 + 모서리 핸들로 "조절 가능"함을
+ * 드러낸다. 드래그마다 clampRect로 경계 안에 가두고, 확정은 부모가 rect로 처리.
  */
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -24,15 +24,16 @@ interface Props {
   onRectChange: (r: Rect) => void;
 }
 
-const MIN = 56;
+const MIN = 64;
+const DIM = 'rgba(0,0,0,0.55)';
 
 export function CropOverlay({ uri, viewW, viewH, onRectChange }: Props): React.JSX.Element {
   const c = useThemeColors();
   const bounds = { width: viewW, height: viewH };
-  const x = useSharedValue(viewW * 0.15);
-  const y = useSharedValue(viewH * 0.3);
-  const w = useSharedValue(viewW * 0.7);
-  const h = useSharedValue(viewH * 0.28);
+  const x = useSharedValue(viewW * 0.12);
+  const y = useSharedValue(viewH * 0.32);
+  const w = useSharedValue(viewW * 0.76);
+  const h = useSharedValue(viewH * 0.24);
   const start = useSharedValue({ x: 0, y: 0 });
 
   const emit = React.useCallback(
@@ -42,7 +43,6 @@ export function CropOverlay({ uri, viewW, viewH, onRectChange }: Props): React.J
     [onRectChange],
   );
 
-  // 초기 사각형 1회 보고(사용자가 안 움직여도 확정 가능하게).
   React.useEffect(() => {
     emit(x.value, y.value, w.value, h.value);
   }, [emit, x, y, w, h]);
@@ -69,24 +69,45 @@ export function CropOverlay({ uri, viewW, viewH, onRectChange }: Props): React.J
       runOnJS(emit)(x.value, y.value, w.value, h.value);
     });
 
+  // 선택 밖 4방향 딤(스포트라이트)
+  const dimTop = useAnimatedStyle(() => ({ height: y.value }));
+  const dimBottom = useAnimatedStyle(() => ({ top: y.value + h.value }));
+  const dimLeft = useAnimatedStyle(() => ({ top: y.value, height: h.value, width: x.value }));
+  const dimRight = useAnimatedStyle(() => ({
+    top: y.value,
+    height: h.value,
+    left: x.value + w.value,
+  }));
+
   const boxStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
     left: x.value,
     top: y.value,
     width: w.value,
     height: h.value,
-    borderWidth: 2,
-    borderColor: c.brand,
-    borderRadius: 12,
   }));
+
+  const corner = { position: 'absolute' as const, width: 22, height: 22, borderColor: c.brand };
 
   return (
     <View style={{ width: viewW, height: viewH, backgroundColor: '#000' }}>
-      <Image source={{ uri }} style={{ width: viewW, height: viewH }} resizeMode="contain" />
-      {/* 선택 영역 밖 살짝 어둡게 — 선택 부분 강조 */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.28)' }]} pointerEvents="none" />
+      <Animated.Image source={{ uri }} style={{ width: viewW, height: viewH }} resizeMode="contain" />
+
+      <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: DIM }, dimTop]} />
+      <Animated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: DIM }, dimBottom]} />
+      <Animated.View style={[{ position: 'absolute', left: 0, backgroundColor: DIM }, dimLeft]} />
+      <Animated.View style={[{ position: 'absolute', right: 0, backgroundColor: DIM }, dimRight]} />
+
       <GestureDetector gesture={drag}>
-        <Animated.View style={boxStyle} />
+        <Animated.View
+          style={[
+            { position: 'absolute', borderWidth: 1.5, borderColor: c.brand, borderRadius: 12 },
+            boxStyle,
+          ]}>
+          <View style={[corner, { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 12 }]} />
+          <View style={[corner, { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 12 }]} />
+          <View style={[corner, { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 12 }]} />
+          <View style={[corner, { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 12 }]} />
+        </Animated.View>
       </GestureDetector>
     </View>
   );

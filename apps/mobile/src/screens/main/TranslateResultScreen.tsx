@@ -2,14 +2,15 @@
  * TranslateResultScreen — 번역 결과.
  *
  * uri를 받아 서버에 이미지를 올려 OCR+번역({original, korean})을 받는다.
- * 원문은 수정 가능하며, 고친 뒤 "다시 번역"으로 텍스트 재번역한다.
+ * 원문(일본어)은 표본처럼 크게 두고 수정 가능하며, 고친 뒤 "다시 번역"으로
+ * 텍스트 재번역한다. 원문 → (연결 칩) → 번역 순서로 흐름을 보여준다.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 
-import { AppHeader, AppText, Button } from '../../components';
+import { AppHeader, AppText, Button, Icon, PressableScale } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { radius } from '../../theme/tokens';
+import { hairline, radius, shadowStyle } from '../../theme/tokens';
 import { translateImage, translateText } from '../../api/translate';
 import {
   classifyTranslateError,
@@ -20,6 +21,8 @@ import type { MainStackScreenProps } from '../../navigation/types';
 
 type Status = 'uploading' | 'translating' | 'done' | 'error';
 
+const EYEBROW = { fontSize: 12, letterSpacing: 1.5 } as const;
+
 export default function TranslateResultScreen({
   route,
   navigation,
@@ -29,6 +32,7 @@ export default function TranslateResultScreen({
   const [status, setStatus] = useState<Status>('uploading');
   const [source, setSource] = useState('');
   const [result, setResult] = useState('');
+  const [translatedSource, setTranslatedSource] = useState('');
   const [errKind, setErrKind] = useState<TransErrorKind>('unknown');
 
   useEffect(() => {
@@ -46,13 +50,13 @@ export default function TranslateResultScreen({
         }
         setSource(original);
         setResult(korean);
+        setTranslatedSource(original);
         setStatus('done');
       } catch (e) {
-        if (!alive) {
-          return;
+        if (alive) {
+          setErrKind(classifyTranslateError(e));
+          setStatus('error');
         }
-        setErrKind(classifyTranslateError(e));
-        setStatus('error');
       }
     })();
     return () => {
@@ -61,10 +65,12 @@ export default function TranslateResultScreen({
   }, [uri]);
 
   const retranslate = useCallback(async () => {
+    const text = source.trim();
     setStatus('translating');
     try {
-      const { korean } = await translateText(source);
+      const { korean } = await translateText(text);
       setResult(korean);
+      setTranslatedSource(text);
       setStatus('done');
     } catch (e) {
       setErrKind(classifyTranslateError(e));
@@ -73,79 +79,124 @@ export default function TranslateResultScreen({
   }, [source]);
 
   const busy = status === 'uploading' || status === 'translating';
+  const edited = source.trim().length > 0 && source.trim() !== translatedSource;
+
+  if (status === 'error') {
+    const msg = errorMessage(errKind);
+    return (
+      <View className="flex-1 bg-bg-secondary">
+        <AppHeader title="번역 결과" showBack />
+        <View className="flex-1 items-center px-xl" style={{ paddingTop: 96, gap: 14 }}>
+          <View
+            className="items-center justify-center rounded-full"
+            style={{ width: 64, height: 64, backgroundColor: c['danger-subtle'] }}>
+            <Icon name="alert" size={30} color={c.danger} />
+          </View>
+          <AppText variant="title" className="text-text-primary" style={{ textAlign: 'center' }}>
+            {msg.title}
+          </AppText>
+          <AppText
+            variant="body"
+            className="text-text-secondary"
+            style={{ textAlign: 'center', lineHeight: 22 }}>
+            {msg.message}
+          </AppText>
+          <View style={{ width: '100%', marginTop: 8 }}>
+            <Button title="다시 촬영" onPress={() => navigation.goBack()} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="번역 결과" showBack />
-      <ScrollView contentContainerClassName="px-xl py-lg" style={{ gap: 16 }}>
-        {status === 'error' ? (
-          <View style={{ gap: 12, paddingVertical: 24 }}>
-            <AppText variant="title" className="text-text-primary">
-              {errorMessage(errKind).title}
+      <ScrollView contentContainerClassName="px-xl" style={{ paddingTop: 12 }}>
+        {status === 'uploading' ? (
+          <View className="items-center" style={{ paddingTop: 88, gap: 12 }}>
+            <ActivityIndicator color={c.brand} />
+            <AppText variant="body" className="text-text-tertiary">
+              글자를 읽는 중…
             </AppText>
-            <AppText variant="body" className="text-text-secondary">
-              {errorMessage(errKind).message}
-            </AppText>
-            <Button title="다시 촬영" onPress={() => navigation.goBack()} />
           </View>
         ) : (
-          <>
-            <View
-              style={{
-                backgroundColor: c['bg-primary'],
-                borderRadius: radius.lg,
-                padding: 16,
-                gap: 10,
-              }}>
-              <AppText variant="label" className="text-text-tertiary">
-                원문 (일본어)
+          <View
+            className="bg-bg-primary"
+            style={[{ borderRadius: radius.lg, padding: 20 }, shadowStyle('xs')]}>
+            {/* 일본어 (원문, 편집 가능) */}
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <AppText variant="caption" style={{ ...EYEBROW, color: c['text-tertiary'] }}>
+                일본어
               </AppText>
-              <TextInput
-                value={source}
-                onChangeText={setSource}
-                multiline
-                editable={!busy}
-                placeholder="인식된 일본어"
-                placeholderTextColor={c['text-tertiary']}
-                style={{ color: c['text-primary'], fontSize: 18, lineHeight: 26, padding: 0 }}
+              <Icon name="pencil" size={13} color={c['text-tertiary']} />
+              <View className="flex-1" />
+              {edited ? (
+                <PressableScale onPress={retranslate} disabled={busy} pressedScale={0.96}>
+                  <View
+                    className="rounded-full"
+                    style={{ backgroundColor: c['brand-subtle'], paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <AppText variant="label" style={{ color: c.brand }}>
+                      다시 번역
+                    </AppText>
+                  </View>
+                </PressableScale>
+              ) : null}
+            </View>
+            <TextInput
+              value={source}
+              onChangeText={setSource}
+              multiline
+              editable={!busy}
+              placeholder="인식된 일본어"
+              placeholderTextColor={c['text-tertiary']}
+              style={{
+                color: c['text-primary'],
+                fontSize: 26,
+                lineHeight: 36,
+                letterSpacing: 0.2,
+                padding: 0,
+                marginTop: 10,
+              }}
+            />
+
+            {/* 연결 — 원문이 번역으로 흐른다 */}
+            <View className="items-center justify-center" style={{ height: 34, marginVertical: 8 }}>
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  height: hairline,
+                  backgroundColor: c['border-tertiary'],
+                }}
               />
-              <Button
-                title="다시 번역"
-                variant="soft"
-                size="sm"
-                onPress={retranslate}
-                disabled={busy || !source.trim()}
-              />
+              <View
+                className="items-center justify-center rounded-full bg-bg-primary"
+                style={{ width: 34, height: 34, borderWidth: hairline, borderColor: c['border-secondary'] }}>
+                <Icon name="chevron-down" size={18} color={c.brand} />
+              </View>
             </View>
 
-            <View
-              style={{
-                backgroundColor: c['bg-primary'],
-                borderRadius: radius.lg,
-                padding: 16,
-                gap: 10,
-                minHeight: 120,
-              }}>
-              <AppText variant="label" className="text-text-tertiary">
-                번역 (한국어)
-              </AppText>
-              {busy ? (
-                <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8 }}>
-                  <ActivityIndicator color={c.brand} />
-                  <AppText variant="caption" className="text-text-tertiary">
-                    {status === 'uploading' ? '읽는 중…' : '번역하는 중…'}
-                  </AppText>
-                </View>
-              ) : (
-                <AppText
-                  variant="body"
-                  className="text-text-primary"
-                  style={{ fontSize: 17, lineHeight: 25 }}>
-                  {result}
+            {/* 한국어 (번역) */}
+            <AppText variant="caption" style={{ ...EYEBROW, color: c['text-tertiary'] }}>
+              한국어
+            </AppText>
+            {status === 'translating' ? (
+              <View className="flex-row items-center" style={{ gap: 8, marginTop: 12, paddingVertical: 4 }}>
+                <ActivityIndicator color={c.brand} />
+                <AppText variant="body" className="text-text-tertiary">
+                  번역하는 중…
                 </AppText>
-              )}
-            </View>
-          </>
+              </View>
+            ) : (
+              <AppText
+                className="text-text-primary"
+                style={{ fontSize: 19, lineHeight: 28, marginTop: 10 }}>
+                {result}
+              </AppText>
+            )}
+          </View>
         )}
       </ScrollView>
     </View>
