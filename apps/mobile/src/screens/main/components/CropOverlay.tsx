@@ -1,16 +1,17 @@
 /**
  * CropOverlay — 사진 위에서 번역할 부분을 사각형으로 고른다.
  *
- * 사진을 contain으로 깔고, 선택 영역 밖은 4방향으로 어둡게 덮어(스포트라이트)
- * 선택 부분만 밝게 남긴다. 사각형은 브랜드색 테두리 + 모서리 핸들.
+ * 사진을 contain으로 깔고, 선택 영역 밖은 어둡게 덮어(스포트라이트) 선택 부분만
+ * 밝게 남긴다. 프레임은 진짜 크롭 툴처럼 **흰색 얇은 테두리 + 3분할 격자 + 굵은
+ * 흰 모서리 브래킷**으로 — 브랜드색을 입히지 않아 사진 위에서 깔끔하게 읽힌다.
+ * 오버레이는 임의의 사진 위에 올라가므로 색은 흰색/검정 알파로 고정한다(테마 무관).
  *
- * 제스처는 오버레이 전체에 Pan 하나만 둔다: 시작 지점이 모서리 근처면 그 모서리를
- * 리사이즈, 안쪽이면 이동. 사각형은 항상 "표시된 이미지 영역" 안으로만 제한한다
- * (레터박스 여백을 고르면 실제 crop이 선택보다 작아지는 문제 방지). 클램프 수식은
- * UI 스레드(worklet)에서 인라인 Math로 처리한다(외부 함수 호출 크래시 방지).
+ * 제스처는 오버레이 전체에 Pan 하나: 시작 지점이 모서리 근처면 그 모서리를 리사이즈,
+ * 안쪽이면 이동. 사각형은 항상 "표시된 이미지 영역" 안으로만 제한한다(레터박스 방지).
+ * 클램프 수식은 UI 스레드(worklet)에서 인라인 Math로 처리한다.
  */
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -19,7 +20,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { Rect } from '../../../lib/translate/cropImage';
-import { useThemeColors } from '../../../theme/ThemeProvider';
 
 interface Props {
   uri: string;
@@ -31,11 +31,14 @@ interface Props {
 
 const MIN = 64;
 const HIT = 40; // 모서리 리사이즈로 인식하는 거리
-const DIM = 'rgba(0,0,0,0.55)';
+const DIM = 'rgba(0,0,0,0.6)';
+// 파스텔 민트(채도 낮은 연민트) — 사진 위에서 부드럽게 읽힘.
+const LINE = 'rgba(158,231,201,0.95)';
+const GRID = 'rgba(158,231,201,0.30)';
+const BRACKET = 26; // 모서리 브래킷 길이
+const BW = 3; // 브래킷 두께
 
 export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): React.JSX.Element {
-  const c = useThemeColors();
-
   // 표시된 이미지 영역(contain 레터박스 보정) — 사각형은 이 안으로만.
   const scale = Math.min(viewW / image.width, viewH / image.height);
   const shownW = image.width * scale;
@@ -49,12 +52,11 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
   const y = useSharedValue(areaY + shownH * 0.28);
   const w = useSharedValue(shownW * 0.8);
   const h = useSharedValue(shownH * 0.34);
-  // 제스처 시작 시 스냅샷 + 모드(1=이동, 2=TL, 3=TR, 4=BL, 5=BR)
   const sx = useSharedValue(0);
   const sy = useSharedValue(0);
   const sw = useSharedValue(0);
   const sh = useSharedValue(0);
-  const mode = useSharedValue(0);
+  const mode = useSharedValue(0); // 1=이동, 2=TL, 3=TR, 4=BL, 5=BR
 
   const emit = React.useCallback(
     (rx: number, ry: number, rw: number, rh: number) => {
@@ -103,11 +105,9 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
         x.value = clamp(sx.value + tx, areaX, areaR - w.value);
         y.value = clamp(sy.value + ty, areaY, areaB - h.value);
       } else if (mode.value === 5) {
-        // BR: 좌상단 고정
         w.value = clamp(sw.value + tx, MIN, areaR - x.value);
         h.value = clamp(sh.value + ty, MIN, areaB - y.value);
       } else if (mode.value === 2) {
-        // TL: 우하단 고정
         const right = sx.value + sw.value;
         const bottom = sy.value + sh.value;
         const nx = clamp(sx.value + tx, areaX, right - MIN);
@@ -117,7 +117,6 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
         w.value = right - nx;
         h.value = bottom - ny;
       } else if (mode.value === 3) {
-        // TR: 좌하단 고정(좌측 x 고정, 상단 y 이동, 폭 증가)
         const left = sx.value;
         const bottom = sy.value + sh.value;
         const ny = clamp(sy.value + ty, areaY, bottom - MIN);
@@ -125,7 +124,6 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
         h.value = bottom - ny;
         w.value = clamp(sw.value + tx, MIN, areaR - left);
       } else if (mode.value === 4) {
-        // BL: 우상단 고정(우측·상단 고정, x 이동, 높이 증가)
         const right = sx.value + sw.value;
         const nx = clamp(sx.value + tx, areaX, right - MIN);
         x.value = nx;
@@ -148,7 +146,7 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
     height: h.value,
   }));
 
-  const corner = { position: 'absolute' as const, width: 22, height: 22, borderColor: c.brand };
+  const bracket = { position: 'absolute' as const, width: BRACKET, height: BRACKET, borderColor: LINE };
 
   return (
     <GestureDetector gesture={pan}>
@@ -162,15 +160,27 @@ export function CropOverlay({ uri, viewW, viewH, image, onRectChange }: Props): 
 
         <Animated.View
           pointerEvents="none"
-          style={[{ position: 'absolute', borderWidth: 1.5, borderColor: c.brand, borderRadius: 12 }, boxStyle]}>
-          <View style={[corner, { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 12 }]} />
-          <View style={[corner, { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 12 }]} />
-          <View style={[corner, { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 12 }]} />
-          <View style={[corner, { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 12 }]} />
+          style={[{ position: 'absolute', borderWidth: 1, borderColor: LINE }, boxStyle]}>
+          {/* 3분할 격자 */}
+          <View style={[styles.vline, { left: '33.333%' }]} />
+          <View style={[styles.vline, { left: '66.666%' }]} />
+          <View style={[styles.hline, { top: '33.333%' }]} />
+          <View style={[styles.hline, { top: '66.666%' }]} />
+
+          {/* 굵은 흰 모서리 브래킷 */}
+          <View style={[bracket, { top: -1, left: -1, borderTopWidth: BW, borderLeftWidth: BW }]} />
+          <View style={[bracket, { top: -1, right: -1, borderTopWidth: BW, borderRightWidth: BW }]} />
+          <View style={[bracket, { bottom: -1, left: -1, borderBottomWidth: BW, borderLeftWidth: BW }]} />
+          <View style={[bracket, { bottom: -1, right: -1, borderBottomWidth: BW, borderRightWidth: BW }]} />
         </Animated.View>
       </View>
     </GestureDetector>
   );
 }
+
+const styles = StyleSheet.create({
+  vline: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: GRID },
+  hline: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: GRID },
+});
 
 export default CropOverlay;

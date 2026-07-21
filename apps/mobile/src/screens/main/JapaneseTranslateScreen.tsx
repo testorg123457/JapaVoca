@@ -44,8 +44,9 @@ export default function JapaneseTranslateScreen(): React.JSX.Element {
     }
   }
 
+  // 카메라·갤러리 모두 크롭(범위 선택)을 거쳐 결과로 간다.
   const onCamera = () =>
-    run(pickFromCamera, (img) => navigation.navigate('TranslateResult', { uri: img.uri }));
+    run(pickFromCamera, (img) => navigation.navigate('TranslateCrop', { image: img }));
   const onGallery = () =>
     run(pickFromGallery, (img) => navigation.navigate('TranslateCrop', { image: img }));
 
