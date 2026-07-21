@@ -26,6 +26,10 @@ SET_SIZE = 10
 SET_BOX_CAP = 3
 SET_COOLDOWN = timedelta(seconds=30)
 
+QUIZ_MILESTONE_INTERVAL = 10  # 당일 정답 N개마다(리셋: 매일 0) 캐시 직접 지급. 세트/상자와 무관.
+QUIZ_MILESTONE_BONUS = 10
+QUIZ_MILESTONE_MAX = 20  # 하루 최대 여기까지만(10, 20). 그 이후로는 더 지급 안 함.
+
 # 정답 시 상자 등급 가중치 (⚠️ 임시 테스트값 50/50 — 배포 전 90/10 원복)
 _BOX_GRADE_WEIGHTS = [
     (CashBox.Grade.NORMAL, 50),
@@ -580,6 +584,20 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
         daily.correct_count += 1
     daily.save(update_fields=['quiz_count', 'correct_count', 'boxes_earned', 'updated_at'])
 
+    # 정답 10개마다(당일 기준, 매일 0으로 리셋) 캐시 직접 지급 — 상자와 별개.
+    milestone_hit = (
+        is_correct
+        and daily.correct_count % QUIZ_MILESTONE_INTERVAL == 0
+        and daily.correct_count <= QUIZ_MILESTONE_MAX
+    )
+    if milestone_hit:
+        from rewards.models import Ledger
+        from rewards.services import earn
+        earn(
+            user, QUIZ_MILESTONE_BONUS, Ledger.Reason.QUIZ_MILESTONE,
+            ref_type='daily', ref_id=daily.id,
+        )
+
     # QuizSetItem / QuizSet 갱신
     set_completed = False
     if quiz_set_item:
@@ -605,6 +623,8 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
         'box_grade': box.grade if box else None,
         'set_boxes_earned': quiz_set.boxes_earned if quiz_set else None,
         'set_completed': set_completed if quiz_set else None,
+        'milestone_bonus': QUIZ_MILESTONE_BONUS if milestone_hit else None,
+        'today_correct_count': daily.correct_count,
     }
 
 

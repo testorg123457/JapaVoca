@@ -22,6 +22,7 @@ import {
 import Tts from 'react-native-tts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { AppText, Icon, PressableScale, useToast } from '../../components';
 import {
@@ -664,7 +665,8 @@ export function LockQuizView({
 }: LockQuizActions): React.JSX.Element {
   const theme = useQuizTheme();
   const c = theme.colors;
-  const { showNetworkError } = useToast();
+  const { showToast, showNetworkError } = useToast();
+  const queryClient = useQueryClient();
   const boxes = useBoxes();
   const boxCount = boxes.data?.length ?? 0;
   const { width: screenW } = useWindowDimensions();
@@ -836,6 +838,11 @@ export function LockQuizView({
         if (!mountedRef.current) { return; }
         setIsOnline(true);
         if (res.box_id !== null) { boxes.refetch(); }
+        if (res.milestone_bonus !== null) {
+          queryClient.invalidateQueries({ queryKey: ['wallet'] });
+          queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
+          showToast(`정답 ${res.today_correct_count}개! 캐시 ${res.milestone_bonus} 획득`, 'info');
+        }
         recordEntry(question, choiceIndex, res.is_correct);
         setPhase({
           type: 'reveal', cursor, set,
@@ -877,7 +884,7 @@ export function LockQuizView({
       recordEntry(question, choiceIndex, isCorrect);
       setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
     }
-  }, [phase, isOnline, boxes, recordEntry, loadSet]);
+  }, [phase, isOnline, boxes, recordEntry, loadSet, queryClient, showToast]);
 
   const handleNext = useCallback(() => {
     if (phase.type !== 'reveal') { return; }

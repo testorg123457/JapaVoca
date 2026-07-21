@@ -31,13 +31,9 @@ import {
 } from '../../components';
 import { fontFamily, hairline, spacing } from '../../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../../theme/ThemeProvider';
-import { useAttendanceStatus, useBoxes, useWallet } from '../../api/hooks';
+import { useAttendanceStatus, useBoxes, useDailyToday, useWallet } from '../../api/hooks';
 import { useUnreadCount } from '../../api/notifications';
 import type { MainStackScreenProps } from '../../navigation/types';
-
-// 오늘의 진행 문구용 하드코딩 값. TODO(백엔드): daily/today 응답으로 교체.
-const DAILY_GOAL = 10;
-const TODAY_SOLVED = 3;
 
 /**
  * 하단 앵커 배너 — ScrollView 바깥 sibling. AdMob 정책 준수:
@@ -81,9 +77,13 @@ export default function HomeScreen(): React.JSX.Element {
   const boxes = useBoxes();
   const attendance = useAttendanceStatus();
   const unread = useUnreadCount();
+  const daily = useDailyToday();
 
   const balance = wallet.data?.balance ?? 0;
   const boxCount = boxes.data?.length ?? 0;
+  const todayCorrectCount = daily.data?.correct_count ?? 0;
+  const cycleCorrectCount = todayCorrectCount % 10;
+  const justCompletedTen = todayCorrectCount > 0 && cycleCorrectCount === 0;
   const streak = attendance.data?.streak_count ?? 0;
   const hasBoxes = boxCount > 0;
 
@@ -167,22 +167,34 @@ export default function HomeScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing['4xl'] }}>
         <View className="gap-2xl">
-          {/* 오늘의 진행 문구 — 캐시 아래. TODO(백엔드): daily/today로 실제 수치 교체(현재 하드코딩). */}
+          {/* 오늘의 진행 문구 — 캐시 아래. daily/today correct_count 기준(정답 10개마다 캐시). */}
           <View className="px-xl" style={{ paddingTop: spacing.md }}>
-            <AppText
-              className="text-text-primary"
-              style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
-              오늘 {TODAY_SOLVED}문제 풀었어요{'\n'}
-              <AppText
-                style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5, color: c.brand }}>
-                {DAILY_GOAL - TODAY_SOLVED}문제
-              </AppText>
+            {justCompletedTen ? (
               <AppText
                 className="text-text-primary"
                 style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
-                {' '}더 풀면 상자 하나
+                퀴즈 10개를 다 풀었습니다.{'\n'}
+                <AppText
+                  style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5, color: c.brand }}>
+                  상자를 열어 캐시를 획득하세요!
+                </AppText>
               </AppText>
-            </AppText>
+            ) : (
+              <AppText
+                className="text-text-primary"
+                style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
+                오늘 {todayCorrectCount}문제 풀었어요{'\n'}
+                <AppText
+                  style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5, color: c.brand }}>
+                  {10 - cycleCorrectCount}문제
+                </AppText>
+                <AppText
+                  className="text-text-primary"
+                  style={{ fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 31, letterSpacing: -0.5 }}>
+                  {' '}더 풀면 캐시 획득 가능
+                </AppText>
+              </AppText>
+            )}
           </View>
 
           <View className="gap-xl px-xl">
@@ -247,7 +259,7 @@ export default function HomeScreen(): React.JSX.Element {
                     {hasBoxes ? `보유 상자 ${boxCount}개` : '상자가 아직 없어요'}
                   </AppText>
                   <AppText variant="body" className="text-text-tertiary">
-                    {hasBoxes ? '탭해서 바로 열어보세요' : '퀴즈 한 세트를 풀면 상자가 생겨요'}
+                    {hasBoxes ? '탭해서 바로 열어보세요' : '퀴즈를 풀면 상자를 받을 수 있어요'}
                   </AppText>
                 </View>
                 {hasBoxes ? (

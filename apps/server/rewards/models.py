@@ -55,6 +55,7 @@ class Ledger(models.Model):
     class Reason(models.TextChoices):
         # earn
         QUIZ_BOX = 'quiz_box', '퀴즈 상자'
+        QUIZ_MILESTONE = 'quiz_milestone', '퀴즈 10문제 보너스'
         ATTENDANCE = 'attendance', '출석'
         STREAK = 'streak', '연속출석'
         AD_BONUS = 'ad_bonus', '광고 보너스'
