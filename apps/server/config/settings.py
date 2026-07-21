@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'exchange',
     'notifications',
     'support',
+    'translate',
 
 ]
 
