@@ -31,7 +31,7 @@ const TYPE_ICON: Record<NotificationType, IconName> = {
 
 /** data.screen 이 이동 가능한 라우트일 때만 네비게이트. */
 const NAVIGABLE: (keyof MainStackParamList)[] = [
-  'Home', 'LockQuiz', 'Kana', 'Attendance', 'Settings', 'Exchange', 'Ledger',
+  'Home', 'LockQuiz', 'Kana', 'Settings', 'Exchange', 'Ledger',
 ];
 
 function formatDate(iso: string): string {

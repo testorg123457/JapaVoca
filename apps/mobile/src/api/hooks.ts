@@ -161,7 +161,10 @@ export function useBoxes() {
 export type AttendanceStatus = {
   checked_in: boolean;
   streak_count: number;
-  bonus_cash: number;
+  /** 누적 출석 수. total_count % 7 이 보라 상자까지의 진행도. */
+  total_count: number;
+  /** 이번 체크인으로 보라 상자를 받았는지(POST 응답에만). */
+  box_granted?: boolean;
 };
 
 /** 오늘 출석 상태 조회(읽기 전용). */
@@ -180,9 +183,9 @@ export function useAttendance() {
     mutationFn: async () =>
       (await apiClient.post<AttendanceStatus>('/api/rewards/attendance/today/')).data,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wallet'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] }); // today + month 달력 갱신
       queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
+      queryClient.invalidateQueries({ queryKey: ['boxes'] }); // 7회째 보라 상자 지급 → 상자 카드 갱신
       queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 출석 알림 생성됨
     },
     onError: (error: AxiosError<AttendanceStatus>) => {

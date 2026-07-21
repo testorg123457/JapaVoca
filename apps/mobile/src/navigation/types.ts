@@ -44,8 +44,6 @@ export type MainStackParamList = {
   BoxOpen: { boxes: { id: number; grade: BoxGrade }[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;
-  /** 출석체크(달력/스트릭). */
-  Attendance: undefined;
   /** 설정(헤더 우측 버튼으로 진입). */
   Settings: undefined;
   /** 계정 설정(설정 > 계정 설정) — 테마·계정연결·약관·회원탈퇴. */

@@ -114,9 +114,8 @@ class AttendanceTodayView(APIView):
                 get_today_attendance(request.user), status=status.HTTP_409_CONFLICT,
             )
         return Response({
-            'checked_in': True,
-            'streak_count': attendance.streak_count,
-            'bonus_cash': attendance.bonus_cash,
+            **get_today_attendance(request.user),
+            'box_granted': attendance.is_cycle_reward,
         })
 
 

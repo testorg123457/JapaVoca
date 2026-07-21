@@ -13,7 +13,6 @@ import HomeScreen from '../screens/main/HomeScreen';
 import LockQuizScreen from '../screens/quiz/LockQuizScreen';
 import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
 import KanaScreen from '../screens/main/KanaScreen';
-import AttendanceScreen from '../screens/main/AttendanceScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import AccountSettingsScreen from '../screens/main/AccountSettingsScreen';
 import LockSettingsScreen from '../screens/main/LockSettingsScreen';
@@ -49,7 +48,6 @@ export default function MainStack(): React.JSX.Element {
         options={{ presentation: 'fullScreenModal' }}
       />
       <Stack.Screen name="Kana" component={KanaScreen} />
-      <Stack.Screen name="Attendance" component={AttendanceScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <Stack.Screen name="LockSettings" component={LockSettingsScreen} />

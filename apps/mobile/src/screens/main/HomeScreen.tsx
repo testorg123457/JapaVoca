@@ -31,8 +31,9 @@ import {
 } from '../../components';
 import { fontFamily, hairline, spacing } from '../../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../../theme/ThemeProvider';
-import { useAttendanceStatus, useBoxes, useDailyToday, useWallet } from '../../api/hooks';
+import { useBoxes, useDailyToday, useWallet } from '../../api/hooks';
 import { useUnreadCount } from '../../api/notifications';
+import AttendanceCalendar from './components/AttendanceCalendar';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 /**
@@ -75,7 +76,6 @@ export default function HomeScreen(): React.JSX.Element {
 
   const wallet = useWallet();
   const boxes = useBoxes();
-  const attendance = useAttendanceStatus();
   const unread = useUnreadCount();
   const daily = useDailyToday();
 
@@ -84,7 +84,6 @@ export default function HomeScreen(): React.JSX.Element {
   const todayCorrectCount = daily.data?.correct_count ?? 0;
   const cycleCorrectCount = todayCorrectCount % 10;
   const justCompletedTen = todayCorrectCount > 0 && cycleCorrectCount === 0;
-  const streak = attendance.data?.streak_count ?? 0;
   const hasBoxes = boxCount > 0;
 
   // 상자 카드 탭 → BoxOpen(전체 미개봉 상자). 개봉 화면이 광고/연출/잔액 invalidate를
@@ -269,18 +268,12 @@ export default function HomeScreen(): React.JSX.Element {
             </View>
           </View>
 
-          {/* 가나 · 출석 · 교환 진입 — inset 그룹 */}
+          {/* 가나 · 교환 · 번역 · 북마크 진입 — inset 그룹 */}
           <ListSection inset>
             <ListRow
               leftIcon="pencil"
               title="히라가나 / 가타카나"
               onPress={() => navigation.navigate('Kana')}
-            />
-            <ListRow
-              leftIcon="calendar"
-              title="출석체크"
-              subtitle={streak > 0 ? `${streak}일 연속 출석 중` : '오늘 출석하고 보너스 받기'}
-              onPress={() => navigation.navigate('Attendance')}
             />
             <ListRow
               leftIcon="gift"
@@ -299,6 +292,9 @@ export default function HomeScreen(): React.JSX.Element {
               last
             />
           </ListSection>
+
+          {/* 출석 달력 — 페이지 하단(누적 7회 → 보라 상자) */}
+          <AttendanceCalendar />
         </View>
       </ScrollView>
 

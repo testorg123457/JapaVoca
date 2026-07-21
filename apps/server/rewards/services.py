@@ -157,12 +157,9 @@ def list_unopened_boxes(user):
     ).order_by('-created_at')
 
 
-# 출석 보너스 — 7일 주기로 반복(japavoca-plan.md 3.5: 1일 기본 / 2~6일 점증 / 7일 대형).
-# streak_count 자체는 누적(연속 출석 N일째 표시용)이고, 보너스 금액만 7일 주기로 순환한다.
+# 출석 보상 — 캐시는 주지 않고, 누적 출석 N회마다 보라 상자 1개를 지급한다.
+# streak_count 는 '연속 출석' 표시용으로만 유지(보상 계산엔 쓰지 않음).
 ATTENDANCE_CYCLE_LENGTH = 7
-BASE_ATTENDANCE_BONUS = 10
-# 7일차(주간 연속 출석 완성)는 +30C 고정 보너스. 2~6일차는 점증.
-STREAK_BONUS_BY_CYCLE_DAY = {2: 5, 3: 10, 4: 15, 5: 20, 6: 30, 7: 30}
 
 
 class AlreadyCheckedIn(CashError):
@@ -170,77 +167,76 @@ class AlreadyCheckedIn(CashError):
 
 
 def get_today_attendance(user) -> dict:
-    """오늘 출석 여부 + 최신 스트릭 조회. 부수효과 없음(체크인은 check_in() 으로만)."""
+    """오늘 출석 여부 + 스트릭 + 누적 출석 수 조회. 부수효과 없음(체크인은 check_in() 으로만).
+
+    total_count 를 ATTENDANCE_CYCLE_LENGTH 로 나눈 나머지가 보라 상자까지의 진행도다.
+    """
     today = timezone.localdate()
+    total_count = Attendance.objects.filter(user=user).count()
     latest = Attendance.objects.filter(user=user).order_by('-date').first()
     if latest is None:
-        return {'checked_in': False, 'streak_count': 0, 'bonus_cash': 0}
-    checked_in = latest.date == today
+        return {'checked_in': False, 'streak_count': 0, 'total_count': 0}
     return {
-        'checked_in': checked_in,
+        'checked_in': latest.date == today,
         'streak_count': latest.streak_count,
-        'bonus_cash': latest.bonus_cash if checked_in else 0,
+        'total_count': total_count,
     }
 
 
 @transaction.atomic
 def check_in(user) -> Attendance:
-    """출석 체크 — streak 계산 + 보너스 캐시 적립(원장 기록 포함)을 원자적으로 처리.
+    """출석 체크 — 하루 1회. 캐시는 지급하지 않고, 누적 출석 N(=ATTENDANCE_CYCLE_LENGTH)회마다
+    보라 상자 1개를 지급한다(미개봉). streak_count 는 연속 출석 표시용으로만 유지한다.
 
     하루 1회만 허용(Attendance.user+date unique 제약). 이미 체크인했으면 AlreadyCheckedIn.
-    적립은 reason=ATTENDANCE(기본분) / reason=STREAK(연속출석 가산분)로 나눠 원장에 남긴다.
+    상자 지급 여부는 attendance.is_cycle_reward 에 기록한다.
     """
     today = timezone.localdate()
     yesterday = today - timedelta(days=1)
 
     previous = Attendance.objects.filter(user=user, date=yesterday).first()
     streak_count = previous.streak_count + 1 if previous else 1
-    day_in_cycle = (streak_count - 1) % ATTENDANCE_CYCLE_LENGTH + 1
-    streak_bonus = STREAK_BONUS_BY_CYCLE_DAY.get(day_in_cycle, 0)
-    total_bonus = BASE_ATTENDANCE_BONUS + streak_bonus
-    is_cycle_reward = day_in_cycle == ATTENDANCE_CYCLE_LENGTH
 
     try:
         attendance = Attendance.objects.create(
             user=user, date=today, streak_count=streak_count,
-            bonus_cash=total_bonus, is_cycle_reward=is_cycle_reward,
+            bonus_cash=0, is_cycle_reward=False,
         )
     except IntegrityError as exc:
         raise AlreadyCheckedIn('오늘 이미 출석 체크했습니다.') from exc
 
-    earn(
-        user, BASE_ATTENDANCE_BONUS, Ledger.Reason.ATTENDANCE,
-        ref_type='attendance', ref_id=attendance.id,
-    )
-    if streak_bonus > 0:
-        earn(
-            user, streak_bonus, Ledger.Reason.STREAK,
-            ref_type='attendance', ref_id=attendance.id,
-        )
+    # 누적 출석 수가 주기(7)의 배수가 되면 보라 상자 지급.
+    total_count = Attendance.objects.filter(user=user).count()
+    box_granted = total_count % ATTENDANCE_CYCLE_LENGTH == 0
+    if box_granted:
+        CashBox.objects.create(user=user, grade=CashBox.Grade.PURPLE)
+        attendance.is_cycle_reward = True
+        attendance.save(update_fields=['is_cycle_reward'])
 
     daily, _ = Daily.objects.get_or_create(user=user, date=today)
     daily = Daily.objects.select_for_update().get(pk=daily.pk)
     daily.attended = True
-    daily.cash_earned += total_bonus
-    daily.save(update_fields=['attended', 'cash_earned', 'updated_at'])
+    daily.save(update_fields=['attended', 'updated_at'])
 
-    # 인앱 알림은 캐시 트랜잭션 커밋 이후에 생성(실패해도 캐시에 영향 없게).
+    remaining = ATTENDANCE_CYCLE_LENGTH - (total_count % ATTENDANCE_CYCLE_LENGTH)
+
+    # 인앱 알림은 트랜잭션 커밋 이후에 생성(실패해도 상자 지급에 영향 없게).
     def _notify():
         from notifications.models import Notification
         from notifications.services import notify
-        if is_cycle_reward:
+        if box_granted:
             notify(
                 user, Notification.Type.STREAK,
-                f'{streak_count}일 연속 출석 보너스!',
-                f'연속 출석 보너스로 +{total_bonus}C 적립됐어요.',
-                data={'screen': 'Attendance'}, push=True,
+                '출석 7번 달성!',
+                '보라 상자를 획득했어요. 열어서 캐시를 받아보세요.',
+                data={'screen': 'Home'}, push=True,
             )
         else:
             notify(
                 user, Notification.Type.ATTENDANCE,
                 '오늘 출석 완료!',
-                f'출석 보너스 +{total_bonus}C 적립됐어요.',
-                data={'screen': 'Attendance'}, push=True,
+                f'보라 상자까지 {remaining}번 남았어요.',
+                data={'screen': 'Home'}, push=True,
             )
 
     transaction.on_commit(_notify)
