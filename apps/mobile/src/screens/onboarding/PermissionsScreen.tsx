@@ -13,12 +13,10 @@ import type { IconName } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
   checkNotification,
-  checkPhone,
   isIgnoringBatteryOptimizations,
   openAppSettings,
   requestBatteryExemption,
   requestNotification,
-  requestPhone,
 } from '../../lib/permissions';
 import { canDrawOverlays, requestOverlayPermission } from '../../lib/overlay';
 import type { OnboardingStackScreenProps } from '../../navigation/types';
@@ -35,7 +33,6 @@ export default function PermissionsScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation<OnboardingStackScreenProps<'Permissions'>['navigation']>();
   const [notif, setNotif] = useState(false);
-  const [phone, setPhone] = useState(false);
   const [battery, setBattery] = useState(false);
   const [overlay, setOverlay] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -46,20 +43,18 @@ export default function PermissionsScreen(): React.JSX.Element {
   }, [navigation]);
 
   const refresh = useCallback(async () => {
-    const [n, p, b, o] = await Promise.all([
+    const [n, b, o] = await Promise.all([
       checkNotification(),
-      checkPhone(),
       isIgnoringBatteryOptimizations(),
       canDrawOverlays(),
     ]);
     setNotif(n);
-    setPhone(p);
     setBattery(b);
     setOverlay(o);
-    if (n && p) {
+    if (n) {
       setBlocked(false);
     }
-    return n && p;
+    return n;
   }, []);
 
   // 마운트 시 + 설정에서 복귀(AppState active) 시 재확인. 필수 충족되면 자동 진행.
@@ -104,14 +99,6 @@ export default function PermissionsScreen(): React.JSX.Element {
       }
       setNotif(n);
 
-      let p = await checkPhone();
-      if (!p) {
-        const r = await requestPhone();
-        p = r === 'granted';
-        if (r === 'blocked') anyBlocked = true;
-      }
-      setPhone(p);
-
       const b = await isIgnoringBatteryOptimizations();
       setBattery(b);
       if (!b) {
@@ -119,7 +106,7 @@ export default function PermissionsScreen(): React.JSX.Element {
       }
 
       setBlocked(anyBlocked);
-      if (n && p) {
+      if (n) {
         goNext();
       }
     } finally {
@@ -133,13 +120,6 @@ export default function PermissionsScreen(): React.JSX.Element {
       title: '알림',
       desc: '캐시 적립·출석 리마인드 알림을 받아요.',
       granted: notif,
-      required: true,
-    },
-    {
-      icon: 'shield',
-      title: '전화(휴대폰 번호)',
-      desc: '본인확인·중복가입 방지를 위해 필요해요.',
-      granted: phone,
       required: true,
     },
     {
@@ -167,7 +147,7 @@ export default function PermissionsScreen(): React.JSX.Element {
             원활한 이용을 위해 권한이 필요해요
           </AppText>
           <AppText variant="caption" className="text-text-tertiary">
-            알림·전화는 필수예요.
+            알림은 필수예요.
           </AppText>
         </View>
 
@@ -218,7 +198,7 @@ export default function PermissionsScreen(): React.JSX.Element {
       <View className="px-xl pb-2xl pt-md gap-sm" style={{ marginBottom: 40 }}>
         {blocked ? (
           <AppText variant="caption" className="text-danger text-center">
-            권한이 꺼져 있어요. 설정에서 알림·전화 권한을 켜주세요.
+            권한이 꺼져 있어요. 설정에서 알림 권한을 켜주세요.
           </AppText>
         ) : null}
         <Button
