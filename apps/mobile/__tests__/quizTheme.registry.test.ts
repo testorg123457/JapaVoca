@@ -8,6 +8,7 @@ describe('quiz theme registry', () => {
     expect(themeList.map((t) => t.id)).toEqual([
       'classic', 'olive', 'dracula', 'sage',
       'editorial', 'fintech', 'chrome', 'purple', 'luxury', 'mint',
+      'custom',
     ]);
   });
   it('기본 테마는 classic', () => {

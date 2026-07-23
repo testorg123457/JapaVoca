@@ -9,10 +9,12 @@ import chrome from './chrome';
 import purple from './purple';
 import luxury from './luxury';
 import mint from './mint';
+import custom from './custom';
 
 /** 새 테마 추가 = 위에 import 1줄 + 아래 배열에 1개 추가. */
 const ALL: QuizTheme[] = [
   classic, olive, dracula, sage, editorial, fintech, chrome, purple, luxury, mint,
+  custom,
 ];
 
 export const DEFAULT_THEME_ID = 'classic';

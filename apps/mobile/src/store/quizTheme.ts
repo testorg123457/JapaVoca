@@ -15,3 +15,20 @@ export function getQuizThemeId(): string {
 export function setQuizThemeId(id: string): void {
   storage.set(ID_KEY, id);
 }
+
+// ── 커스텀 테마 배경 사진 ────────────────────────────────────────────────────────
+
+const PHOTO_KEY = 'quizTheme.photoUri';
+
+/** 커스텀 테마 배경 사진 경로. 고른 적 없으면 undefined. */
+export function getQuizPhotoUri(): string | undefined {
+  return storage.getString(PHOTO_KEY) || undefined;
+}
+
+export function setQuizPhotoUri(uri: string): void {
+  storage.set(PHOTO_KEY, uri);
+}
+
+export function clearQuizPhotoUri(): void {
+  storage.remove(PHOTO_KEY);
+}

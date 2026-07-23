@@ -14,56 +14,18 @@ import { AppHeader, AppText, Coin, Icon } from '../../components';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useLedger, useWallet, type LedgerEntry, type LedgerReason } from '../../api/hooks';
+import { formatTime, groupByDate } from '../../lib/dateSections';
 
 const REASON_LABEL: Record<LedgerReason, string> = {
   quiz_box: '퀴즈 상자',
+  quiz_milestone: '퀴즈 10문제 보너스',
   attendance: '출석 보너스',
   streak: '연속 출석 보너스',
   ad_bonus: '광고 보너스',
   exchange: '기프티콘 교환',
+  exchange_refund: '기프티콘 교환 환불',
   admin_adjust: '관리자 조정',
 };
-
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function dateKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
-/** entry.created_at → 섹션 제목("오늘"/"어제"/"7월 18일 (금)", 연도가 다르면 "2025.12월 3일 (수)"). */
-function sectionTitle(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (dateKey(d) === dateKey(now)) return '오늘';
-  if (dateKey(d) === dateKey(yesterday)) return '어제';
-  const yearPrefix = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}.` : '';
-  return `${yearPrefix}${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
-}
-
-type Section = { title: string; data: LedgerEntry[] };
-
-/** 정렬된 entries를 인접한 같은 날짜끼리 섹션으로 묶는다(서버가 최신순 정렬 보장). */
-function groupByDate(entries: LedgerEntry[]): Section[] {
-  const sections: Section[] = [];
-  for (const entry of entries) {
-    const title = sectionTitle(entry.created_at);
-    const current = sections[sections.length - 1];
-    if (current?.title === title) {
-      current.data.push(entry);
-    } else {
-      sections.push({ title, data: [entry] });
-    }
-  }
-  return sections;
-}
 
 function LedgerRow({ entry }: { entry: LedgerEntry }): React.JSX.Element {
   const c = useThemeColors();
@@ -109,7 +71,7 @@ export default function LedgerScreen(): React.JSX.Element {
   const wallet = useWallet();
   const ledger = useLedger();
   const entries = ledger.data?.pages.flatMap((page) => page.results) ?? [];
-  const sections = groupByDate(entries);
+  const sections = groupByDate(entries, (e) => e.created_at);
   const balance = wallet.data?.balance ?? 0;
 
   return (

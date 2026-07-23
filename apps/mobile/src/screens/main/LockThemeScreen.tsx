@@ -4,21 +4,50 @@
  * 각 테마는 색 스와치 미니 프리뷰로 보여주고, 탭하면 선택·영속.
  */
 import React, { useState } from 'react';
-import { ImageBackground, ScrollView, View } from 'react-native';
+import { Alert, ImageBackground, ScrollView, View } from 'react-native';
 
 import { AppHeader, AppText, Icon, PressableScale } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { radius } from '../../theme/tokens';
 import { themeList } from '../../theme/quiz/themes';
-import { getQuizThemeId, setQuizThemeId } from '../../store/quizTheme';
+import { CUSTOM_THEME_ID } from '../../theme/quiz/themes/custom';
+import { pickFromGallery } from '../../lib/translate/imageSource';
+import {
+  getQuizPhotoUri,
+  getQuizThemeId,
+  setQuizPhotoUri,
+  setQuizThemeId,
+} from '../../store/quizTheme';
 
 export default function LockThemeScreen(): React.JSX.Element {
   const c = useThemeColors();
   const [selected, setSelected] = useState<string>(getQuizThemeId());
+  const [photoUri, setPhotoUri] = useState<string | undefined>(getQuizPhotoUri());
 
   const choose = (id: string) => {
     setSelected(id);
     setQuizThemeId(id);
+  };
+
+  /** 커스텀 테마 — 사진이 있어야 의미가 있으므로 없으면 고르는 것부터 띄운다. */
+  const chooseCustom = async () => {
+    if (!photoUri) {
+      await pickPhoto();
+      return;
+    }
+    choose(CUSTOM_THEME_ID);
+  };
+
+  const pickPhoto = async () => {
+    try {
+      const picked = await pickFromGallery();
+      if (!picked) { return; } // 취소
+      setQuizPhotoUri(picked.uri);
+      setPhotoUri(picked.uri);
+      choose(CUSTOM_THEME_ID);
+    } catch {
+      Alert.alert('사진을 불러오지 못했어요', '다른 사진으로 다시 시도해주세요.');
+    }
   };
 
   return (
@@ -28,7 +57,7 @@ export default function LockThemeScreen(): React.JSX.Element {
         <AppText variant="caption" className="text-text-tertiary">
           잠금화면 퀴즈에 적용할 테마를 골라요. 다음 잠금화면부터 반영돼요.
         </AppText>
-        {themeList.map((t) => {
+        {themeList.filter((t) => t.id !== CUSTOM_THEME_ID).map((t) => {
           const active = t.id === selected;
           return (
             <PressableScale key={t.id} onPress={() => choose(t.id)}>
@@ -74,6 +103,70 @@ export default function LockThemeScreen(): React.JSX.Element {
             </PressableScale>
           );
         })}
+
+        {/* 커스텀 — 내 사진 배경 */}
+        <PressableScale onPress={chooseCustom}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 14,
+            padding: 14, borderRadius: radius.lg,
+            backgroundColor: c['bg-primary'],
+            borderWidth: 1.5,
+            borderColor: selected === CUSTOM_THEME_ID ? c.brand : c['border-secondary'],
+          }}>
+            {photoUri ? (
+              <ImageBackground
+                source={{ uri: photoUri }}
+                resizeMode="cover"
+                style={{
+                  width: 56, height: 56, overflow: 'hidden',
+                  alignItems: 'center', justifyContent: 'center', gap: 4,
+                }}
+                imageStyle={{ borderRadius: 12 }}>
+                {/* 실제 화면처럼 패널 위에 선택지가 놓인 모습 */}
+                <View style={{
+                  paddingVertical: 5, paddingHorizontal: 6, borderRadius: 8, gap: 4,
+                  backgroundColor: 'rgba(20,22,28,0.66)',
+                }}>
+                  <View style={{ width: 30, height: 7, borderRadius: 4, backgroundColor: '#1E2129' }} />
+                  <View style={{ width: 30, height: 7, borderRadius: 4, backgroundColor: '#4DB882' }} />
+                </View>
+              </ImageBackground>
+            ) : (
+              <View style={{
+                width: 56, height: 56, borderRadius: 12,
+                backgroundColor: c['bg-tertiary'],
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon name="image" size={22} color={c['text-tertiary']} />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <AppText variant="subheading" style={{ color: c['text-primary'] }}>내 사진</AppText>
+              <AppText variant="caption" style={{ color: c['text-tertiary'] }}>
+                {photoUri ? '탭해서 적용 · 아래에서 사진 변경' : '갤러리에서 사진을 골라요'}
+              </AppText>
+            </View>
+            {selected === CUSTOM_THEME_ID && (
+              <Icon name="check-circle" size={22} color={c.brand} strokeWidth={2} />
+            )}
+          </View>
+        </PressableScale>
+
+        {photoUri && (
+          <PressableScale onPress={pickPhoto}>
+            <View style={{
+              paddingVertical: 12, borderRadius: radius.md,
+              alignItems: 'center',
+              borderWidth: 1, borderColor: c['border-secondary'],
+            }}>
+              <AppText variant="label" style={{ color: c['text-secondary'] }}>사진 변경</AppText>
+            </View>
+          </PressableScale>
+        )}
+
+        <AppText variant="caption" className="text-text-tertiary">
+          사진이 밝거나 복잡해도 읽히도록, 문제와 선택지는 반투명 패널 위에 표시돼요.
+        </AppText>
       </ScrollView>
     </View>
   );
