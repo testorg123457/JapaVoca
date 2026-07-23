@@ -126,11 +126,12 @@ def request_exchange(
         return gift
 
     # 3) 발급 실패 → 캐시 환불 + 상태 갱신(원자적). 차감과 상쇄되어 net 0.
+    #    환불 사유는 전용 EXCHANGE_REFUND(감사 추적) — '관리자 조정'으로 뭉개지 않는다.
     with transaction.atomic():
         earn(
-            user, price_cash, Ledger.Reason.ADMIN_ADJUST,
+            user, price_cash, Ledger.Reason.EXCHANGE_REFUND,
             ref_type='gift_exchange', ref_id=gift.id,
         )
-        gift.status = GiftExchange.Status.FAILED
+        gift.status = GiftExchange.Status.REFUNDED
         gift.save(update_fields=['status'])
     raise ExchangeIssueFailed(gift)

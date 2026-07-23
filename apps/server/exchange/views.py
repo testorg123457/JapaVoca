@@ -1,6 +1,7 @@
 """exchange 뷰 — 상품 목록 / 교환 요청 / 교환 내역 / AdMob SSV 콜백."""
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -104,6 +105,30 @@ class ExchangeHistoryView(ListAPIView):
         )
 
 
+class AdStatusView(APIView):
+    """GET /api/exchange/ad-status/?nonce= — 내 광고 SSV 도착/검증 상태 폴링.
+
+    required=settings.ADMOB_SSV_VERIFY. Mock 모드(False)면 클라가 폴링 없이
+    진행하고, 엄격 모드(True)면 verified 될 때까지 폴링 후 ad_log_id 를
+    교환 요청에 동봉한다. 본인 로그만 조회된다.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        nonce = request.query_params.get('nonce', '')
+        log = None
+        if nonce:
+            log = AdRewardLog.objects.filter(
+                user=request.user, nonce=nonce, verified=True,
+            ).first()
+        return Response({
+            'required': settings.ADMOB_SSV_VERIFY,
+            'verified': log is not None,
+            'ad_log_id': log.id if log else None,
+        })
+
+
 _REWARD_CONTEXTS = set(AdRewardLog.RewardContext.values)
 
 
@@ -147,22 +172,32 @@ class AdmobSsvView(APIView):
         else:
             verified = True
 
+        # custom_data = "<context>:<nonce>" (클라 useRewardedAd 가 조립).
+        # 콜론 없으면 전체를 context 로 해석한다(구버전 하위호환).
         custom_data = q.get('custom_data', '')
+        context_part, _, nonce_part = custom_data.partition(':')
         context = (
-            custom_data
-            if custom_data in _REWARD_CONTEXTS
+            context_part
+            if context_part in _REWARD_CONTEXTS
             else AdRewardLog.RewardContext.BOX_OPEN
         )
+        nonce = nonce_part[:64] or None
 
-        # 3) 로그 기록(검증 결과 그대로).
-        AdRewardLog.objects.create(
-            user=user,
-            ad_unit=q.get('ad_unit_id', ''),
-            ssv_signature=q.get('signature', ''),
-            transaction_id=transaction_id,
-            verified=verified,
-            reward_context=context,
-        )
+        # 3) 로그 기록(검증 결과 그대로). nonce/transaction_id 동시 중복은 멱등 처리
+        #    (savepoint 로 감싸 IntegrityError 후에도 트랜잭션이 깨지지 않게 한다).
+        try:
+            with transaction.atomic():
+                AdRewardLog.objects.create(
+                    user=user,
+                    ad_unit=q.get('ad_unit_id', ''),
+                    ssv_signature=q.get('signature', ''),
+                    transaction_id=transaction_id,
+                    verified=verified,
+                    reward_context=context,
+                    nonce=nonce,
+                )
+        except IntegrityError:
+            return Response(status=status.HTTP_200_OK)
 
         if not verified:
             return Response({'detail': 'invalid signature'}, status=status.HTTP_400_BAD_REQUEST)

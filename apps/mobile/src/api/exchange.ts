@@ -6,6 +6,7 @@
  *   POST /api/exchange/request/   {product_code, ad_verified, idempotency_key?}
  *       → GiftExchange (성공). 실패 시 400 {detail, exchange?}.
  *   GET  /api/exchange/history/   → 페이지네이션 {count,next,previous,results}
+ *   GET  /api/exchange/ad-status/?nonce= → {required, verified, ad_log_id}
  */
 import {
   useInfiniteQuery,
@@ -51,6 +52,8 @@ export type ExchangeRequestBody = {
   product_code: string;
   ad_verified: boolean;
   idempotency_key?: string;
+  /** SSV 엄격 모드 광고 증빙(AdRewardLog.id). Mock 모드면 서버가 무시. */
+  ad_log_id?: number | null;
 };
 
 export function useRequestExchange() {
@@ -65,6 +68,45 @@ export function useRequestExchange() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 교환 알림 생성됨
     },
   });
+}
+
+export type AdStatus = {
+  /** 서버가 SSV 엄격 모드인지(ADMOB_SSV_VERIFY). false 면 폴링 없이 진행. */
+  required: boolean;
+  verified: boolean;
+  ad_log_id: number | null;
+};
+
+export async function fetchAdStatus(nonce: string): Promise<AdStatus> {
+  const response = await apiClient.get<AdStatus>('/api/exchange/ad-status/', {
+    params: { nonce },
+  });
+  return response.data;
+}
+
+/**
+ * SSV 콜백 도착 폴링. Mock 모드(required=false)면 1회 조회로 즉시 끝난다.
+ * 검증 확인 또는 시도 소진 시 마지막 상태 반환. 네트워크 오류는 남은 횟수 내 재시도.
+ */
+export async function pollAdStatus(
+  nonce: string,
+  { intervalMs = 2000, maxAttempts = 15 } = {},
+): Promise<AdStatus> {
+  let last: AdStatus = { required: true, verified: false, ad_log_id: null };
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      last = await fetchAdStatus(nonce);
+      if (!last.required || last.verified) {
+        return last;
+      }
+    } catch {
+      // 네트워크 오류 — 남은 횟수 내 재시도.
+    }
+    if (attempt < maxAttempts - 1) {
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), intervalMs));
+    }
+  }
+  return last;
 }
 
 export type ExchangeHistoryPage = {

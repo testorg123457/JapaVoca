@@ -65,6 +65,12 @@ class AdRewardLog(models.Model):
         help_text='AdMob SSV transaction_id(멱등성 키)',
     )
     verified = models.BooleanField(default=False, help_text='검증 성공 여부')
+    # 클라 생성 일회용 nonce(SSV custom_data "<context>:<nonce>" 로 전달됨).
+    # 광고 ↔ 보상 액션을 명시적으로 연결하는 키. 콜백 미연결 구버전 로그는 null.
+    nonce = models.CharField(
+        max_length=64, null=True, blank=True, unique=True,
+        help_text='클라 생성 일회용 nonce — 광고와 보상 액션의 명시 연결 키',
+    )
     reward_context = models.CharField(max_length=10, choices=RewardContext.choices)
     ref_id = models.PositiveIntegerField(
         null=True, blank=True, help_text='연결된 CashBox.id 또는 GiftExchange.id',

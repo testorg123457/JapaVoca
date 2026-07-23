@@ -46,10 +46,12 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const REASON_LABEL: Record<LedgerReason, string> = {
   quiz_box: '퀴즈 상자',
+  quiz_milestone: '퀴즈 10문제 보너스',
   attendance: '출석 보너스',
   streak: '연속 출석 보너스',
   ad_bonus: '광고 보너스',
   exchange: '기프티콘 교환',
+  exchange_refund: '기프티콘 교환 환불',
   admin_adjust: '관리자 조정',
 };
 

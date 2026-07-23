@@ -7,7 +7,7 @@
  * 상품 행: 좌측 이미지 슬롯(썸네일 있으면 사진, 없으면 카테고리 아이콘) + 이름·카테고리
  * + 우측 캐시가·교환 상태. 게스트는 상단 안내 카드 하나로 계정 연결을 유도한다.
  */
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, View } from 'react-native';
 import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
@@ -20,7 +20,12 @@ import type { IconName } from '../../components/Icon';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useWallet } from '../../api/hooks';
-import { useProducts, useRequestExchange, type Product } from '../../api/exchange';
+import {
+  pollAdStatus,
+  useProducts,
+  useRequestExchange,
+  type Product,
+} from '../../api/exchange';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -44,8 +49,16 @@ export default function ExchangeScreen(): React.JSX.Element {
   const wallet = useWallet();
   const products = useProducts();
   const requestExchange = useRequestExchange();
-  const { showThen } = useRewardedAd(Config.ADMOB_REWARDED_BOX_ID || TestIds.REWARDED);
+  const { showThen } = useRewardedAd(
+    Config.ADMOB_REWARDED_BOX_ID || TestIds.REWARDED,
+    me.data ? { userId: me.data.id, context: 'exchange' } : undefined,
+  );
   const lockRef = useRef(false);
+  // 상품별 멱등키. 실패 후 재탭은 같은 키로 서버 멱등 처리(이중 차감 방지),
+  // 성공 시에만 비워 다음 구매가 새 키를 받게 한다.
+  const keyRef = useRef<Record<string, string>>({});
+  // SSV 폴링 중 오버레이 표시용(요청 pending 과 별개 단계).
+  const [verifying, setVerifying] = useState(false);
 
   const balance = wallet.data?.balance ?? 0;
   const isGuest = me.data?.is_guest ?? false;
@@ -66,18 +79,52 @@ export default function ExchangeScreen(): React.JSX.Element {
       return;
     }
     lockRef.current = true;
-    showThen(() => {
+    // 이번 상품에 진행 중인 키가 있으면(직전 시도 실패) 재사용, 없으면 새로 발급.
+    const idempotencyKey = keyRef.current[product.code] ?? genIdempotencyKey();
+    keyRef.current[product.code] = idempotencyKey;
+    showThen(async (earned, nonce) => {
+      // 광고를 끝까지 보지 않았으면(스킵·미로드 포함) 서버 호출 없이 종료 — 차감 없음.
+      if (!earned) {
+        lockRef.current = false;
+        Alert.alert(
+          '광고 시청 필요',
+          '광고를 끝까지 시청해야 교환할 수 있어요. 광고가 안 나왔다면 잠시 후 다시 시도해주세요.',
+        );
+        return;
+      }
+      // SSV 확인 — Mock 모드(required=false)면 1회 조회로 즉시 통과.
+      setVerifying(true);
+      const status = await pollAdStatus(nonce).finally(() => setVerifying(false));
+      if (status.required && !status.verified) {
+        lockRef.current = false;
+        Alert.alert(
+          '광고 확인 지연',
+          '광고 시청 확인이 지연되고 있어요. 캐시는 차감되지 않았어요. 잠시 후 다시 시도해주세요.',
+        );
+        return;
+      }
       requestExchange.mutate(
-        { product_code: product.code, ad_verified: true, idempotency_key: genIdempotencyKey() },
+        {
+          product_code: product.code,
+          ad_verified: true,
+          idempotency_key: idempotencyKey,
+          ad_log_id: status.ad_log_id,
+        },
         {
           onSuccess: () => {
             lockRef.current = false;
+            delete keyRef.current[product.code]; // 성공 — 다음 구매는 새 키.
             Alert.alert('교환 완료!', `${product.name} 교환이 완료됐어요.`);
           },
           onError: (error) => {
             lockRef.current = false;
-            const detail = (error as AxiosError<{ detail?: string }>).response?.data?.detail;
-            Alert.alert('교환 실패', detail ?? '교환에 실패했습니다. 잠시 후 다시 시도해주세요.');
+            const response = (error as AxiosError<{ detail?: string }>).response;
+            // 응답 없음(네트워크 오류) = 서버 처리 여부 불명 → 키 유지, 재탭은 멱등 재시도.
+            // 응답 있음(서버가 정의한 실패) → 키 폐기, 재탭은 새 시도(멱등 레코드 오인 방지).
+            if (response) {
+              delete keyRef.current[product.code];
+            }
+            Alert.alert('교환 실패', response?.data?.detail ?? '교환에 실패했습니다. 잠시 후 다시 시도해주세요.');
           },
         },
       );
@@ -193,7 +240,7 @@ export default function ExchangeScreen(): React.JSX.Element {
           </View>
         )}
 
-        {requestExchange.isPending && (
+        {(requestExchange.isPending || verifying) && (
           <View
             className="items-center justify-center"
             style={{
