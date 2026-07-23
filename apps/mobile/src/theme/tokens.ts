@@ -90,6 +90,10 @@ export const primitives = {
   green: { 50: '#E6F9EE', 500: '#2AC171' }, // success
   blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info
   purple: { 50: '#F3EEFE', 500: '#7C4DFF' }, // 상자 등급색(purple — BoxOpenScreen)
+  // 상자 최고 등급(burgundy — BoxOpenScreen). "검정 + 버건디".
+  // ⚠️ danger 레드(#E8432D)와 역할이 다르다. 레드=경고·오답·캐시 차감, 버건디=등급.
+  //    레드는 밝은 주황빛(B 45), 버건디는 어둡고 자홍 쪽(B 69 > G 41)이라 구분된다.
+  burgundy: { 300: '#C9506B', 500: '#A32945', 700: '#5E1129', 900: '#400C1D' },
   white: '#FFFFFF',
   black: '#000000',
 } as const;

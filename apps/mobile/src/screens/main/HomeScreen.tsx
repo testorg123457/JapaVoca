@@ -100,7 +100,7 @@ export default function HomeScreen(): React.JSX.Element {
     }
     navLockRef.current = true;
     navigation.navigate('BoxOpen', {
-      boxes: boxes.data.map((b) => ({ id: b.id, grade: b.grade })),
+      boxes: boxes.data,
     });
   }
 

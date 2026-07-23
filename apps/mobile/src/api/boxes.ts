@@ -3,7 +3,7 @@
  *
  * 백엔드 실제 계약(apps/server rewards/views.py OpenBoxView):
  *   POST /api/rewards/boxes/{id}/open/  (body 선택: {ad_verified})
- *     → { box_id, grade, reward_cash, balance_after }
+ *     → { box_id, grade, reward_cash, rewards, balance_after }
  *   이미 개봉된 상자는 409, 없는 상자는 404.
  *
  * 개봉 보상은 서버가 확정한다(클라가 캐시 금액을 신뢰하지 않음).
@@ -14,7 +14,10 @@ import type { BoxGrade } from './hooks';
 export type OpenBoxResult = {
   box_id: number;
   grade: BoxGrade;
+  /** 묶음 상자면 개별 보상의 합계. */
   reward_cash: number;
+  /** 개별 보상 목록(낱개면 길이 1). 서버가 확정한 값. */
+  rewards?: number[];
   balance_after: number;
 };
 

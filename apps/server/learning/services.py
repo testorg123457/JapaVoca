@@ -20,10 +20,9 @@ from .models import Bookmark, ItemType, QuizLog, QuizSet, QuizSetItem, SrsState
 
 QUESTION_SALT = 'japavoca.quiz.question'
 QUESTION_TTL_SECONDS = 300  # 단발(/next/) 경로 전용 TTL. 세트 토큰은 set_id 생존으로 검증.
-MAX_BOXES_PER_DAY = 50      # 일일 상자 획득 상한
+MAX_BOXES_PER_DAY = 50      # ⚠️ 임시 테스트값 50 — 원래 정한 값은 20. 배포 전 원복
 
 SET_SIZE = 10
-SET_BOX_CAP = 3
 SET_COOLDOWN = timedelta(seconds=30)
 
 QUIZ_MILESTONE_INTERVAL = 10  # 당일 정답 N개마다(리셋: 매일 0) 캐시 직접 지급. 세트/상자와 무관.
@@ -32,9 +31,16 @@ QUIZ_MILESTONE_MAX = 20  # 하루 최대 여기까지만(10, 20). 그 이후로�
 
 # 정답 시 상자 등급 가중치 (⚠️ 임시 테스트값 50/50 — 배포 전 90/10 원복)
 _BOX_GRADE_WEIGHTS = [
-    (CashBox.Grade.NORMAL, 50),
-    (CashBox.Grade.PURPLE, 50),
+    (CashBox.Grade.NORMAL, 30),
+    (CashBox.Grade.PURPLE, 30),
+    (CashBox.Grade.BURGUNDY, 40),  # ⚠️ 임시 테스트값 40% — 배포 전 반드시 낮출 것
 ]
+
+# 묶음 상자 — 확률로 보상 개수를 늘린다. 인벤토리·광고 횟수는 1개로 세고 캐시만 여러 번 뽑는다.
+# ⚠️ 임시 테스트값 50% — 기대 지급액이 2배가 되므로 배포 전 반드시 낮춰야 한다.
+# ⚠️ 확률은 반드시 서버에서만 굴린다(클라이언트 값 신뢰 금지).
+BOX_BURST_CHANCE = 0.5
+BOX_BURST_COUNT = 3
 
 
 class QuizError(Exception):
@@ -232,28 +238,67 @@ def _pick_item_id(user, item_type, word_type, level, exclude_ids=None):
     return qs.order_by('?').values_list('id', flat=True).first()
 
 
-def _distractor_texts(item_type, item_id, dimension, correct_text, n=3):
-    """같은 종류에서 오답 텍스트 n개 수집."""
-    if item_type == ItemType.WORD:
-        model = Word
-    elif item_type == ItemType.KANA:
-        model = Kana
-    else:
-        model = Kanji
-    out = []
-    for oid in model.objects.exclude(id=item_id).order_by('?').values_list('id', flat=True)[:60]:
+# 오답을 뽑을 급수 풀 — 정답 급수 기준 "자기 급수 + 한 단계 쉬운 급수".
+# 전체에서 아무거나 뽑으면 난이도가 튀는 오답이 섞여 몰라도 소거법으로 맞힐 수 있다.
+# N5는 더 쉬운 급수가 없으므로 한 단계 어려운 N4를 대신 쓴다.
+DISTRACTOR_LEVELS = {
+    'N5': ('N5', 'N4'),
+    'N4': ('N4', 'N5'),
+    'N3': ('N3', 'N4'),
+    'N2': ('N2', 'N3'),
+    'N1': ('N1', 'N2'),
+}
+
+
+def _collect_distractors(item_type, qs, dimension, correct_text, out, n):
+    """qs에서 오답 텍스트를 out에 채운다(중복·정답 제외). 채운 개수 반환."""
+    for oid in qs.order_by('?').values_list('id', flat=True)[:60]:
         surface, meaning = _item_texts(item_type, oid)
         text = meaning if dimension == 'meaning' else surface
         if text and text != correct_text and text not in out:
             out.append(text)
         if len(out) >= n:
             break
+    return len(out)
+
+
+def _distractor_texts(item_type, item_id, dimension, correct_text, n=3, level=''):
+    """같은 종류에서 오답 텍스트 n개 수집.
+
+    급수를 아는 항목(한자·단어)은 비슷한 급수에서 먼저 뽑는다. 그 풀이 얕아 n개를
+    못 채우면 전체로 넓혀 채운다 — 오답이 모자라면 문제 자체가 버려지기 때문이다.
+    가나는 급수 데이터가 없어 항상 전체에서 뽑는다.
+    """
+    if item_type == ItemType.WORD:
+        model = Word
+    elif item_type == ItemType.KANA:
+        model = Kana
+    else:
+        model = Kanji
+
+    base = model.objects.exclude(id=item_id)
+    out = []
+
+    pool_levels = DISTRACTOR_LEVELS.get(level)
+    if pool_levels and item_type != ItemType.KANA:
+        _collect_distractors(
+            item_type, base.filter(jlpt_level__in=pool_levels), dimension, correct_text, out, n,
+        )
+        if len(out) >= n:
+            return out
+
+    _collect_distractors(item_type, base, dimension, correct_text, out, n)
     return out
 
 
 def _roll_box_grade():
     grades, weights = zip(*_BOX_GRADE_WEIGHTS)
     return random.choices(grades, weights=weights, k=1)[0]
+
+
+def _roll_burst_count():
+    """이 상자가 몇 개의 보상을 줄지. 상자 개수는 어차피 1개이므로 상한과 무관하다."""
+    return BOX_BURST_COUNT if random.random() < BOX_BURST_CHANCE else 1
 
 
 def _build_question_data(user, item_type, word_type, level, exclude_ids=None):
@@ -278,7 +323,11 @@ def _build_question_data(user, item_type, word_type, level, exclude_ids=None):
     else:
         prompt, correct_text, dimension = meaning, surface, 'surface'
 
-    distractors = _distractor_texts(item_type, item_id, dimension, correct_text)
+    reading_raw, jlpt_level = _item_extra(item_type, item_id)
+
+    distractors = _distractor_texts(
+        item_type, item_id, dimension, correct_text, level=jlpt_level,
+    )
     if len(distractors) < 3:
         return None
 
@@ -286,7 +335,6 @@ def _build_question_data(user, item_type, word_type, level, exclude_ids=None):
     random.shuffle(options)
     correct_index = options.index(correct_text)
 
-    reading_raw, jlpt_level = _item_extra(item_type, item_id)
     reading = reading_raw if question_type == QuizLog.QuestionType.WORD_TO_MEANING else ''
 
     return {
@@ -560,9 +608,13 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
     # 상자 지급
     box = None
     if is_correct:
-        set_cap_ok = (quiz_set is None) or (quiz_set.boxes_earned < SET_BOX_CAP)
-        if set_cap_ok and daily.boxes_earned < MAX_BOXES_PER_DAY:
-            box = CashBox.objects.create(user=user, grade=_roll_box_grade())
+        # 세트당 상한은 없앴다(2026-07-23). 세트는 며칠에 걸쳐 이어질 수 있어서
+        # 세트에 상한을 걸면 오래된 세트를 재개했을 때 정답을 맞춰도 상자가 안 나왔다.
+        # 상자 상한은 일일 기준 하나만 둔다.
+        if daily.boxes_earned < MAX_BOXES_PER_DAY:
+            box = CashBox.objects.create(
+                user=user, grade=_roll_box_grade(), burst_count=_roll_burst_count(),
+            )
             daily.boxes_earned += 1
             if quiz_set:
                 quiz_set.boxes_earned += 1

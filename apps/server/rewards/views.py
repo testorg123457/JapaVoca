@@ -83,7 +83,9 @@ class OpenBoxView(APIView):
         return Response({
             'box_id': box.id,
             'grade': box.grade,
+            # 묶음 상자면 개별 보상이 여러 개. reward_cash 는 그 합계.
             'reward_cash': box.reward_cash,
+            'rewards': box.reward_breakdown or [box.reward_cash],
             'balance_after': ledger.balance_after,
         })
 
@@ -95,7 +97,10 @@ class BoxListView(APIView):
 
     def get(self, request):
         boxes = list_unopened_boxes(request.user)
-        return Response([{'id': box.id, 'grade': box.grade} for box in boxes])
+        return Response([
+            {'id': box.id, 'grade': box.grade, 'burst_count': box.burst_count}
+            for box in boxes
+        ])
 
 
 class AttendanceTodayView(APIView):

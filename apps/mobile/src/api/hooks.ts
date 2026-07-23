@@ -106,10 +106,12 @@ export function useWallet() {
 export type LedgerDirection = 'earn' | 'use';
 export type LedgerReason =
   | 'quiz_box'
+  | 'quiz_milestone'
   | 'attendance'
   | 'streak'
   | 'ad_bonus'
   | 'exchange'
+  | 'exchange_refund'
   | 'admin_adjust';
 
 export type LedgerEntry = {
@@ -147,8 +149,13 @@ export function useLedger(direction?: LedgerDirection) {
   });
 }
 
-export type BoxGrade = 'normal' | 'purple';
-export type BoxItem = { id: number; grade: BoxGrade };
+export type BoxGrade = 'normal' | 'purple' | 'burgundy';
+/**
+ * 미개봉 상자 1개.
+ * burst_count: 이 상자가 주는 보상 개수(1 또는 3). 3이어도 인벤토리·광고 횟수는
+ * 1개로 센다 — 한 묶음이다. 서버가 상자 생성 시 확률로 정한다.
+ */
+export type BoxItem = { id: number; grade: BoxGrade; burst_count?: number };
 
 /** 미개봉 캐시상자 인벤토리. */
 export function useBoxes() {

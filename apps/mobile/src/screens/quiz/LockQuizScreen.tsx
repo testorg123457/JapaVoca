@@ -34,6 +34,7 @@ import {
   type QuizSetQuestion,
   type QuizSetResponse,
 } from '../../api/quiz';
+import type { BoxItem } from '../../api/hooks';
 import {
   getKanjiComponents,
   type ComponentNode,
@@ -49,6 +50,7 @@ import {
   getCachedComponentTree,
   getCursor,
   getPendingAnswers,
+  markAnswered,
   setCachedSet,
   setCachedComponentTree,
   setCursor,
@@ -68,7 +70,7 @@ import { AudioButton } from './components/AudioButton';
 export type LockQuizActions = {
   onUnlock: () => void;
   onOpenApp: () => void;
-  onOpenBoxes: (boxes: { id: number; grade: BoxGrade }[]) => void;
+  onOpenBoxes: (boxes: BoxItem[]) => void;
 };
 
 // ── 시계 ─────────────────────────────────────────────────────────────────────────
@@ -844,6 +846,7 @@ export function LockQuizView({
           showToast(`정답 ${res.today_correct_count}개! 캐시 ${res.milestone_bonus} 획득`, 'info');
         }
         recordEntry(question, choiceIndex, res.is_correct);
+        markAnswered(cursor); // 제출 즉시 진행 확정 — 결과 화면에서 나갔다 와도 다시 안 나오게
         setPhase({
           type: 'reveal', cursor, set,
           selectedIndex: choiceIndex,
@@ -863,6 +866,7 @@ export function LockQuizView({
             answered_at: new Date().toISOString(),
           });
           recordEntry(question, choiceIndex, isCorrect);
+          markAnswered(cursor);
           setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
         } else {
           // 서버가 토큰을 거부(만료/이미 채점됨 등) — 로컬 캐시 커서가 서버와 어긋난 상태다.
@@ -882,6 +886,7 @@ export function LockQuizView({
         answered_at: new Date().toISOString(),
       });
       recordEntry(question, choiceIndex, isCorrect);
+      markAnswered(cursor);
       setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
     }
   }, [phase, isOnline, boxes, recordEntry, loadSet, queryClient, showToast]);
@@ -915,7 +920,7 @@ export function LockQuizView({
 
   const openBoxes = useCallback(() => {
     if (!boxes.data || !boxes.data.length) { return; }
-    onOpenBoxes(boxes.data.map((b) => ({ id: b.id, grade: b.grade })));
+    onOpenBoxes(boxes.data);
   }, [boxes.data, onOpenBoxes]);
 
   // ── 스와이프 잠금해제 ──────────────────────────────────────────────────────────
@@ -1032,6 +1037,17 @@ export function LockQuizView({
     return (
       // 문제+선택지 블록을 약 6px 위로: 세로 중앙 정렬이라 하단 여백을 12 늘리면 중앙이 6 위로 이동.
       <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 32 }}>
+      {/* contentPanel 테마(사용자 사진 배경)는 문제+선택지를 한 판 위에 올려
+          어떤 사진이 깔려도 내용 영역만은 평평하게 유지한다. */}
+      <View style={theme.shape.contentPanel ? {
+        backgroundColor: withAlpha(c.bg, 0.66),
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: c.line,
+        paddingHorizontal: 14,
+        paddingTop: 18,
+        paddingBottom: 16,
+      } : undefined}>
         {/* 읽기 + 문제 — 사진 배경 테마는 뒤에 스크림을 깔아 항상 읽히게 함 */}
         <View style={theme.shape.needsTextScrim ? {
           backgroundColor: withAlpha(c.surface, 0.88),
@@ -1089,6 +1105,7 @@ export function LockQuizView({
             />
           ))}
         </View>
+      </View>
       </View>
     );
   };

@@ -29,6 +29,12 @@ export type QuizThemeShape = {
   choiceOutline?: boolean;
   /** 문제 텍스트가 사진 배경 위에서 항상 읽히도록 뒤에 스크림 박스를 깔지 여부. */
   needsTextScrim: boolean;
+  /**
+   * 문제와 선택지를 함께 감싸는 패널을 그릴지. 사용자가 고른 사진처럼 무엇이 깔릴지
+   * 알 수 없는 배경에서, 글자마다 스크림을 두는 대신 내용 전체를 한 판 위에 올린다.
+   * 기본 false.
+   */
+  contentPanel?: boolean;
   background:
     | { kind: 'solid' }
     | { kind: 'gradient'; from: string; to: string }

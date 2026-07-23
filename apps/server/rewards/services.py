@@ -20,6 +20,7 @@ from .models import Attendance, CashBox, Daily, Ledger, Wallet
 BOX_REWARD_RANGE = {
     CashBox.Grade.NORMAL: (1, 4),    # 기존 (10,40)의 1/10, 최대치 축소 (임시)
     CashBox.Grade.PURPLE: (5, 15),   # 일반 최대치(4) 초과부터 (임시)
+    CashBox.Grade.BURGUNDY: (16, 40),  # 보라 최대치(15) 초과부터 (임시 — 확률·금액 미확정)
 }
 
 
@@ -118,14 +119,21 @@ def open_cash_box(user, box_id, *, ad_verified=False, ad_log_id=None) -> tuple[C
     if box.status == CashBox.Status.OPENED:
         raise BoxAlreadyOpened('이미 개봉된 상자입니다.')
 
+    # 묶음 상자(burst_count>1)는 보상을 개수만큼 각각 굴린다. 인벤토리·광고 횟수는
+    # 1개로 세지만 캐시는 여러 번 뽑는 셈. 원장은 묶음 하나이므로 합계 1건만 남긴다.
     lo, hi = BOX_REWARD_RANGE[box.grade]
-    reward = random.randint(lo, hi)
+    count = max(1, box.burst_count)
+    breakdown = [random.randint(lo, hi) for _ in range(count)]
+    reward = sum(breakdown)
 
     box.reward_cash = reward
+    box.reward_breakdown = breakdown
     box.status = CashBox.Status.OPENED
     box.opened_via_ad = ad_verified
     box.opened_at = timezone.now()
-    box.save(update_fields=['reward_cash', 'status', 'opened_via_ad', 'opened_at'])
+    box.save(update_fields=[
+        'reward_cash', 'reward_breakdown', 'status', 'opened_via_ad', 'opened_at',
+    ])
 
     ledger = earn(
         user, reward, Ledger.Reason.QUIZ_BOX,

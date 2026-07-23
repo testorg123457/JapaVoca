@@ -10,7 +10,7 @@ import type {
 } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { BoxGrade } from '../api/hooks';
+import type { BoxItem } from '../api/hooks';
 import type { GiftExchange } from '../api/exchange';
 
 export type RootStackParamList = {
@@ -41,7 +41,7 @@ export type MainStackParamList = {
   LockQuiz: undefined;
   /** 제스처 격리 디버그(DEBUG). */
   GestureDebug: undefined;
-  BoxOpen: { boxes: { id: number; grade: BoxGrade }[] };
+  BoxOpen: { boxes: BoxItem[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;
   /** 설정(헤더 우측 버튼으로 진입). */

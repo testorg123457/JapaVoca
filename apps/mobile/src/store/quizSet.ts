@@ -45,6 +45,24 @@ export function setCursor(index: number): void {
   storage.set(CURSOR_KEY, index);
 }
 
+/**
+ * 답을 제출한 직후 호출 — 캐시된 세트의 해당 문항을 answered로 찍고 커서를 다음으로 옮긴다.
+ *
+ * ⚠️ 커서를 '다음' 버튼에서만 올리면, 결과 화면에서 앱을 나갔다 돌아왔을 때 이미 답한
+ *    문항을 다시 보여주게 된다. 그 문항을 다시 제출하면 서버가 '이미 채점됨'으로 막아
+ *    정답/오답 표시 없이 넘어가 버린다. 그래서 제출 시점에 진행 상태를 확정한다.
+ */
+export function markAnswered(index: number): void {
+  const set = getCachedSet();
+  if (set?.questions[index]) {
+    set.questions[index] = { ...set.questions[index], answered: true };
+    setCachedSet(set);
+  }
+  if (index + 1 > getCursor()) {
+    setCursor(index + 1);
+  }
+}
+
 // ── 오프라인 pending 큐 ──────────────────────────────────────────────────────────
 
 export function getPendingAnswers(): PendingAnswer[] {

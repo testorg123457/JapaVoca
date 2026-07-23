@@ -61,6 +61,8 @@ class Ledger(models.Model):
         AD_BONUS = 'ad_bonus', '광고 보너스'
         # use
         EXCHANGE = 'exchange', '기프티콘 교환'
+        # refund (earn) — 발급 실패로 교환 차감분을 되돌릴 때. '관리자 조정'과 구분해 감사 추적.
+        EXCHANGE_REFUND = 'exchange_refund', '기프티콘 교환 환불'
         # both
         ADMIN_ADJUST = 'admin_adjust', '관리자 조정'
 
@@ -106,6 +108,7 @@ class CashBox(models.Model):
     class Grade(models.TextChoices):
         NORMAL = 'normal', '일반'
         PURPLE = 'purple', '보라'
+        BURGUNDY = 'burgundy', '버건디'
 
     class Status(models.TextChoices):
         UNOPENED = 'unopened', '미개봉'
@@ -119,7 +122,18 @@ class CashBox(models.Model):
         max_length=10, choices=Status.choices, default=Status.UNOPENED,
     )
     reward_cash = models.PositiveIntegerField(
-        null=True, blank=True, help_text='개봉 시 확정 캐시(개봉 전 null)',
+        null=True, blank=True, help_text='개봉 시 확정 캐시 총합(개봉 전 null)',
+    )
+    burst_count = models.PositiveSmallIntegerField(
+        default=1,
+        help_text=(
+            '이 상자가 주는 보상 개수. 생성 시 확률로 결정된다(1 또는 3). '
+            '3이어도 인벤토리·광고 횟수는 1개로 센다(한 묶음). reward_cash는 그 합계.'
+        ),
+    )
+    reward_breakdown = models.JSONField(
+        null=True, blank=True,
+        help_text='개봉 시 확정된 개별 보상 목록(예: [7, 12, 3]). 합이 reward_cash와 같다.',
     )
     opened_via_ad = models.BooleanField(default=False, help_text='광고 보고 개봉한 상자인지')
     created_at = models.DateTimeField(auto_now_add=True)
