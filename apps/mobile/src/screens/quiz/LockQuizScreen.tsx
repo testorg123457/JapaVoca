@@ -840,10 +840,15 @@ export function LockQuizView({
         if (!mountedRef.current) { return; }
         setIsOnline(true);
         if (res.box_id !== null) { boxes.refetch(); }
-        if (res.milestone_bonus !== null) {
+        // ⚠️ 반드시 number 로 확인한다. 필드를 안 주는 서버 응답에선 milestone_bonus 가
+        //    undefined 인데, `!== null` 로 검사하면 통과해 오답에도 "정답 undefined개" 토스트가 뜬다.
+        if (typeof res.milestone_bonus === 'number' && res.milestone_bonus > 0) {
           queryClient.invalidateQueries({ queryKey: ['wallet'] });
           queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
-          showToast(`정답 ${res.today_correct_count}개! 캐시 ${res.milestone_bonus} 획득`, 'info');
+          const countPart = typeof res.today_correct_count === 'number'
+            ? `정답 ${res.today_correct_count}개! `
+            : '';
+          showToast(`${countPart}캐시 ${res.milestone_bonus} 획득`, 'info');
         }
         recordEntry(question, choiceIndex, res.is_correct);
         markAnswered(cursor); // 제출 즉시 진행 확정 — 결과 화면에서 나갔다 와도 다시 안 나오게

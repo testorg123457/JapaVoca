@@ -117,10 +117,12 @@ export type QuizAnswerResult = {
   set_boxes_earned: number | null;
   /** 세트 토큰일 때 세트 완료 여부, 단발 토큰이면 null */
   set_completed: boolean | null;
-  /** 이번 정답으로 당일 정답 10문제 단위를 채웠으면 지급된 캐시 금액, 아니면 null */
-  milestone_bonus: number | null;
-  /** 당일 정답 누적 수(이번 정답 포함) */
-  today_correct_count: number;
+  /** 이번 정답으로 당일 정답 10문제 단위를 채웠으면 지급된 캐시 금액, 아니면 null.
+   *  ⚠️ 이 필드를 안 주는 서버 응답도 있어 undefined 가능 → 반드시 typeof 로 검사할 것
+   *  (`!== null` 검사는 undefined 가 통과해 오답에도 보상 토스트가 뜬다). */
+  milestone_bonus?: number | null;
+  /** 당일 정답 누적 수(이번 정답 포함). 위 필드를 안 주는 서버에선 undefined. */
+  today_correct_count?: number;
 };
 
 export type SubmitAnswerParams = {

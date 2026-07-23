@@ -236,14 +236,14 @@ def check_in(user) -> Attendance:
             notify(
                 user, Notification.Type.STREAK,
                 '출석 7번 달성!',
-                '보라 상자를 획득했어요. 열어서 캐시를 받아보세요.',
+                '보상을 받았어요. 홈에서 확인해 보세요.',
                 data={'screen': 'Home'}, push=True,
             )
         else:
             notify(
                 user, Notification.Type.ATTENDANCE,
                 '오늘 출석 완료!',
-                f'보라 상자까지 {remaining}번 남았어요.',
+                f'보상까지 {remaining}번 남았어요.',
                 data={'screen': 'Home'}, push=True,
             )
 

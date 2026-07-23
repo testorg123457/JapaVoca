@@ -1,22 +1,22 @@
 /**
  * AttendanceCalendar — 홈 하단 출석 위젯.
  *
- * 출석 캐시는 없다. 누적 7회 출석마다 보라 상자를 받는다(서버 check_in).
- * 구성: 헤더(출석 + 연속) → 보라 상자 진행바(N/7) → 월 달력(출석=민트) → 출석 체크 버튼.
- * 민트는 기능(오늘·출석·주액션)에만, 보라는 상자 보상 신호로만 쓴다.
+ * 출석 캐시는 없다. 누적 7회 출석마다 서버(check_in)가 보상을 지급한다.
+ * ⚠️ 보상의 내용(현재 보라 상자)은 UI에 노출하지 않는다 — 서버에서 바꿔도 문구가 틀리지 않게.
+ * 구성: 헤더(출석 + 연속) → 보상 진행바(N/7) → 월 달력(출석=민트) → 출석 체크 버튼.
+ * 민트는 기능(오늘·출석·주액션)에, 앰버는 보상 신호에만 쓴다(디자인 시스템 규칙).
  */
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
 import { AppText, Button, Icon, PressableScale } from '../../../components';
-import { hairline, primitives, radius, shadowStyle } from '../../../theme/tokens';
+import { hairline, radius, shadowStyle } from '../../../theme/tokens';
 import { useThemeColors } from '../../../theme/ThemeProvider';
 import { useToast } from '../../../components';
 import { useAttendance, useAttendanceMonth, useAttendanceStatus } from '../../../api/hooks';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const CYCLE = 7;
-const PURPLE = primitives.purple[500];
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -75,7 +75,7 @@ export function AttendanceCalendar(): React.JSX.Element {
     checkIn.mutate(undefined, {
       onSuccess: (res) => {
         if (res.box_granted) {
-          showToast('출석 7번 달성! 보라 상자를 받았어요', 'info');
+          showToast('출석 7번 달성! 보상을 받았어요', 'info');
         }
       },
     });
@@ -98,18 +98,18 @@ export function AttendanceCalendar(): React.JSX.Element {
           ) : null}
         </View>
 
-        {/* 보라 상자 진행 — 7칸 세그먼트 */}
+        {/* 보상 진행 — 7칸 세그먼트. 보상 내용은 밝히지 않는다 */}
         <View style={{ gap: 8 }}>
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <View
               className="items-center justify-center rounded-full"
-              style={{ width: 26, height: 26, backgroundColor: primitives.purple[50] }}>
-              <Icon name="gift" size={15} color={PURPLE} />
+              style={{ width: 26, height: 26, backgroundColor: c['amber-subtle'] }}>
+              <Icon name="gift" size={15} color={c['amber-strong']} />
             </View>
             <AppText variant="caption" className="text-text-secondary" style={{ flex: 1 }}>
-              7번 출석하면 보라 상자
+              7번 출석하면 보상을 받아요
             </AppText>
-            <AppText variant="label" style={{ color: PURPLE }}>
+            <AppText variant="label" style={{ color: c['amber-strong'] }}>
               {progress}/{CYCLE}
             </AppText>
           </View>
@@ -121,7 +121,7 @@ export function AttendanceCalendar(): React.JSX.Element {
                   flex: 1,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: i < progress ? PURPLE : c['bg-tertiary'],
+                  backgroundColor: i < progress ? c.amber : c['bg-tertiary'],
                 }}
               />
             ))}
