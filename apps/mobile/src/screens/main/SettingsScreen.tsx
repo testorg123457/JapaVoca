@@ -6,14 +6,14 @@
  * 비즈니스 로직은 기존 훅(useUpdateProfile 등) 그대로 — 화면은 호출만.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native'; // Alert는 오류 알림에만 유지
+import { ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
-import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
+import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow, useToast } from '../../components';
 import { radius } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, useReferral, type ProfileUpdate } from '../../api/hooks';
+import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { clearCachedSet } from '../../store/quizSet';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -21,10 +21,10 @@ import type { MainStackScreenProps } from '../../navigation/types';
 const APP_VERSION = 'v0.0.1';
 
 export default function SettingsScreen(): React.JSX.Element {
+  const { showToast } = useToast();
   const c = useThemeColors();
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
-  const referral = useReferral();
   const updateProfile = useUpdateProfile();
   const abandonQuizSet = useAbandonQuizSet();
   const unreadInquiry = useUnreadInquiryCount();
@@ -92,7 +92,7 @@ export default function SettingsScreen(): React.JSX.Element {
         },
         onError: () => {
           setStudySaving(false);
-          Alert.alert('오류', '설정 변경에 실패했어요.');
+          showToast('설정 변경에 실패했어요.', 'error');
           if (m) {
             setStudySel({
               mode: (m.study_mode as StudySelection['mode']) ?? null,
@@ -107,7 +107,7 @@ export default function SettingsScreen(): React.JSX.Element {
   }
 
   const patch = (data: ProfileUpdate) =>
-    updateProfile.mutate(data, { onError: () => Alert.alert('오류', '설정 변경에 실패했어요.') });
+    updateProfile.mutate(data, { onError: () => showToast('설정 변경에 실패했어요.', 'error') });
 
   const studyLoading = studySaving;
   const studyPending = isPendingStudyChange() && !!studySel && isStudyValid(studySel);
@@ -175,45 +175,10 @@ export default function SettingsScreen(): React.JSX.Element {
           </PressableScale>
         </View>
 
-        {/* 친구 초대 — 받을 보상이 남아 있으면 금액을 강조해 눈에 띄게 한다.
-            다 소진되면(next_reward=0) 강조를 빼고 담백한 행으로 내린다. */}
-        {referral.data && !referral.data.is_guest && referral.data.next_reward > 0 ? (
-          <PressableScale onPress={() => navigation.navigate('AccountSettings')}>
-            <View
-              style={{
-                borderRadius: radius.lg,
-                backgroundColor: c['brand-subtle'],
-                borderWidth: 1,
-                borderColor: c.brand,
-                paddingVertical: 16,
-                paddingHorizontal: 18,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-              }}>
-              <View
-                className="items-center justify-center rounded-full"
-                style={{ width: 42, height: 42, backgroundColor: c.brand }}>
-                <Icon name="user" size={20} color={c['on-brand']} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <AppText variant="subheading" className="text-text-primary">
-                  친구 초대하고 {referral.data.next_reward.toLocaleString()} 캐시 받기
-                </AppText>
-                <AppText variant="caption" className="text-text-secondary">
-                  초대받은 친구도 {referral.data.invitee_reward.toLocaleString()} 캐시를 받아요
-                </AppText>
-              </View>
-              <Icon name="chevron-right" size={18} color={c['text-tertiary']} />
-            </View>
-          </PressableScale>
-        ) : null}
-
-        {/* 캐시 · 내역 */}
+        {/* 캐시 · 내역 (친구 초대는 계정 설정 안에 있어 여기선 중복 제거) */}
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
-          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} />
-          <ListRow leftIcon="user" title="친구 초대" onPress={() => navigation.navigate('AccountSettings')} last />
+          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} last />
         </ListSection>
 
         {/* 알림 */}

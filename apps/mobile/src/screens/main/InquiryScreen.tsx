@@ -10,7 +10,6 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   AppState,
   KeyboardAvoidingView,
   Platform,
@@ -20,7 +19,7 @@ import {
   View,
 } from 'react-native';
 
-import { AppHeader, AppText, Button, Card, Icon, useToast } from '../../components';
+import { AppHeader, AppText, Button, Card, ConfirmSheet, Icon, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { radius, spacing } from '../../theme/tokens';
 import {
@@ -90,6 +89,7 @@ function SentCard({
 export default function InquiryScreen(): React.JSX.Element {
   const c = useThemeColors();
   const { showToast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
   const mountedRef = useRef(true);
@@ -139,18 +139,13 @@ export default function InquiryScreen(): React.JSX.Element {
     }
   }
 
-  function confirmDelete(id: number) {
-    Alert.alert('문의 삭제', '이 문의를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () =>
-          deleteInquiry.mutate(id, {
-            onError: () => showToast('삭제에 실패했어요. 다시 시도해주세요.', 'error'),
-          }),
-      },
-    ]);
+  function doDelete() {
+    const id = deleteTarget;
+    setDeleteTarget(null);
+    if (id === null) { return; }
+    deleteInquiry.mutate(id, {
+      onError: () => showToast('삭제에 실패했어요. 다시 시도해주세요.', 'error'),
+    });
   }
 
   const canSend = text.trim().length > 0 && !postInquiry.isPending;
@@ -230,11 +225,22 @@ export default function InquiryScreen(): React.JSX.Element {
               보낸 문의
             </AppText>
             {list.map((item) => (
-              <SentCard key={item.id} inquiry={item} onDelete={() => confirmDelete(item.id)} />
+              <SentCard key={item.id} inquiry={item} onDelete={() => setDeleteTarget(item.id)} />
             ))}
           </View>
         )}
       </ScrollView>
+
+      <ConfirmSheet
+        visible={deleteTarget !== null}
+        title="문의 삭제"
+        message="이 문의를 삭제할까요?"
+        cancelText="취소"
+        confirmText="삭제"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={doDelete}
+      />
     </KeyboardAvoidingView>
   );
 }

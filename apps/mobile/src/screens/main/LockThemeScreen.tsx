@@ -4,9 +4,9 @@
  * 각 테마는 색 스와치 미니 프리뷰로 보여주고, 탭하면 선택·영속.
  */
 import React, { useState } from 'react';
-import { Alert, ImageBackground, ScrollView, View } from 'react-native';
+import { ImageBackground, ScrollView, View } from 'react-native';
 
-import { AppHeader, AppText, Icon, PressableScale } from '../../components';
+import { AppHeader, AppText, Icon, PressableScale, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { radius } from '../../theme/tokens';
 import { themeList } from '../../theme/quiz/themes';
@@ -20,6 +20,7 @@ import {
 } from '../../store/quizTheme';
 
 export default function LockThemeScreen(): React.JSX.Element {
+  const { showToast } = useToast();
   const c = useThemeColors();
   const [selected, setSelected] = useState<string>(getQuizThemeId());
   const [photoUri, setPhotoUri] = useState<string | undefined>(getQuizPhotoUri());
@@ -46,7 +47,7 @@ export default function LockThemeScreen(): React.JSX.Element {
       setPhotoUri(picked.uri);
       choose(CUSTOM_THEME_ID);
     } catch {
-      Alert.alert('사진을 불러오지 못했어요', '다른 사진으로 다시 시도해주세요.');
+      showToast('사진을 불러오지 못했어요. 다른 사진으로 다시 시도해주세요.', 'error');
     }
   };
 

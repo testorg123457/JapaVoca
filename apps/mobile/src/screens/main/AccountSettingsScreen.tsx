@@ -5,7 +5,7 @@
  * (알림/캐시내역 등 기능 영역은 설정 메인에 독립 섹션으로 둔다.)
  */
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Config from 'react-native-config';
@@ -15,7 +15,7 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 
-import { AppHeader, AppText, ListRow, ListSection } from '../../components';
+import { AppHeader, AppText, ConfirmSheet, ListRow, ListSection, useToast } from '../../components';
 import { ReferralSection } from './components/ReferralSection';
 import { useThemeColors, useThemeMode } from '../../theme/ThemeProvider';
 import type { ThemeMode } from '../../store/theme';
@@ -67,6 +67,8 @@ export default function AccountSettingsScreen(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [linking, setLinking] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: Config.GOOGLE_WEB_CLIENT_ID });
@@ -93,14 +95,13 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       const { tokens, switched } = await linkAccount('google', response.data.idToken);
       signIn(tokens.access, tokens.refresh);
       await queryClient.invalidateQueries();
-      Alert.alert(
-        switched ? '기존 구글 계정으로 로그인' : '구글 연결 완료',
+      showToast(
         switched
-          ? '이미 가입된 구글 계정이 있어 그 계정으로 로그인했어요. (게스트 진행분은 합쳐지지 않아요)'
-          : '게스트 계정이 구글 계정으로 연결됐어요. 이제 기프티콘 교환도 가능해요.',
+          ? '이미 가입된 구글 계정으로 로그인했어요.'
+          : '구글 계정을 연결했어요. 이제 기프티콘 교환도 가능해요.',
       );
     } catch {
-      Alert.alert('연결 실패', '구글 연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+      showToast('구글 연결에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
     } finally {
       setLinking(false);
     }
@@ -116,11 +117,10 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       const { tokens, switched } = await linkAccount('kakao', result.accessToken);
       signIn(tokens.access, tokens.refresh);
       await queryClient.invalidateQueries();
-      Alert.alert(
-        switched ? '기존 카카오 계정으로 로그인' : '카카오 연결 완료',
+      showToast(
         switched
-          ? '이미 가입된 카카오 계정이 있어 그 계정으로 로그인했어요. (게스트 진행분은 합쳐지지 않아요)'
-          : '게스트 계정이 카카오 계정으로 연결됐어요. 이제 기프티콘 교환도 가능해요.',
+          ? '이미 가입된 카카오 계정으로 로그인했어요.'
+          : '카카오 계정을 연결했어요. 이제 기프티콘 교환도 가능해요.',
       );
     } catch (err) {
       // 사용자 취소(-1 / -1002)는 조용히 무시.
@@ -128,37 +128,25 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       if (code === -1 || code === -1002) {
         return;
       }
-      Alert.alert('연결 실패', '카카오 연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+      showToast('카카오 연결에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
     } finally {
       setLinking(false);
     }
   }
 
-  function confirmWithdraw() {
-    Alert.alert(
-      '회원 탈퇴',
-      '정말 탈퇴하시겠어요?\n계정과 모든 데이터가 삭제되고, 보유한 캐시는 소멸돼 복구할 수 없어요.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '탈퇴',
-          style: 'destructive',
-          onPress: async () => {
-            if (withdrawing) {
-              return;
-            }
-            setWithdrawing(true);
-            try {
-              await deleteAccount();
-              signOut();
-            } catch {
-              setWithdrawing(false);
-              Alert.alert('탈퇴 실패', '잠시 후 다시 시도해주세요.');
-            }
-          },
-        },
-      ],
-    );
+  async function doWithdraw() {
+    if (withdrawing) {
+      return;
+    }
+    setWithdrawOpen(false);
+    setWithdrawing(true);
+    try {
+      await deleteAccount();
+      signOut();
+    } catch {
+      showToast('탈퇴에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+      setWithdrawing(false);
+    }
   }
 
   return (
@@ -173,29 +161,19 @@ export default function AccountSettingsScreen(): React.JSX.Element {
           <ThemeModeRow />
         </ListSection>
 
-        {/* 계정 연결 */}
-        <ListSection title="계정 연결">
-          {m?.is_guest ? (
-            <>
-              <ListRow
-                leftIcon="google"
-                title="구글로 연결"
-                value={linking ? '연결 중…' : undefined}
-                onPress={handleLinkGoogle}
-                showChevron
-              />
-              <ListRow leftIcon="kakao" title="카카오로 연결" onPress={handleLinkKakao} showChevron last />
-            </>
-          ) : (
+        {/* 계정 연결 — 게스트만. 이미 연결된 유저에겐 '연결됨' 한 줄이 무의미해 섹션을 숨긴다. */}
+        {m?.is_guest && (
+          <ListSection title="계정 연결">
             <ListRow
-              leftIcon={m?.provider === 'kakao' ? 'kakao' : 'google'}
-              title={m?.provider === 'kakao' ? '카카오 계정' : '구글 계정'}
-              value="연결됨"
-              showChevron={false}
-              last
+              leftIcon="google"
+              title="구글로 연결"
+              value={linking ? '연결 중…' : undefined}
+              onPress={handleLinkGoogle}
+              showChevron
             />
-          )}
-        </ListSection>
+            <ListRow leftIcon="kakao" title="카카오로 연결" onPress={handleLinkKakao} showChevron last />
+          </ListSection>
+        )}
 
         {/* 약관 · 정책 */}
         <ListSection title="약관 · 정책">
@@ -218,12 +196,23 @@ export default function AccountSettingsScreen(): React.JSX.Element {
             leftIcon="logout"
             title="회원 탈퇴"
             value={withdrawing ? '처리 중…' : undefined}
-            onPress={confirmWithdraw}
+            onPress={() => setWithdrawOpen(true)}
             danger
             last
           />
         </ListSection>
       </ScrollView>
+
+      <ConfirmSheet
+        visible={withdrawOpen}
+        title="회원 탈퇴"
+        message={'정말 탈퇴하시겠어요?\n계정과 모든 데이터가 삭제되고, 보유한 캐시는 소멸돼 복구할 수 없어요.'}
+        cancelText="취소"
+        confirmText="탈퇴"
+        danger
+        onCancel={() => setWithdrawOpen(false)}
+        onConfirm={doWithdraw}
+      />
     </View>
   );
 }

@@ -7,13 +7,13 @@
  * 2. 일반 모드 — 이미 로그인됨. 학습 설정만 PATCH하고 onComplete()로 게이트 재계산.
  */
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StatusBar, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import Config from 'react-native-config';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AppText, Button, StudySelector } from '../../components';
+import { AppText, Button, StudySelector, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile } from '../../api/hooks';
 import { guestLogin, googleLogin, kakaoLogin } from '../../api/auth';
@@ -25,6 +25,7 @@ import { getOrCreateGuestUid } from '../../store/auth';
 import { getPendingConsent, clearPendingConsent, setCachedConsentStatus } from '../../store/onboarding';
 
 export default function StudySelectScreen(): React.JSX.Element {
+  const { showToast } = useToast();
   const c = useThemeColors();
   const { onComplete } = useOnboardingActions();
   const { pendingAuth, signInFresh, signOut } = useAuth();
@@ -109,13 +110,10 @@ export default function StudySelectScreen(): React.JSX.Element {
         // 401 = 토큰 만료(구글 1시간) → 재로그인 유도
         const status = axios.isAxiosError(err) ? err.response?.status : null;
         if (status === 401) {
-          Alert.alert(
-            '인증 만료',
-            '로그인 정보가 만료됐어요. 다시 로그인해주세요.',
-            [{ text: '확인', onPress: signOut }],
-          );
+          showToast('로그인 정보가 만료됐어요. 다시 로그인해주세요.', 'error');
+          signOut();
         } else {
-          Alert.alert('저장 실패', '잠시 후 다시 시도해주세요.');
+          showToast('저장에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
         }
       } finally {
         setLocalPending(false);
@@ -133,7 +131,7 @@ export default function StudySelectScreen(): React.JSX.Element {
       });
       onComplete();
     } catch {
-      Alert.alert('저장 실패', '잠시 후 다시 시도해주세요.');
+      showToast('저장에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
     }
   }
 

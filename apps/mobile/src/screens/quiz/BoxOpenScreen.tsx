@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
@@ -8,7 +8,7 @@ import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AppText, Button, Icon, PressableScale } from '../../components';
+import { AppText, Button, Icon, PressableScale, useToast } from '../../components';
 import { openBox, type OpenBoxResult } from '../../api/boxes';
 import { useMe } from '../../api/hooks';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
@@ -40,6 +40,7 @@ export default function BoxOpenScreen({
   navigation,
 }: MainStackScreenProps<'BoxOpen'>): React.JSX.Element {
   const { boxes } = route.params;
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const me = useMe();
   const { showThen } = useRewardedAd(
@@ -144,12 +145,11 @@ export default function BoxOpenScreen({
         }
         lockRef.current = false;
         setPhase('sealed');
-        Alert.alert('오류', '상자 개봉에 실패했어요. 잠시 후 다시 시도해주세요.', [
-          { text: '확인', onPress: () => navigation.navigate('Home') },
-        ]);
+        showToast('상자 개봉에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+        navigation.navigate('Home');
       }
     },
-    [box, navigation, slots],
+    [box, navigation, slots, showToast],
   );
 
   /**

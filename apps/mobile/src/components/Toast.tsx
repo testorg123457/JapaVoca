@@ -52,20 +52,18 @@ export function ToastView({ message, variant = 'info', style }: ToastViewProps):
     }).start();
   }, [anim]);
 
-  // 흰 카드 + 좌측 원형 아이콘 칩(토스풍). error=경고(danger), info=반짝(brand).
-  // 밝은 면 위에 뜨는 깨끗한 스낵바 — 그림자로 살짝 띄운다.
+  // 미니멀 라인 — 흰 면 + 얇은 테두리, 단색 아웃라인 아이콘(칩 배경 없음).
+  // 색은 아이콘에만: 성공=원+체크(brand), 오류=원+X(danger).
   const isError = variant === 'error';
-  const chipBg = isError ? c['danger-subtle'] : c['brand-subtle'];
-  const chipFg = isError ? c.danger : c.brand;
 
   return (
     <Animated.View
       style={[
         styles.card,
-        shadowStyle('lg'),
+        shadowStyle('sm'),
         {
           backgroundColor: c['bg-primary'],
-          borderColor: c['border-tertiary'],
+          borderColor: c['border-secondary'],
           opacity: anim,
           transform: [
             {
@@ -75,17 +73,12 @@ export function ToastView({ message, variant = 'info', style }: ToastViewProps):
         },
         style,
       ]}>
-      <View
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 9,
-          backgroundColor: chipBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Icon name={isError ? 'alert' : 'sparkles'} size={17} color={chipFg} strokeWidth={2.2} />
-      </View>
+      <Icon
+        name={isError ? 'x-circle' : 'check-circle'}
+        size={18}
+        color={isError ? c.danger : c.brand}
+        strokeWidth={2.2}
+      />
       <AppText variant="label" style={{ color: c['text-primary'], flex: 1 }}>
         {message}
       </AppText>
@@ -157,11 +150,11 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    borderWidth: 0.5,
-    borderRadius: radius.lg,
+    gap: spacing.md + 3,
+    borderWidth: 1,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + 2,
-    maxWidth: 420,
+    paddingVertical: spacing.md + 1,
+    maxWidth: 400,
   },
 });

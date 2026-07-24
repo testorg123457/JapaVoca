@@ -24,6 +24,7 @@ import GifticonWalletScreen from '../screens/main/GifticonWalletScreen';
 import GifticonDetailScreen from '../screens/main/GifticonDetailScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import InquiryScreen from '../screens/main/InquiryScreen';
+import ReferralRedeemScreen from '../screens/main/ReferralRedeemScreen';
 import BookmarkScreen from '../screens/main/BookmarkScreen';
 import JapaneseTranslateScreen from '../screens/main/JapaneseTranslateScreen';
 import TranslateCropScreen from '../screens/main/TranslateCropScreen';
@@ -59,6 +60,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="GifticonDetail" component={GifticonDetailScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Inquiry" component={InquiryScreen} />
+      <Stack.Screen name="ReferralRedeem" component={ReferralRedeemScreen} />
       <Stack.Screen name="JapaneseTranslate" component={JapaneseTranslateScreen} />
       <Stack.Screen name="TranslateCrop" component={TranslateCropScreen} />
       <Stack.Screen name="TranslateResult" component={TranslateResultScreen} />

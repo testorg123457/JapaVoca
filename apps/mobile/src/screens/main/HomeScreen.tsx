@@ -36,6 +36,7 @@ import { markReferralPromptShown, wasReferralPromptShown } from '../../store/aut
 import { ReferralPromptModal } from './components/ReferralPromptModal';
 import { useUnreadCount } from '../../api/notifications';
 import AttendanceCalendar from './components/AttendanceCalendar';
+import { HomeBannerCarousel } from './components/HomeBannerCarousel';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 /**
@@ -325,6 +326,9 @@ export default function HomeScreen(): React.JSX.Element {
               last
             />
           </ListSection>
+
+          {/* 자동 순환 배너 — 출석 위. 배너 목록은 HomeBannerCarousel 안 HOME_BANNERS에서 관리. */}
+          <HomeBannerCarousel />
 
           {/* 출석 달력 — 페이지 하단(누적 7회 → 보라 상자) */}
           <AttendanceCalendar />

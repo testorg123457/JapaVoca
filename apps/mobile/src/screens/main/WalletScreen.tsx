@@ -12,13 +12,13 @@
  * 내역 행(적립=민트↑ / 사용=옐로↓), 하단 고정 교환 버튼, 바텀시트 상품 선택.
  */
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
-import { AppText, Button, Coin, Gradient, Icon } from '../../components';
+import { AppText, Button, Coin, Gradient, Icon , useToast } from '../../components';
 import { gradients, scrim } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import {
@@ -64,6 +64,7 @@ function formatDate(iso: string): string {
 }
 
 export default function WalletScreen(): React.JSX.Element {
+  const { showToast } = useToast();
   const c = useThemeColors();
   const wallet = useWallet();
   const [tab, setTab] = useState<TabKey>('all');
@@ -95,12 +96,12 @@ export default function WalletScreen(): React.JSX.Element {
         {
           onSuccess: () => {
             exchangeLockRef.current = false;
-            Alert.alert('교환 완료!', `${product.name} 교환이 완료됐어요.`);
+            showToast(`${product.name} 교환이 완료됐어요.`);
           },
           onError: (error) => {
             exchangeLockRef.current = false;
             const detail = (error as AxiosError<{ detail?: string }>).response?.data?.detail;
-            Alert.alert('교환 실패', detail ?? '교환에 실패했습니다. 잠시 후 다시 시도해주세요.');
+            showToast(detail ?? '교환에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
           },
         },
       );

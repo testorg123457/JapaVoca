@@ -66,6 +66,7 @@ export type MainStackParamList = {
   Notifications: undefined;
   /** 고객 문의 목록 + 작성. */
   Inquiry: undefined;
+  ReferralRedeem: undefined;
   /** 일본어 번역 — 카메라로 촬영해 번역. */
   JapaneseTranslate: undefined;
   /** 번역할 사진의 범위 선택(크롭). */

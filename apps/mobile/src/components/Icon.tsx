@@ -24,6 +24,7 @@ export type IconName =
   | 'gift'
   | 'check'
   | 'check-circle'
+  | 'x-circle'
   | 'close'
   | 'chevron-right'
   | 'chevron-down'
@@ -130,6 +131,13 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
               <>
                 <Circle cx="12" cy="12" r="9" {...s} />
                 <Path d="M8 12.2 L11 15.2 L16 8.8" {...s} />
+              </>
+            );
+          case 'x-circle':
+            return (
+              <>
+                <Circle cx="12" cy="12" r="9" {...s} />
+                <Path d="M9 9 L15 15 M15 9 L9 15" {...s} />
               </>
             );
           case 'close':

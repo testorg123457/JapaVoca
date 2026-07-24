@@ -8,14 +8,14 @@
  * + 우측 캐시가·교환 상태. 게스트는 상단 안내 카드 하나로 계정 연결을 유도한다.
  */
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, View } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import { TestIds } from 'react-native-google-mobile-ads';
 import Config from 'react-native-config';
 import type { AxiosError } from 'axios';
 
 import { useNavigation } from '@react-navigation/native';
 
-import { AppHeader, AppText, Coin, Icon, PressableScale } from '../../components';
+import { AppHeader, AppText, Coin, ConfirmSheet, Icon, PressableScale, useToast } from '../../components';
 import type { IconName } from '../../components/Icon';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
@@ -59,6 +59,8 @@ export default function ExchangeScreen(): React.JSX.Element {
   const keyRef = useRef<Record<string, string>>({});
   // SSV 폴링 중 오버레이 표시용(요청 pending 과 별개 단계).
   const [verifying, setVerifying] = useState(false);
+  const [guestSheet, setGuestSheet] = useState(false);
+  const { showToast } = useToast();
 
   const balance = wallet.data?.balance ?? 0;
   const isGuest = me.data?.is_guest ?? false;
@@ -68,14 +70,11 @@ export default function ExchangeScreen(): React.JSX.Element {
       return;
     }
     if (isGuest) {
-      Alert.alert('게스트는 교환 불가', '구글/카카오 계정을 연결하면 교환할 수 있어요.', [
-        { text: '나중에', style: 'cancel' },
-        { text: '계정 연결', onPress: () => navigation.navigate('AccountSettings') },
-      ]);
+      setGuestSheet(true);
       return;
     }
     if (balance < product.price_cash) {
-      Alert.alert('캐시 부족', '보유 캐시가 부족해요. 퀴즈를 풀고 캐시를 모아보세요.');
+      showToast('보유 캐시가 부족해요. 퀴즈를 풀고 캐시를 모아보세요.', 'error');
       return;
     }
     lockRef.current = true;
@@ -86,10 +85,7 @@ export default function ExchangeScreen(): React.JSX.Element {
       // 광고를 끝까지 보지 않았으면(스킵·미로드 포함) 서버 호출 없이 종료 — 차감 없음.
       if (!earned) {
         lockRef.current = false;
-        Alert.alert(
-          '광고 시청 필요',
-          '광고를 끝까지 시청해야 교환할 수 있어요. 광고가 안 나왔다면 잠시 후 다시 시도해주세요.',
-        );
+showToast('광고를 끝까지 시청해야 교환할 수 있어요. 잠시 후 다시 시도해주세요.', 'error');
         return;
       }
       // SSV 확인 — Mock 모드(required=false)면 1회 조회로 즉시 통과.
@@ -97,10 +93,7 @@ export default function ExchangeScreen(): React.JSX.Element {
       const status = await pollAdStatus(nonce).finally(() => setVerifying(false));
       if (status.required && !status.verified) {
         lockRef.current = false;
-        Alert.alert(
-          '광고 확인 지연',
-          '광고 시청 확인이 지연되고 있어요. 캐시는 차감되지 않았어요. 잠시 후 다시 시도해주세요.',
-        );
+showToast('광고 확인이 지연되고 있어요. 캐시는 차감되지 않았어요. 잠시 후 다시 시도해주세요.', 'error');
         return;
       }
       requestExchange.mutate(
@@ -114,7 +107,7 @@ export default function ExchangeScreen(): React.JSX.Element {
           onSuccess: () => {
             lockRef.current = false;
             delete keyRef.current[product.code]; // 성공 — 다음 구매는 새 키.
-            Alert.alert('교환 완료!', `${product.name} 교환이 완료됐어요.`);
+            showToast(`${product.name} 교환이 완료됐어요.`);
           },
           onError: (error) => {
             lockRef.current = false;
@@ -124,7 +117,7 @@ export default function ExchangeScreen(): React.JSX.Element {
             if (response) {
               delete keyRef.current[product.code];
             }
-            Alert.alert('교환 실패', response?.data?.detail ?? '교환에 실패했습니다. 잠시 후 다시 시도해주세요.');
+            showToast(response?.data?.detail ?? '교환에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
           },
         },
       );
@@ -255,6 +248,16 @@ export default function ExchangeScreen(): React.JSX.Element {
           </View>
         )}
       </View>
+
+      <ConfirmSheet
+        visible={guestSheet}
+        title="계정을 연결해 주세요"
+        message="게스트 계정은 기프티콘으로 교환할 수 없어요. 구글·카카오 계정을 연결하면 교환할 수 있어요."
+        cancelText="나중에"
+        confirmText="계정 연결"
+        onCancel={() => setGuestSheet(false)}
+        onConfirm={() => { setGuestSheet(false); navigation.navigate('AccountSettings'); }}
+      />
     </View>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -17,7 +16,7 @@ import {
 import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 import LottieView from 'lottie-react-native';
 
-import { AppText, ConfirmSheet } from '../../components';
+import { AppText, ConfirmSheet, useToast } from '../../components';
 import { mint } from '../../theme/tokens';
 import { useAuth } from '../../store/AuthContext';
 
@@ -48,6 +47,7 @@ function KakaoIcon() {
 
 export default function LoginScreen(): React.JSX.Element {
   const { startOnboarding } = useAuth();
+  const { showToast } = useToast();
   const [loadingMethod, setLoadingMethod] = useState<'google' | 'kakao' | 'guest' | null>(null);
   const [guestSheetVisible, setGuestSheetVisible] = useState(false);
   const isLoading = loadingMethod !== null;
@@ -69,7 +69,7 @@ export default function LoginScreen(): React.JSX.Element {
       }
       startOnboarding({ method: 'google', idToken: response.data.idToken });
     } catch {
-      Alert.alert('로그인 실패', '다시 시도해주세요.');
+      showToast('로그인에 실패했어요. 다시 시도해주세요.', 'error');
     } finally {
       setLoadingMethod(null);
     }
@@ -84,7 +84,7 @@ export default function LoginScreen(): React.JSX.Element {
     } catch (err) {
       const code = (err as { code?: number })?.code;
       if (code === -1 || code === -1002) { return; }
-      Alert.alert('로그인 실패', '다시 시도해주세요.');
+      showToast('로그인에 실패했어요. 다시 시도해주세요.', 'error');
     } finally {
       setLoadingMethod(null);
     }
