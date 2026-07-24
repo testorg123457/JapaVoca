@@ -13,7 +13,6 @@
 import './global.css';
 
 import React, { useEffect } from 'react';
-import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -26,7 +25,6 @@ import { AuthProvider } from './src/store/AuthContext';
 import { ToastProvider } from './src/components';
 import { ThemeProvider } from './src/theme/ThemeProvider';
 import RootNavigator from './src/navigation/RootNavigator';
-import { startStudyNotification } from './src/lib/studyNotification';
 
 function App(): React.JSX.Element {
   useEffect(() => {
@@ -35,14 +33,6 @@ function App(): React.JSX.Element {
       .catch((error) => console.warn('AdMob 초기화 실패:', error));
 
     BootSplash.hide({ fade: true });
-
-    startStudyNotification();
-
-    // 앱 포그라운드 진입 시 알림 재게시 (사용자가 지웠을 때 복원)
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') { startStudyNotification(); }
-    });
-    return () => sub.remove();
   }, []);
 
   return (

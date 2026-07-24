@@ -17,8 +17,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
-import Config from 'react-native-config';
 import LottieView from 'lottie-react-native';
 
 import {
@@ -38,38 +36,6 @@ import { useUnreadCount } from '../../api/notifications';
 import AttendanceCalendar from './components/AttendanceCalendar';
 import { HomeBannerCarousel } from './components/HomeBannerCarousel';
 import type { MainStackScreenProps } from '../../navigation/types';
-
-/**
- * 하단 앵커 배너 — ScrollView 바깥 sibling. AdMob 정책 준수:
- *  - ANCHORED_ADAPTIVE_BANNER(기기 폭 적응, ~50dp).
- *  - 배너 "높이"는 로드 완료 후에만 확보(로드 전 빈 광고 공간 노출 금지).
- *  - 콘텐츠와 최소 8dp 여백 + 상단 헤어라인, 탭바가 없으므로 하단 safe-area inset을 소유.
- *    (inset은 로드 여부와 무관하게 항상 확보 — 로드 실패해도 콘텐츠가 제스처바에 닿지 않게.)
- *  - 광고 위에 클릭 유도 문구/버튼 없음.
- */
-function BottomAnchorBanner(): React.JSX.Element {
-  const c = useThemeColors();
-  const insets = useSafeAreaInsets();
-  const [loaded, setLoaded] = useState(false);
-  return (
-    <View
-      className="items-center"
-      style={{
-        backgroundColor: loaded ? c['bg-primary'] : 'transparent',
-        borderTopColor: c['border-tertiary'],
-        borderTopWidth: loaded ? hairline : 0,
-        paddingTop: loaded ? spacing.md : 0,
-        paddingBottom: insets.bottom,
-      }}>
-      <BannerAd
-        unitId={Config.ADMOB_BANNER_HOME_ID || TestIds.BANNER}
-        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-        onAdLoaded={() => setLoaded(true)}
-        onAdFailedToLoad={() => setLoaded(false)}
-      />
-    </View>
-  );
-}
 
 export default function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'Home'>['navigation']>();
@@ -335,8 +301,6 @@ export default function HomeScreen(): React.JSX.Element {
         </View>
       </ScrollView>
 
-      {/* 화면 최하단 앵커 배너 — ScrollView 바깥 sibling */}
-      <BottomAnchorBanner />
     </View>
   );
 }

@@ -13,8 +13,5 @@ class BootReceiver : BroadcastReceiver() {
     if (LockScreenPrefs.isEnabled(context)) {
       LockScreenService.start(context)
     }
-
-    // 상시 학습 알림은 항상 복구
-    StudyNotificationService.start(context)
   }
 }

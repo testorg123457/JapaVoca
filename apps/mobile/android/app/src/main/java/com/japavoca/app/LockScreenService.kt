@@ -87,8 +87,8 @@ class LockScreenService : Service() {
       }
     }
     return NotificationCompat.Builder(this, CHANNEL_ID)
-      .setContentTitle("잠금화면 학습 켜짐")
-      .setContentText("화면을 켤 때 일본어 퀴즈가 나와요")
+      .setContentTitle("일본어 한자 보카")
+      .setContentText("화면 켤 때마다 일본어 한 문제 — 맞히면 캐시가 쌓여요")
       .setSmallIcon(R.mipmap.ic_launcher)
       .setOngoing(false)
       .setPriority(NotificationCompat.PRIORITY_LOW)
