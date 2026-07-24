@@ -20,6 +20,7 @@ import { ReferralSection } from './components/ReferralSection';
 import { useThemeColors, useThemeMode } from '../../theme/ThemeProvider';
 import type { ThemeMode } from '../../store/theme';
 import { useMe } from '../../api/hooks';
+import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 import { deleteAccount, linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -80,6 +81,8 @@ export default function AccountSettingsScreen(): React.JSX.Element {
     setLinking(true);
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // 직전 계정을 끊어야 매번 계정 선택 화면이 뜬다(안 하면 캐시된 계정으로 바로 연결됨).
+      await GoogleSignin.signOut().catch(() => {});
       const response = await GoogleSignin.signIn();
       if (isCancelledResponse(response)) {
         return;
@@ -103,11 +106,32 @@ export default function AccountSettingsScreen(): React.JSX.Element {
     }
   }
 
-  function handleLinkKakao() {
-    Alert.alert(
-      '카카오 연결 준비 중',
-      '카카오 네이티브 SDK/앱키 설정 후 활성화됩니다. (백엔드는 이미 준비됨)',
-    );
+  async function handleLinkKakao() {
+    if (linking) {
+      return;
+    }
+    setLinking(true);
+    try {
+      const result = await loginWithKakaoAccount();
+      const { tokens, switched } = await linkAccount('kakao', result.accessToken);
+      signIn(tokens.access, tokens.refresh);
+      await queryClient.invalidateQueries();
+      Alert.alert(
+        switched ? '기존 카카오 계정으로 로그인' : '카카오 연결 완료',
+        switched
+          ? '이미 가입된 카카오 계정이 있어 그 계정으로 로그인했어요. (게스트 진행분은 합쳐지지 않아요)'
+          : '게스트 계정이 카카오 계정으로 연결됐어요. 이제 기프티콘 교환도 가능해요.',
+      );
+    } catch (err) {
+      // 사용자 취소(-1 / -1002)는 조용히 무시.
+      const code = (err as { code?: number })?.code;
+      if (code === -1 || code === -1002) {
+        return;
+      }
+      Alert.alert('연결 실패', '카카오 연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLinking(false);
+    }
   }
 
   function confirmWithdraw() {

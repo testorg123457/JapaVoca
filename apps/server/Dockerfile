@@ -11,7 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+# collectstatic 은 DB에 접속하지 않지만 settings import 에 DATABASE_URL/SECRET_KEY 가
+# 필요하다. 빌드 단계 전용 더미 값을 준다(런타임 값은 Cloud Run 이 주입).
+RUN DATABASE_URL="postgres://u:p@localhost:5432/db" \
+    SECRET_KEY="build-time-dummy" \
+    python manage.py collectstatic --noinput
 
 EXPOSE 8080
 
