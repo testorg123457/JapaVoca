@@ -89,3 +89,17 @@ export function setPendingAuth(auth: PendingAuth): void {
 export function clearPendingAuth(): void {
   storage.remove(PENDING_AUTH_KEY);
 }
+
+
+// ── 추천인 모달 1회 노출 ─────────────────────────────────────────────────────────
+
+const REFERRAL_PROMPT_KEY = 'auth.referralPromptShown';
+
+/** 첫 가입 안내 모달을 이미 띄웠는지. 자격 판단은 서버가 하고, 이건 노출 제어만. */
+export function wasReferralPromptShown(): boolean {
+  return storage.getBoolean(REFERRAL_PROMPT_KEY) ?? false;
+}
+
+export function markReferralPromptShown(): void {
+  storage.set(REFERRAL_PROMPT_KEY, true);
+}

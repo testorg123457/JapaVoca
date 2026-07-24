@@ -13,7 +13,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow } from '../../components';
 import { radius } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
+import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, useReferral, type ProfileUpdate } from '../../api/hooks';
 import { clearCachedSet } from '../../store/quizSet';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -24,6 +24,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
+  const referral = useReferral();
   const updateProfile = useUpdateProfile();
   const abandonQuizSet = useAbandonQuizSet();
   const unreadInquiry = useUnreadInquiryCount();
@@ -174,10 +175,45 @@ export default function SettingsScreen(): React.JSX.Element {
           </PressableScale>
         </View>
 
+        {/* 친구 초대 — 받을 보상이 남아 있으면 금액을 강조해 눈에 띄게 한다.
+            다 소진되면(next_reward=0) 강조를 빼고 담백한 행으로 내린다. */}
+        {referral.data && !referral.data.is_guest && referral.data.next_reward > 0 ? (
+          <PressableScale onPress={() => navigation.navigate('AccountSettings')}>
+            <View
+              style={{
+                borderRadius: radius.lg,
+                backgroundColor: c['brand-subtle'],
+                borderWidth: 1,
+                borderColor: c.brand,
+                paddingVertical: 16,
+                paddingHorizontal: 18,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+              }}>
+              <View
+                className="items-center justify-center rounded-full"
+                style={{ width: 42, height: 42, backgroundColor: c.brand }}>
+                <Icon name="user" size={20} color={c['on-brand']} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <AppText variant="subheading" className="text-text-primary">
+                  친구 초대하고 {referral.data.next_reward.toLocaleString()} 캐시 받기
+                </AppText>
+                <AppText variant="caption" className="text-text-secondary">
+                  초대받은 친구도 {referral.data.invitee_reward.toLocaleString()} 캐시를 받아요
+                </AppText>
+              </View>
+              <Icon name="chevron-right" size={18} color={c['text-tertiary']} />
+            </View>
+          </PressableScale>
+        ) : null}
+
         {/* 캐시 · 내역 */}
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
-          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} last />
+          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} />
+          <ListRow leftIcon="user" title="친구 초대" onPress={() => navigation.navigate('AccountSettings')} last />
         </ListSection>
 
         {/* 알림 */}

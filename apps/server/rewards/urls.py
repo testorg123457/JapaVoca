@@ -8,6 +8,7 @@ from .views import (
     DailyTodayView,
     LedgerListView,
     OpenBoxView,
+    ReferralView,
     WalletView,
 )
 
@@ -21,4 +22,5 @@ urlpatterns = [
     path('attendance/today/', AttendanceTodayView.as_view(), name='attendance-today'),
     path('attendance/month/', AttendanceMonthView.as_view(), name='attendance-month'),
     path('daily/today/', DailyTodayView.as_view(), name='daily-today'),
+    path('referral/', ReferralView.as_view(), name='referral'),
 ]

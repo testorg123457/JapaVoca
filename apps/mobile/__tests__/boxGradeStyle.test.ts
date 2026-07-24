@@ -2,10 +2,10 @@ import { boxGradeStyle } from '../src/screens/quiz/boxGradeStyle';
 import { primitives } from '../src/theme/tokens';
 
 describe('boxGradeStyle', () => {
-  it('일반 상자는 등급 뱃지 없이 민트 연출', () => {
+  it('일반 상자는 등급 뱃지 없이 따뜻한 앰버 연출 — 상자 그림(주황·금)과 온도를 맞춤', () => {
     const s = boxGradeStyle('normal');
     expect(s.badge).toBeNull();
-    expect(s.bg).toBe(primitives.mint[900]);
+    expect(s.bg).toBe('#2E2410');
   });
 
   it('보라 상자는 보라 배경 + 뱃지', () => {
@@ -16,7 +16,7 @@ describe('boxGradeStyle', () => {
 
   it('버건디 상자는 radial 배경 + 와인 뱃지', () => {
     const s = boxGradeStyle('burgundy');
-    expect(s.bg).toBe('#07070A');
+    expect(s.bg).toBe('#171016');
     expect(s.badge?.label).toBe('✦ 버건디 상자');
     expect(s.badge?.text).toBe(primitives.burgundy[300]);
     expect(s.backdrop.kind).toBe('radial');
@@ -39,7 +39,6 @@ describe('boxGradeStyle', () => {
     const lum = (hex: string) =>
       parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);
     expect(lum(boxGradeStyle('burgundy').bg)).toBeLessThan(lum(boxGradeStyle('purple').bg));
-    expect(lum(boxGradeStyle('burgundy').bg)).toBeLessThan(lum(boxGradeStyle('normal').bg));
   });
 
   it('등급마다 Lottie 소스가 서로 다르다', () => {

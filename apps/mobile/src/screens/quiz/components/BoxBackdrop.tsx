@@ -11,7 +11,7 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Defs, Rect, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Rect, RadialGradient, Stop } from 'react-native-svg';
 
 import type { BoxBackdropSpec } from '../boxGradeStyle';
 
@@ -81,10 +81,28 @@ export function BoxBackdrop({ spec }: { spec: BoxBackdropSpec }): React.JSX.Elem
               <Stop offset="0.45" stopColor="#000000" stopOpacity="0" />
               <Stop offset="1" stopColor="#000000" stopOpacity={spec.vignette} />
             </RadialGradient>
+            {/* 바닥 빛 웅덩이 — 가운데가 밝고 가장자리로 사라져 경계선이 안 보인다. */}
+            {spec.floor && (
+              <RadialGradient id="floor" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={spec.floor.color} stopOpacity={spec.floor.opacity} />
+                <Stop offset="1" stopColor={spec.floor.color} stopOpacity="0" />
+              </RadialGradient>
+            )}
           </Defs>
 
           <Rect x="0" y="0" width={size.w} height={size.h} fill={spec.base} />
           <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#wine)" />
+
+          {/* 바닥 빛 웅덩이 — 상자 아래에 깔아 어두운 상자를 받친다(링보다 뒤). */}
+          {spec.floor && (
+            <Ellipse
+              cx={cx}
+              cy={cy + spec.floor.ry * 1.6}
+              rx={spec.floor.rx}
+              ry={spec.floor.ry}
+              fill="url(#floor)"
+            />
+          )}
 
           {/* 동심 헤어라인 링 — 상자를 무대 위에 올린 것처럼 보이게 하는 절제된 장치 */}
           {spec.rings.map((ring) => (

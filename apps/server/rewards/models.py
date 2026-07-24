@@ -59,6 +59,8 @@ class Ledger(models.Model):
         ATTENDANCE = 'attendance', '출석'
         STREAK = 'streak', '연속출석'
         AD_BONUS = 'ad_bonus', '광고 보너스'
+        REFERRAL_INVITER = 'referral_inviter', '친구 초대 보상'
+        REFERRAL_INVITEE = 'referral_invitee', '추천인 입력 보상'
         # use
         EXCHANGE = 'exchange', '기프티콘 교환'
         # refund (earn) — 발급 실패로 교환 차감분을 되돌릴 때. '관리자 조정'과 구분해 감사 추적.
@@ -206,3 +208,52 @@ class Daily(models.Model):
 
     def __str__(self):
         return f'{self.user_id} {self.date} quiz={self.quiz_count} cash={self.cash_earned}'
+
+
+class Referral(models.Model):
+    """추천인 관계 — 초대한 사람(inviter) × 초대받은 사람(invitee). 지급 이력 포함.
+
+    invitee 는 평생 1회만 추천인을 입력할 수 있으므로 OneToOne 으로 잠근다.
+    실제 캐시 지급은 Ledger 가 진실원이고, 이 표는 "누가 누구를 초대했는지"와
+    그때 얼마를 줬는지를 감사 추적용으로 남긴다.
+    """
+
+    inviter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_made',
+        help_text='코드 주인(초대한 사람)',
+    )
+    invitee = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referral_used',
+        help_text='코드를 입력한 사람. 1회 한정이라 OneToOne',
+    )
+    inviter_cash = models.PositiveIntegerField(
+        default=0, help_text='초대한 사람이 받은 캐시(상한 초과 시 0)',
+    )
+    # 어뷰징 방어 — 한 기기에서 계정만 갈아타며 반복 수령하는 걸 막는다.
+    # 값의 출처(ANDROID_ID 등)는 클라 사정이고 서버는 불투명 문자열로만 다룬다.
+    device_id = models.CharField(
+        max_length=128, db_index=True, default='', blank=True,
+        help_text='추천인 입력 시점의 기기 식별자. 기기당 1회 제한에 사용',
+    )
+    invitee_cash = models.PositiveIntegerField(default=0, help_text='입력한 사람이 받은 캐시')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tbl_rewards_referral'
+        verbose_name = '추천인'
+        verbose_name_plural = '추천인'
+        indexes = [
+            models.Index(fields=['inviter'], name='idx_referral_inviter'),
+        ]
+        constraints = [
+            # 기기당 1회 — 애플리케이션 선검사만으로는 동시 요청을 못 막으므로 DB에서 강제.
+            # 빈 값은 대상 제외(입력 단계에서 이미 거부되지만 방어적으로).
+            models.UniqueConstraint(
+                fields=['device_id'],
+                condition=~models.Q(device_id=''),
+                name='uniq_referral_device',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.inviter_id} → {self.invitee_id}'

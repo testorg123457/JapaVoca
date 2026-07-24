@@ -229,25 +229,20 @@ def check_in(user) -> Attendance:
     remaining = ATTENDANCE_CYCLE_LENGTH - (total_count % ATTENDANCE_CYCLE_LENGTH)
 
     # 인앱 알림은 트랜잭션 커밋 이후에 생성(실패해도 상자 지급에 영향 없게).
+    # 매일 뜨는 '오늘 출석 완료'는 알림함만 채우고 정보가 없어 제거했다.
+    # 실제로 보상을 받은 7일 사이클에만 알린다.
     def _notify():
         from notifications.models import Notification
         from notifications.services import notify
-        if box_granted:
-            notify(
-                user, Notification.Type.STREAK,
-                '출석 7번 달성!',
-                '보상을 받았어요. 홈에서 확인해 보세요.',
-                data={'screen': 'Home'}, push=True,
-            )
-        else:
-            notify(
-                user, Notification.Type.ATTENDANCE,
-                '오늘 출석 완료!',
-                f'보상까지 {remaining}번 남았어요.',
-                data={'screen': 'Home'}, push=True,
-            )
+        notify(
+            user, Notification.Type.STREAK,
+            '출석 7번 달성!',
+            '보상을 받았어요. 홈에서 확인해 보세요.',
+            data={'screen': 'Home'}, push=True,
+        )
 
-    transaction.on_commit(_notify)
+    if box_granted:
+        transaction.on_commit(_notify)
     return attendance
 
 
@@ -261,3 +256,221 @@ def get_today_daily(user) -> dict:
         'correct_count': daily.correct_count,
         'boxes_earned': daily.boxes_earned,
     }
+
+
+# ── 추천인 ──────────────────────────────────────────────────────────────────────
+
+# 코드를 입력한 사람이 받는 캐시. 평생 1회뿐이라 티어 없이 고정.
+REFERRAL_INVITEE_REWARD = 300
+# 코드 주인이 받는 캐시 — 초대 인원이 늘수록 단계적으로 줄고 결국 0이 된다.
+# (인원, 1명당 캐시) 순서대로 소진. 아래를 다 쓰면 그 뒤로는 보상 없음.
+# 최대 수령액 = 3*300 + 5*100 = 1,400캐시.
+REFERRAL_INVITER_TIERS = ((3, 300), (5, 100))
+REFERRAL_MAX_INVITES = sum(n for n, _ in REFERRAL_INVITER_TIERS)  # 보상받는 총 인원
+# 추천인 입력 기한 — 가입 후 이 기간 안에만 받을 수 있다.
+# 오래된 계정이 뒤늦게 파밍하는 걸 막으면서, 모달을 놓쳐도 구제될 시간은 준다.
+REFERRAL_REDEEM_WINDOW = timedelta(days=7)
+_REFERRAL_CODE_LEN = 8
+# 헷갈리는 글자(0/O, 1/I/L) 제외 — 사용자가 손으로 옮겨 적는 값이라 오입력을 줄인다.
+_REFERRAL_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
+
+
+class ReferralError(CashError):
+    """추천인 처리 오류(사용자에게 사유를 보여준다)."""
+
+
+class ReferralNotAllowedForGuest(ReferralError):
+    """게스트 계정은 추천인 보상 대상이 아님."""
+
+
+class ReferralAlreadyUsed(ReferralError):
+    """이미 추천인을 입력함(평생 1회)."""
+
+
+class ReferralCodeInvalid(ReferralError):
+    """존재하지 않는 코드."""
+
+
+class ReferralSelfNotAllowed(ReferralError):
+    """자기 코드 입력."""
+
+
+class ReferralDeviceAlreadyUsed(ReferralError):
+    """같은 기기에서 이미 추천인 보상을 받음(계정 갈아타기 방어)."""
+
+
+class ReferralWindowExpired(ReferralError):
+    """가입 후 입력 기한이 지남."""
+
+
+class ReferralDeviceRequired(ReferralError):
+    """기기 식별자 누락 — 값을 빼면 기기 제한이 무력화되므로 필수로 받는다."""
+
+
+def inviter_reward_for(previous_count: int) -> int:
+    """이미 previous_count 명을 초대한 사람이 '다음 1명'으로 받을 캐시.
+
+    티어를 순서대로 소진한다(5명까지 300, 그다음 5명은 100, 이후 0).
+    ⚠️ 순수함수 — 테스트 있음.
+    """
+    remaining = previous_count
+    for count, cash in REFERRAL_INVITER_TIERS:
+        if remaining < count:
+            return cash
+        remaining -= count
+    return 0
+
+
+def _gen_referral_code() -> str:
+    return ''.join(random.choice(_REFERRAL_ALPHABET) for _ in range(_REFERRAL_CODE_LEN))
+
+
+def get_or_create_referral_code(user) -> str:
+    """내 추천 코드. 없으면 발급한다(충돌 시 재시도)."""
+    if user.referral_code:
+        return user.referral_code
+    for _ in range(10):
+        code = _gen_referral_code()
+        if type(user).objects.filter(referral_code=code).exists():
+            continue
+        try:
+            user.referral_code = code
+            user.save(update_fields=['referral_code'])
+            return code
+        except IntegrityError:
+            continue  # 동시 발급 충돌 — 다른 코드로 재시도
+    raise ReferralError('추천 코드 발급에 실패했습니다. 잠시 후 다시 시도해주세요.')
+
+
+def get_referral_status(user) -> dict:
+    """내 코드 + 초대 실적 + 내가 입력한 추천인 여부."""
+    from .models import Referral
+    invited = Referral.objects.filter(inviter=user).count()
+    used = Referral.objects.filter(invitee=user).first()
+    earned = sum(
+        r.inviter_cash for r in Referral.objects.filter(inviter=user).only('inviter_cash')
+    )
+    deadline = user.created_at + REFERRAL_REDEEM_WINDOW
+    can_redeem = (
+        not user.is_guest and used is None and timezone.now() <= deadline
+    )
+    return {
+        'code': None if user.is_guest else get_or_create_referral_code(user),
+        'is_guest': user.is_guest,
+        'invited_count': invited,
+        # 다음 1명을 초대하면 받을 캐시. 0이면 더 이상 받을 수 없다(강조 해제 신호).
+        'next_reward': inviter_reward_for(invited),
+        'earned_cash': earned,
+        'max_invites': REFERRAL_MAX_INVITES,
+        'invitee_reward': REFERRAL_INVITEE_REWARD,
+        'used_code': bool(used),
+        # 지금 추천인 코드를 입력할 수 있는지(기한·1회·게스트 반영).
+        'can_redeem': can_redeem,
+        'redeem_deadline': deadline.isoformat(),
+    }
+
+
+@transaction.atomic
+def redeem_referral(user, code: str, device_id: str = ''):
+    """추천인 코드 입력 — 입력자와 코드 주인 양쪽에 캐시를 지급한다.
+
+    ⚠️ 어뷰징 방어:
+      - 게스트 불가(기기 UUID로 무한 생성 가능 → 무한 파밍).
+      - 입력은 평생 1회(Referral.invitee OneToOne + 여기서 선검사).
+      - 자기 코드 불가.
+      - 코드 주인 보상은 티어로 체감하다 0이 된다(초과분은 관계만 기록, 캐시 0).
+      - 가입 후 REFERRAL_REDEEM_WINDOW 안에만 — 오래된 계정의 뒤늦은 파밍 차단.
+      - 기기당 1회 — 폰 하나로 계정만 바꿔가며 반복 수령하는 걸 막는다.
+        ⚠️ device_id 는 클라가 보내는 값이라 위조 가능하다. 완전한 방어가 아니라
+           '흔한 파밍을 비싸게 만드는' 장치다. 근본 해결은 Play Integrity.
+           값을 생략하면 제한이 통째로 무력화되므로 누락은 거부한다.
+    """
+    from .models import Referral
+
+    if user.is_guest:
+        raise ReferralNotAllowedForGuest('소셜 로그인 후 이용할 수 있어요.')
+
+    normalized = (code or '').strip().upper()
+    if not normalized:
+        raise ReferralCodeInvalid('추천 코드를 입력해주세요.')
+
+    if Referral.objects.filter(invitee=user).exists():
+        raise ReferralAlreadyUsed('이미 추천인을 입력했어요.')
+
+    if timezone.now() > user.created_at + REFERRAL_REDEEM_WINDOW:
+        days = REFERRAL_REDEEM_WINDOW.days
+        raise ReferralWindowExpired(f'추천인 입력은 가입 후 {days}일 이내에만 가능해요.')
+
+    device = (device_id or '').strip()
+    if not device:
+        raise ReferralDeviceRequired('앱을 최신 버전으로 업데이트해주세요.')
+    if Referral.objects.filter(device_id=device).exists():
+        raise ReferralDeviceAlreadyUsed('이 기기에서는 이미 추천인 보상을 받았어요.')
+
+    User = type(user)
+    inviter = User.objects.filter(referral_code=normalized).first()
+    if inviter is None:
+        raise ReferralCodeInvalid('존재하지 않는 추천 코드예요.')
+    if inviter.pk == user.pk:
+        raise ReferralSelfNotAllowed('자기 추천 코드는 입력할 수 없어요.')
+    if inviter.is_guest:
+        raise ReferralCodeInvalid('사용할 수 없는 추천 코드예요.')
+
+    # ⚠️ 두 참여자(초대자·입력자) User 행을 pk 오름차순으로 잠근다. 두 가지를 동시에 해결:
+    #   (1) 초대자 행 잠금 → 같은 코드 동시 입력 시 invited_before 를 직렬화(티어 상한 준수).
+    #   (2) 상호 추천(X↔Y 동시 입력)의 락 순서 역전 데드락 방지. 초대자 행만 잠그면 두 트랜잭션이
+    #       서로 다른 행을 FOR UPDATE 로 쥔 채 Referral.create 의 FK 잠금(상대 행 KEY SHARE)을
+    #       기다려 교착한다. 항상 낮은 pk 부터 잠가 사이클을 없앤다.
+    #   per-pk 루프로 잠금 획득 순서를 쿼리 플래너와 무관하게 고정한다.
+    #   (self-referral 은 위에서 이미 차단 → pk 두 개는 항상 서로 다름. inviter 객체는 pk 기반
+    #    이후 참조에 그대로 유효하므로 재대입 불필요.)
+    for _pk in sorted({user.pk, inviter.pk}):
+        User.objects.select_for_update().get(pk=_pk)
+
+    # 코드 주인 보상은 티어에 따라 줄어든다. 0이 돼도 관계는 남겨 실적/추적이 끊기지 않게 한다.
+    invited_before = Referral.objects.filter(inviter=inviter).count()
+    inviter_cash = inviter_reward_for(invited_before)
+
+    # 선검사(invitee/device)를 통과해도 동시 요청이면 unique 제약에서 걸린다.
+    # savepoint(nested atomic)로 감싸 실패해도 바깥 트랜잭션이 깨지지 않게 하고,
+    # 어느 제약이 터졌는지 되물어 정확한 사유를 돌려준다.
+    try:
+        with transaction.atomic():
+            referral = Referral.objects.create(
+                inviter=inviter, invitee=user, device_id=device,
+                inviter_cash=inviter_cash, invitee_cash=REFERRAL_INVITEE_REWARD,
+            )
+    except IntegrityError as exc:
+        if Referral.objects.filter(invitee=user).exists():
+            raise ReferralAlreadyUsed('이미 추천인을 입력했어요.') from exc
+        raise ReferralDeviceAlreadyUsed('이 기기에서는 이미 추천인 보상을 받았어요.') from exc
+
+    earn(
+        user, REFERRAL_INVITEE_REWARD, Ledger.Reason.REFERRAL_INVITEE,
+        ref_type='referral', ref_id=referral.id,
+    )
+    if inviter_cash:
+        earn(
+            inviter, inviter_cash, Ledger.Reason.REFERRAL_INVITER,
+            ref_type='referral', ref_id=referral.id,
+        )
+
+    # 코드 주인은 남이 코드를 쓴 걸 알 방법이 없으므로 알림으로 알린다.
+    # 캐시 트랜잭션과 분리(커밋 이후) — 알림 실패가 지급을 되돌리면 안 된다.
+    def _notify_inviter():
+        from notifications.models import Notification
+        from notifications.services import notify
+        if inviter_cash:
+            title = f'친구 초대 보상 {inviter_cash:,} 캐시!'
+            body = '친구가 내 추천 코드를 입력했어요.'
+        else:
+            # 보상 상한을 다 쓴 뒤에도 초대 사실 자체는 알린다.
+            title = '친구가 내 코드를 입력했어요'
+            body = '초대 보상은 모두 받아서 캐시는 지급되지 않아요.'
+        notify(
+            inviter, Notification.Type.REFERRAL, title, body,
+            data={'screen': 'AccountSettings'}, push=True,
+        )
+
+    transaction.on_commit(_notify_inviter)
+    return referral

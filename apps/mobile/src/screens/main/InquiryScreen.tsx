@@ -1,11 +1,12 @@
 /**
- * 문의하기 — "보내기 중심" 디자인(정제 톤).
+ * 문의하기 — "보내기 중심" 화면.
  *
- * 화면의 주인공은 상단 입력창(컴포즈). 문의를 보내는 것으로 흐름이 끝난다.
- * 답변은 전제하지 않는다 — 운영자가 답을 남기면 보낸 문의 카드 안에 조용히 붙고,
- * 답이 없으면 그냥 내가 보낸 글로만 남는다(‘대기/준비 중’ 같은 표현 없음).
+ * 주인공은 상단 입력창. 문의를 보내는 것으로 흐름이 끝난다.
+ * 답변은 전제하지 않는다 — 운영자가 답을 남기면 보낸 문의 카드 안에 붙고,
+ * 답이 없으면 내가 보낸 글로만 남는다('대기 중' 같은 표현을 쓰지 않는다).
  *
- * 디자인: 과한 라운드 지양(반경 12). 1px 보더 + 옅은 배경으로 면을 정리한 실무 톤.
+ * ⚠️ 디자인 시스템을 따른다 — 라운드/여백/타이포는 토큰과 공용 컴포넌트만 쓰고
+ *    하드코딩하지 않는다(`docs/디자인-시스템-원칙.md`). 면은 Card, 액션은 Button.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -19,8 +20,9 @@ import {
   View,
 } from 'react-native';
 
-import { AppHeader, AppText, Icon, PressableScale, useToast } from '../../components';
+import { AppHeader, AppText, Button, Card, Icon, useToast } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
+import { radius, spacing } from '../../theme/tokens';
 import {
   useDeleteInquiry,
   useInquiries,
@@ -31,17 +33,15 @@ import {
 } from '../../api/hooks';
 
 const MAX_LEN = 2000;
-const RADIUS = 12;
+/** 글자 수가 이 비율을 넘으면 카운터를 강조해 한도가 가깝다는 걸 알린다. */
+const COUNTER_WARN_RATIO = 0.9;
 
 function formatDate(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 9 * 3_600_000); // KST = UTC+9
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}. ${m}. ${day}`;
+  const d = new Date(iso);
+  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}`;
 }
 
-/** 보낸 문의 1건. 답변이 있으면만 답변 블록을 붙인다(없으면 표시 없음). */
+/** 보낸 문의 1건. 답변이 있을 때만 답변 블록을 붙인다. */
 function SentCard({
   inquiry,
   onDelete,
@@ -50,50 +50,40 @@ function SentCard({
   onDelete: () => void;
 }): React.JSX.Element {
   const c = useThemeColors();
-  const hasAnswer = inquiry.answer !== null && inquiry.answer !== '';
+  const hasAnswer = !!inquiry.answer;
 
   return (
-    <View
-      style={{
-        backgroundColor: c['bg-primary'],
-        borderRadius: RADIUS,
-        borderWidth: 1,
-        borderColor: c['border-secondary'],
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginBottom: 10,
-      }}>
+    <Card className="mb-lg">
       <View className="flex-row items-center justify-between">
         <AppText variant="caption" className="text-text-tertiary">
           {formatDate(inquiry.created_at)}
         </AppText>
-        <Pressable onPress={onDelete} hitSlop={10}>
-          <AppText variant="caption" className="text-text-tertiary">
-            삭제
-          </AppText>
+        <Pressable onPress={onDelete} hitSlop={10} className="active:opacity-60">
+          <AppText variant="caption" className="text-text-tertiary">삭제</AppText>
         </Pressable>
       </View>
 
-      <AppText variant="body" className="mt-sm text-text-primary" style={{ lineHeight: 22 }}>
+      <AppText variant="body" className="mt-sm text-text-primary">
         {inquiry.content}
       </AppText>
 
-      {hasAnswer ? (
+      {hasAnswer && (
+        // 답변은 문의와 확실히 구분되게 브랜드 톤 면 위에 올린다.
         <View
-          className="mt-md pt-md"
-          style={{ borderTopWidth: 1, borderTopColor: c['border-tertiary'] }}>
+          className="mt-lg gap-sm p-lg"
+          style={{ backgroundColor: c['brand-subtle'], borderRadius: radius.md }}>
           <View className="flex-row items-center gap-xs">
-            <Icon name="mail" size={13} color={c.brand} />
-            <AppText variant="micro" className="text-brand" style={{ fontWeight: '700', letterSpacing: 0.3 }}>
+            <Icon name="mail" size={14} color={c.brand} />
+            <AppText variant="label" style={{ color: c.brand, fontWeight: '700' }}>
               답변
             </AppText>
           </View>
-          <AppText variant="body" className="mt-xs text-text-secondary" style={{ lineHeight: 22 }}>
+          <AppText variant="body" className="text-text-primary">
             {inquiry.answer}
           </AppText>
         </View>
-      ) : null}
-    </View>
+      )}
+    </Card>
   );
 }
 
@@ -101,6 +91,7 @@ export default function InquiryScreen(): React.JSX.Element {
   const c = useThemeColors();
   const { showToast } = useToast();
   const [text, setText] = useState('');
+  const [focused, setFocused] = useState(false);
   const mountedRef = useRef(true);
 
   const inquiries = useInquiries();
@@ -127,21 +118,19 @@ export default function InquiryScreen(): React.JSX.Element {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
+    return () => { mountedRef.current = false; };
   }, []);
 
   async function handleSend() {
     const trimmed = text.trim();
-    if (!trimmed || postInquiry.isPending) return;
+    if (!trimmed || postInquiry.isPending) { return; }
     try {
       await postInquiry.mutateAsync(trimmed);
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) { return; }
       setText('');
       showToast('문의를 보냈어요. 감사합니다!');
     } catch (err: any) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) { return; }
       if (err?.response?.status === 429) {
         showToast('오늘 문의 한도에 도달했어요.', 'error');
       } else {
@@ -166,85 +155,85 @@ export default function InquiryScreen(): React.JSX.Element {
 
   const canSend = text.trim().length > 0 && !postInquiry.isPending;
   const list = inquiries.data ?? [];
+  const nearLimit = text.length > MAX_LEN * COUNTER_WARN_RATIO;
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: c['bg-tertiary'] }}
+      className="flex-1 bg-bg-secondary"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppHeader title="문의하기" showBack />
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        {/* 리드 — 보내기 유도(답변 기대 X) */}
-        <AppText variant="heading" className="text-text-primary" style={{ lineHeight: 26, letterSpacing: -0.3 }}>
-          {'궁금한 점이나 의견을\n편하게 보내주세요'}
-        </AppText>
-        <AppText variant="caption" className="mt-sm text-text-tertiary" style={{ lineHeight: 19 }}>
-          버그·제안·불편한 점 무엇이든 좋아요. 확인 후 필요한 경우 답변을 남겨 드려요.
-        </AppText>
-
-        {/* 컴포즈(주인공) */}
-        <View
-          style={{
-            backgroundColor: c['bg-primary'],
-            borderRadius: RADIUS,
-            borderWidth: 1,
-            borderColor: c['border-secondary'],
-            padding: 16,
-            marginTop: 18,
-            marginBottom: 24,
-          }}>
-          <TextInput
-            className="text-text-primary"
-            style={{ minHeight: 92, fontSize: 15, lineHeight: 22, textAlignVertical: 'top', padding: 0 }}
-            placeholder="무엇이든 편하게 적어주세요."
-            placeholderTextColor={c['text-tertiary']}
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={MAX_LEN}
-          />
-          <View
-            className="mt-md flex-row items-center justify-between pt-md"
-            style={{ borderTopWidth: 1, borderTopColor: c['border-tertiary'] }}>
-            <AppText variant="caption" className="text-text-tertiary">
-              {text.length} / {MAX_LEN}
-            </AppText>
-            <PressableScale onPress={handleSend} disabled={!canSend}>
-              <View
-                className="flex-row items-center"
-                style={{
-                  gap: 6,
-                  backgroundColor: c.brand,
-                  borderRadius: 10,
-                  paddingHorizontal: 16,
-                  paddingVertical: 9,
-                  opacity: canSend ? 1 : 0.4,
-                }}>
-                <AppText variant="label" style={{ color: c['on-brand'], fontWeight: '700' }}>
-                  보내기
-                </AppText>
-                <Icon name="chevron-right" size={16} color={c['on-brand']} strokeWidth={2.4} />
-              </View>
-            </PressableScale>
-          </View>
+        contentContainerClassName="gap-2xl px-xl py-xl"
+        contentContainerStyle={{ paddingBottom: spacing['5xl'] }}
+        showsVerticalScrollIndicator={false}>
+        {/* 리드 — 보내기를 유도하되 답변을 약속하지 않는다. */}
+        <View className="gap-sm">
+          <AppText variant="title" className="text-text-primary">
+            {'궁금한 점이나 의견을\n편하게 보내주세요'}
+          </AppText>
+          <AppText variant="caption" className="text-text-secondary">
+            버그·제안·불편한 점 무엇이든 좋아요. 확인 후 필요한 경우 답변을 남겨 드려요.
+          </AppText>
         </View>
 
-        {/* 보낸 문의 — 있을 때만. 답변은 온 것만 카드 안에 붙음 */}
-        {list.length > 0 ? (
-          <>
-            <AppText
-              variant="micro"
-              className="mb-md ml-xs text-text-tertiary"
-              style={{ fontWeight: '700', letterSpacing: 0.5 }}>
+        {/* 입력 — 이 화면의 주 액션. 포커스되면 테두리를 브랜드색으로 올려 초점을 준다. */}
+        <View className="gap-lg">
+          <View
+            className="p-xl"
+            style={{
+              backgroundColor: c['bg-primary'],
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: focused ? c.brand : c['border-secondary'],
+            }}>
+            <TextInput
+              style={{
+                minHeight: 108,
+                fontSize: 15,
+                lineHeight: 22,
+                textAlignVertical: 'top',
+                padding: 0,
+                color: c['text-primary'],
+              }}
+              placeholder="무엇이든 편하게 적어주세요."
+              placeholderTextColor={c['text-tertiary']}
+              value={text}
+              onChangeText={setText}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              multiline
+              maxLength={MAX_LEN}
+            />
+            <View className="mt-md flex-row justify-end">
+              <AppText
+                variant="caption"
+                style={{ color: nearLimit ? c.danger : c['text-tertiary'] }}>
+                {text.length} / {MAX_LEN}
+              </AppText>
+            </View>
+          </View>
+
+          <Button
+            title="문의 보내기"
+            onPress={handleSend}
+            disabled={!canSend}
+            loading={postInquiry.isPending}
+          />
+        </View>
+
+        {/* 보낸 문의 — 있을 때만 */}
+        {list.length > 0 && (
+          <View>
+            <AppText variant="label" className="mb-md text-text-secondary">
               보낸 문의
             </AppText>
             {list.map((item) => (
               <SentCard key={item.id} inquiry={item} onDelete={() => confirmDelete(item.id)} />
             ))}
-          </>
-        ) : null}
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

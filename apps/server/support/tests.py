@@ -84,3 +84,76 @@ class InquiryAPITests(TestCase):
         self.assertEqual(anon.post('/api/support/inquiries/', {'content': 'q'}).status_code, 401)
         self.assertEqual(anon.get('/api/support/inquiries/unread-count/').status_code, 401)
         self.assertEqual(anon.patch('/api/support/inquiries/mark-all-read/').status_code, 401)
+
+
+class InquiryAdminAnswerTests(TestCase):
+    """Admin 답변 저장 시 알림 동작 — 최초 답변에만 알림/시각 기록(수정 시 재발송 금지)."""
+
+    def setUp(self):
+        from django.contrib.admin.sites import AdminSite
+        from support.admin import InquiryAdmin
+        self.admin = InquiryAdmin(Inquiry, AdminSite())
+        self.user = User.objects.create_user(google_uid='g-ans', email='ans@x.com')
+        self.inquiry = Inquiry.objects.create(user=self.user, content='질문')
+
+    def _save_answer(self, text, changed=('answer',)):
+        """admin.save_model 을 흉내 — form.changed_data 만 필요."""
+        from types import SimpleNamespace
+        from django.test import RequestFactory
+        self.inquiry.answer = text
+        # on_commit 알림이 실제로 실행되도록 콜백을 잡아 실행한다(TestCase 트랜잭션 대응).
+        with self.captureOnCommitCallbacks(execute=True):
+            self.admin.save_model(
+                RequestFactory().post('/'), self.inquiry,
+                SimpleNamespace(changed_data=list(changed)), change=True,
+            )
+        self.inquiry.refresh_from_db()
+
+    def _inquiry_notifs(self):
+        from notifications.models import Notification
+        return Notification.objects.filter(user=self.user, type=Notification.Type.INQUIRY)
+
+    def test_first_answer_sets_time_and_notifies(self):
+        self._save_answer('답변입니다')
+        self.assertIsNotNone(self.inquiry.answered_at)
+        self.assertEqual(self._inquiry_notifs().count(), 1)
+
+    def test_editing_answer_does_not_renotify_or_reset_time(self):
+        self._save_answer('답변입니다')
+        first_time = self.inquiry.answered_at
+        # 오타 정정 — 다시 저장
+        self._save_answer('답변입니다.')
+        self.assertEqual(self.inquiry.answered_at, first_time)  # 시각 유지
+        self.assertEqual(self._inquiry_notifs().count(), 1)     # 재발송 없음
+
+
+class BroadcastIdempotencyTests(TestCase):
+    def setUp(self):
+        self.users = [
+            User.objects.create_user(google_uid=f'g-bc-{i}', email=f'bc{i}@x.com')
+            for i in range(3)
+        ]
+
+    def test_same_key_does_not_resend(self):
+        from notifications.services import broadcast_system
+        from notifications.models import Notification
+
+        qs = User.objects.filter(google_uid__startswith='g-bc-')
+        first = broadcast_system(qs, '점검 안내', '내용', key='k1')
+        self.assertEqual(first, 3)
+        # 같은 key로 재실행 — 아무도 다시 안 받는다.
+        second = broadcast_system(qs, '점검 안내', '내용', key='k1')
+        self.assertEqual(second, 0)
+        self.assertEqual(
+            Notification.objects.filter(type=Notification.Type.SYSTEM).count(), 3,
+        )
+
+    def test_partial_audience_then_full_only_sends_new(self):
+        from notifications.services import broadcast_system
+        # 먼저 한 명에게만
+        broadcast_system(User.objects.filter(pk=self.users[0].pk), 'x', key='k2')
+        # 전체 재발송 — 이미 받은 1명은 건너뛰고 2명만
+        sent = broadcast_system(
+            User.objects.filter(google_uid__startswith='g-bc-'), 'x', key='k2',
+        )
+        self.assertEqual(sent, 2)

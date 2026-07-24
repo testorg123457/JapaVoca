@@ -8,7 +8,7 @@
 import type { AnimationObject } from 'lottie-react-native';
 
 import type { BoxGrade } from '../../api/hooks';
-import { mint, primitives } from '../../theme/tokens';
+import { primitives, yellow } from '../../theme/tokens';
 
 /**
  * 상자 뒤 배경 연출.
@@ -34,6 +34,11 @@ export type BoxBackdropSpec =
       vignette: number;
       /** 동심 헤어라인 링(반지름 px) */
       rings: { r: number; color: string; opacity: number }[];
+      /**
+       * 상자 아래 타원형 빛 웅덩이(스포트라이트가 바닥에 닿은 자리).
+       * 어두운 상자를 받쳐 실루엣이 배경에 묻히지 않게 한다.
+       */
+      floor?: { rx: number; ry: number; color: string; opacity: number };
     };
 
 export type BoxGradeStyle = {
@@ -53,19 +58,26 @@ export type BoxGradeStyle = {
 const wine = primitives.burgundy;
 const purple = primitives.purple[500];
 
-/** 버건디 화면 바닥 — 다른 등급보다 더 어둡게 깔아 와인빛만 뜨게 한다. */
-const WINE_BASE = '#07070A';
+/**
+ * 버건디 화면 바닥.
+ * ⚠️ 완전한 검정(#07070A)으로 두면 상자 몸통(near-black)이 배경에 묻혀 안 보인다.
+ *    와인기가 도는 딥 차콜로 올려, 상자 실루엣이 배경과 분리되게 한다.
+ */
+const WINE_BASE = '#171016';
 
 const STYLES: Record<BoxGrade, BoxGradeStyle> = {
   normal: {
     anim: require('../../assets/gift-box-animation.json'),
-    bg: mint[900],
+    // 상자 그림이 주황 리본 + 금색 하이라이트 + 나무 갈색이라 따뜻한 앰버로 받는다.
+    // (기존 민트 그린은 색 온도가 반대라 상자가 배경에서 떠 보였다.)
+    // 밝은 노랑은 눈이 부시고 캐시 옐로와 겹치므로, 어둡게 깔고 글로우로만 금빛을 낸다.
+    bg: '#2E2410',
     backdrop: {
       kind: 'glow',
-      outer: mint[700],
-      outerOpacity: 0.55,
-      inner: mint[500],
-      innerOpacity: 0.12,
+      outer: yellow[700],
+      outerOpacity: 0.5,
+      inner: yellow[400],
+      innerOpacity: 0.13,
     },
     badge: null,
   },
@@ -94,19 +106,24 @@ const STYLES: Record<BoxGrade, BoxGradeStyle> = {
     backdrop: {
       kind: 'radial',
       base: WINE_BASE,
-      // 중심의 와인빛이 넓게 번지다 바닥색으로 사라진다. 경계가 보이면 안 되므로
-      // 마지막 stop은 바닥색과 같은 색을 투명도 0으로 둔다.
+      // 상자 바로 뒤가 가장 밝고(스포트라이트) 바깥으로 갈수록 바닥색으로 사라진다.
+      // 검은 상자가 이 밝은 면 위에 얹혀 실루엣이 또렷해진다.
+      // 경계가 보이면 안 되므로 마지막 stop은 바닥색을 투명도 0으로 둔다.
       stops: [
-        { offset: 0, color: wine[500], opacity: 0.24 },
-        { offset: 0.34, color: wine[700], opacity: 0.3 },
-        { offset: 0.72, color: wine[900], opacity: 0.2 },
+        { offset: 0, color: wine[300], opacity: 0.34 },
+        { offset: 0.22, color: wine[500], opacity: 0.4 },
+        { offset: 0.55, color: wine[700], opacity: 0.32 },
+        { offset: 0.82, color: wine[900], opacity: 0.18 },
         { offset: 1, color: WINE_BASE, opacity: 0 },
       ],
-      vignette: 0.55,
+      // 가장자리를 더 눌러 중앙 스포트라이트와의 대비를 키운다.
+      vignette: 0.68,
       rings: [
-        { r: 144, color: wine[500], opacity: 0.34 },
-        { r: 186, color: wine[500], opacity: 0.14 },
+        { r: 132, color: wine[300], opacity: 0.4 },
+        { r: 176, color: wine[500], opacity: 0.24 },
+        { r: 226, color: wine[500], opacity: 0.1 },
       ],
+      floor: { rx: 150, ry: 34, color: wine[300], opacity: 0.3 },
     },
     badge: {
       label: '✦ 버건디 상자',

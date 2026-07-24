@@ -1045,7 +1045,7 @@ export function LockQuizView({
       {/* contentPanel 테마(사용자 사진 배경)는 문제+선택지를 한 판 위에 올려
           어떤 사진이 깔려도 내용 영역만은 평평하게 유지한다. */}
       <View style={theme.shape.contentPanel ? {
-        backgroundColor: withAlpha(c.bg, 0.66),
+        backgroundColor: withAlpha(c.bg, 0.82),
         borderRadius: 24,
         borderWidth: 1,
         borderColor: c.line,

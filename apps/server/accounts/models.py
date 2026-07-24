@@ -127,6 +127,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     study_kana_hiragana = models.BooleanField(default=False, help_text='가나 트랙: 히라가나 포함')
     study_kana_katakana = models.BooleanField(default=False, help_text='가나 트랙: 가타카나 포함')
 
+    # 추천인 코드 — 남에게 알려주는 내 코드. 최초 조회 시 생성한다(가입 시 미생성).
+    referral_code = models.CharField(
+        max_length=12, unique=True, null=True, blank=True,
+        help_text='내 추천 코드(남이 입력하는 값). 최초 조회 시 발급',
+    )
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 

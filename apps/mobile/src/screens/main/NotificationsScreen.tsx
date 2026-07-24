@@ -8,7 +8,7 @@
  * 둔다. 날짜를 행마다 반복하면 같은 글자가 계속 눈에 들어와 목록이 빽빽해 보인다.
  * 미읽음은 아이콘 색 + 점 두 가지로만 표시한다(행 전체를 칠하면 연속될 때 답답해짐).
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Pressable, SectionList, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -18,7 +18,6 @@ import { useThemeColors } from '../../theme/ThemeProvider';
 import { formatTime, groupByDate } from '../../lib/dateSections';
 import {
   useMarkAllRead,
-  useMarkRead,
   useNotifications,
   type NotificationItem,
   type NotificationType,
@@ -30,24 +29,28 @@ const TYPE_ICON: Record<NotificationType, IconName> = {
   streak: 'flame',
   box: 'gift',
   exchange: 'gift',
+  referral: 'user',
+  inquiry: 'mail',
   quiz_reminder: 'book',
   system: 'bell',
 };
 
 /** data.screen 이 이동 가능한 라우트일 때만 네비게이트. */
 const NAVIGABLE: (keyof MainStackParamList)[] = [
-  'Home', 'LockQuiz', 'Kana', 'Settings', 'Exchange', 'Ledger',
+  'Home', 'LockQuiz', 'Kana', 'Settings', 'Exchange', 'Ledger', 'AccountSettings', 'Inquiry',
 ];
 
 function Row({
   item,
+  unread,
   onPress,
 }: {
   item: NotificationItem;
+  unread: boolean;
   onPress: (item: NotificationItem) => void;
 }) {
   const c = useThemeColors();
-  const accent = item.is_read ? c['text-tertiary'] : c.brand;
+  const accent = unread ? c.brand : c['text-tertiary'];
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -75,7 +78,7 @@ function Row({
         <AppText variant="caption" className="text-text-tertiary">
           {formatTime(item.created_at)}
         </AppText>
-        {!item.is_read && (
+        {unread && (
           <View className="rounded-full" style={{ width: 7, height: 7, backgroundColor: c.brand }} />
         )}
       </View>
@@ -97,17 +100,36 @@ export default function NotificationsScreen(): React.JSX.Element {
   const c = useThemeColors();
   const navigation = useNavigation<MainStackScreenProps<'Notifications'>['navigation']>();
   const list = useNotifications();
-  const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
 
   const items = list.data?.pages.flatMap((p) => p.results) ?? [];
   const sections = groupByDate(items, (n) => n.created_at);
-  const hasUnread = items.some((n) => !n.is_read);
+
+  /**
+   * 화면에 들어오면 전부 읽음 처리한다(홈 뱃지를 비우는 게 목적).
+   *
+   * 다만 화면에서는 이번에 처음 본 알림에 계속 점을 남긴다 — 서버 상태를 따라
+   * 점이 눈앞에서 사라지면 "뭐가 새 알림이었는지" 알 수 없기 때문. 그래서 진입 시점의
+   * 미읽음 id를 스냅샷으로 잡아 두고 표시에만 쓴다.
+   */
+  const seenUnreadRef = useRef<Set<number> | null>(null);
+  if (seenUnreadRef.current === null && items.length > 0) {
+    seenUnreadRef.current = new Set(items.filter((n) => !n.is_read).map((n) => n.id));
+  }
+  const markAllReadMutate = markAllRead.mutate;
+  const loaded = items.length > 0;
+  useEffect(() => {
+    if ((seenUnreadRef.current?.size ?? 0) > 0) {
+      markAllReadMutate();
+    }
+    // 진입 1회만 — items가 늘어도(페이지네이션) 다시 부르지 않는다.
+  }, [loaded, markAllReadMutate]);
+
+  /** 이번 방문에서 '새 알림'으로 보여줄지. 서버가 읽음으로 바뀌어도 유지된다. */
+  const looksUnread = (id: number) => seenUnreadRef.current?.has(id) ?? false;
 
   function handlePress(item: NotificationItem) {
-    if (!item.is_read) {
-      markRead.mutate(item.id);
-    }
+    // 읽음 처리는 진입 시 일괄로 끝났으므로 여기선 이동만 담당한다.
     const screen = item.data?.screen;
     if (typeof screen === 'string' && (NAVIGABLE as string[]).includes(screen)) {
       navigation.navigate(screen as keyof MainStackParamList as never);
@@ -116,24 +138,14 @@ export default function NotificationsScreen(): React.JSX.Element {
 
   return (
     <View className="flex-1 bg-bg-secondary">
-      <AppHeader
-        title="알림"
-        showBack
-        right={
-          // 읽을 게 없으면 액션도 없앤다 — 눌러도 아무 일 없는 버튼을 두지 않는다.
-          hasUnread ? (
-            <Pressable onPress={() => markAllRead.mutate()} hitSlop={8} className="active:opacity-60">
-              <AppText variant="label" style={{ color: c['on-header'] }}>
-                모두 읽음
-              </AppText>
-            </Pressable>
-          ) : undefined
-        }
-      />
+      {/* 들어오면 자동으로 전부 읽음 처리되므로 '모두 읽음' 버튼은 없앴다. */}
+      <AppHeader title="알림" showBack />
       <SectionList
         sections={sections}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <Row item={item} onPress={handlePress} />}
+        renderItem={({ item }) => (
+          <Row item={item} unread={looksUnread(item.id)} onPress={handlePress} />
+        )}
         renderSectionHeader={({ section }) => <SectionLabel title={section.title} />}
         stickySectionHeadersEnabled
         showsVerticalScrollIndicator={false}

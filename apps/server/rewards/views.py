@@ -12,11 +12,14 @@ from .services import (
     AdNotVerifiedForBox,
     AlreadyCheckedIn,
     BoxAlreadyOpened,
+    ReferralError,
     check_in,
+    get_referral_status,
     get_today_attendance,
     get_today_daily,
     list_unopened_boxes,
     open_cash_box,
+    redeem_referral,
 )
 
 
@@ -185,3 +188,28 @@ class DailyTodayView(APIView):
 
     def get(self, request):
         return Response(get_today_daily(request.user))
+
+
+class ReferralView(APIView):
+    """GET  /api/rewards/referral/         — 내 코드 + 초대 실적
+    POST /api/rewards/referral/         — body {"code": "ABCD1234"} 추천인 입력
+
+    ⚠️ 캐시가 걸린 엔드포인트다. 검증·지급은 전부 서비스(redeem_referral)에서 하고
+       뷰는 오류를 사용자 문구로 옮기는 역할만 한다.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_referral_status(request.user))
+
+    def post(self, request):
+        try:
+            redeem_referral(
+                request.user,
+                request.data.get('code', ''),
+                device_id=request.data.get('device_id', ''),
+            )
+        except ReferralError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(get_referral_status(request.user))

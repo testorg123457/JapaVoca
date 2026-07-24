@@ -31,7 +31,9 @@ import {
 } from '../../components';
 import { fontFamily, hairline, spacing } from '../../theme/tokens';
 import { useColorSchemeMode, useThemeColors } from '../../theme/ThemeProvider';
-import { useBoxes, useDailyToday, useWallet } from '../../api/hooks';
+import { useBoxes, useDailyToday, useReferral, useWallet } from '../../api/hooks';
+import { markReferralPromptShown, wasReferralPromptShown } from '../../store/auth';
+import { ReferralPromptModal } from './components/ReferralPromptModal';
 import { useUnreadCount } from '../../api/notifications';
 import AttendanceCalendar from './components/AttendanceCalendar';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -76,6 +78,17 @@ export default function HomeScreen(): React.JSX.Element {
 
   const wallet = useWallet();
   const boxes = useBoxes();
+  const referral = useReferral();
+
+  // 첫 가입 직후 1회만 추천인 모달. 자격(기한·1회·게스트)은 서버가 판단한 can_redeem 을 따른다.
+  const [promptOpen, setPromptOpen] = useState(
+    () => !wasReferralPromptShown(),
+  );
+  const showReferralPrompt = promptOpen && (referral.data?.can_redeem ?? false);
+  const closeReferralPrompt = useCallback(() => {
+    markReferralPromptShown();
+    setPromptOpen(false);
+  }, []);
   const unread = useUnreadCount();
   const daily = useDailyToday();
 
@@ -109,6 +122,13 @@ export default function HomeScreen(): React.JSX.Element {
 
   return (
     <View className="flex-1 bg-bg-secondary">
+      {referral.data && showReferralPrompt && (
+        <ReferralPromptModal
+          visible
+          status={referral.data}
+          onClose={closeReferralPrompt}
+        />
+      )}
       <StatusBar
         barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={c['bg-secondary']}
@@ -135,18 +155,31 @@ export default function HomeScreen(): React.JSX.Element {
               hitSlop={10}
               className="active:opacity-60">
               <Icon name="bell" size={23} color={c['text-primary']} />
+              {/* 미읽음 뱃지.
+                  ⚠️ 캐시 옐로(amber)를 쓰지 않는다 — 옐로는 캐시/리워드 전용이라
+                     알림 개수에 쓰면 "캐시가 들어왔나?"로 읽힌다. 알림 수는 danger가 관례.
+                  헤더 배경색 링을 둘러 아이콘 위에 얹혀도 경계가 또렷하게. */}
               {(unread.data ?? 0) > 0 && (
                 <View
                   className="absolute items-center justify-center rounded-full"
                   style={{
-                    top: -5,
-                    right: -6,
-                    minWidth: 16,
-                    height: 16,
-                    paddingHorizontal: 3,
-                    backgroundColor: c.amber,
+                    top: -6,
+                    right: -8,
+                    minWidth: 18,
+                    height: 18,
+                    paddingHorizontal: 5,
+                    backgroundColor: c.danger,
+                    borderWidth: 2,
+                    borderColor: c['bg-secondary'],
                   }}>
-                  <AppText variant="micro" style={{ color: c['text-primary'], fontSize: 10 }}>
+                  <AppText
+                    variant="micro"
+                    style={{
+                      color: c['on-brand'],
+                      fontSize: 10,
+                      lineHeight: 12,
+                      fontWeight: '800',
+                    }}>
                     {(unread.data ?? 0) > 99 ? '99+' : unread.data}
                   </AppText>
                 </View>

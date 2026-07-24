@@ -16,6 +16,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 import { AppHeader, AppText, ListRow, ListSection } from '../../components';
+import { ReferralSection } from './components/ReferralSection';
 import { useThemeColors, useThemeMode } from '../../theme/ThemeProvider';
 import type { ThemeMode } from '../../store/theme';
 import { useMe } from '../../api/hooks';
@@ -140,6 +141,9 @@ export default function AccountSettingsScreen(): React.JSX.Element {
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="계정 설정" showBack />
       <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
+        {/* 친구 초대 — 계정 설정 최상단(캐시가 걸린 기능이라 눈에 띄게) */}
+        <ReferralSection />
+
         {/* 화면 표시 — 테마 모드 */}
         <ListSection title="화면 표시">
           <ThemeModeRow />

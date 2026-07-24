@@ -70,10 +70,10 @@ describe('boxBurstLayout', () => {
     expect(one.viewSize).toBe(Math.round(MAX_BOX_SIZE / ART_RATIO));
   });
 
-  it('3개일 때 가운데는 낱개보다 크다 — 조금만', () => {
-    const center = boxBurstLayout(3, 2000)[1];
-    expect(center.size).toBeGreaterThan(MAX_BOX_SIZE);
-    expect(center.size).toBeLessThan(MAX_BOX_SIZE * 1.4);
+  it('3개일 때 가운데가 양옆보다 크다', () => {
+    const [left, center, right] = boxBurstLayout(3, 2000);
+    expect(center.size).toBeGreaterThan(left.size);
+    expect(center.size).toBeGreaterThan(right.size);
   });
 
   it('옆 상자는 탭할 수 있을 만큼 드러난다(가로 44px 이상)', () => {

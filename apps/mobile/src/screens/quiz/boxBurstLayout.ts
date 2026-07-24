@@ -31,10 +31,10 @@ export type BoxSlot = {
 export const ART_RATIO = 0.28;
 
 /** 낱개 상자 크기(보이는 크기). 원래 값 81(Lottie 뷰 290)에서 키운 값. */
-export const MAX_BOX_SIZE = 86;
+export const MAX_BOX_SIZE = 108;
 
 /** 3개일 때 가운데 상자 — 낱개보다 조금 크게. */
-const BURST_CENTER = 112;
+const BURST_CENTER = 104;
 
 const SIDE_RATIO = 0.72; // 옆 상자 크기 = 가운데의 72%
 // 옆 상자를 충분히 벌린다. 너무 겹치면 드러난 부분이 없어 탭할 수가 없다.

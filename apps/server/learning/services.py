@@ -24,6 +24,10 @@ MAX_BOXES_PER_DAY = 50      # ⚠️ 임시 테스트값 50 — 원래 정한 �
 
 SET_SIZE = 10
 SET_COOLDOWN = timedelta(seconds=30)
+# 학습 하루 경계(리셋 시각). 이 시각 이전에 시작한 미완료 세트는 재개하지 않고 폐기한다.
+# 세트는 시작 시점에 10문제를 뽑아 두므로, 하루가 지나면 SRS 기한이 바뀐 낡은 문제가 된다.
+# 자정이 아니라 사람 적은 새벽 3시로 끊어 리셋 순간에 학습이 잘리는 사용자를 줄인다.
+SET_RESET_HOUR = 3
 
 QUIZ_MILESTONE_INTERVAL = 10  # 당일 정답 N개마다(리셋: 매일 0) 캐시 직접 지급. 세트/상자와 무관.
 QUIZ_MILESTONE_BONUS = 10
@@ -32,8 +36,8 @@ QUIZ_MILESTONE_MAX = 20  # 하루 최대 여기까지만(10, 20). 그 이후로�
 # 정답 시 상자 등급 가중치 (⚠️ 임시 테스트값 50/50 — 배포 전 90/10 원복)
 _BOX_GRADE_WEIGHTS = [
     (CashBox.Grade.NORMAL, 30),
-    (CashBox.Grade.PURPLE, 30),
-    (CashBox.Grade.BURGUNDY, 40),  # ⚠️ 임시 테스트값 40% — 배포 전 반드시 낮출 것
+    (CashBox.Grade.PURPLE, 40),
+    (CashBox.Grade.BURGUNDY, 30),  # ⚠️ 임시 테스트값 30% — 배포 전 반드시 낮출 것
 ]
 
 # 묶음 상자 — 확률로 보상 개수를 늘린다. 인벤토리·광고 횟수는 1개로 세고 캐시만 여러 번 뽑는다.
@@ -428,6 +432,15 @@ def abandon_quiz_set(user):
     ).update(abandoned_at=timezone.now())
 
 
+def _last_reset_cutoff(now=None):
+    """직전 리셋 경계(오늘 또는 어제 새벽 SET_RESET_HOUR시). 이 시각 이전 세트는 낡음."""
+    now = timezone.localtime(now or timezone.now())
+    cutoff = now.replace(hour=SET_RESET_HOUR, minute=0, second=0, microsecond=0)
+    if now < cutoff:  # 리셋 시각 전(예: 새벽 1시)이면 어제 경계가 기준
+        cutoff -= timedelta(days=1)
+    return cutoff
+
+
 def build_quiz_set(user):
     """현재 활성 세트 반환 or 신규 생성. 쿨다운 중이면 questions=[] + cooldown_until."""
     # 1. 미완료 활성 세트
@@ -437,6 +450,12 @@ def build_quiz_set(user):
         .order_by('-started_at')
         .first()
     )
+    if active:
+        # 리셋 경계 이전에 시작한 세트는 낡은 문제 세트다 — 폐기하고 아래에서 새로 만든다.
+        if active.started_at < _last_reset_cutoff():
+            active.abandoned_at = timezone.now()
+            active.save(update_fields=['abandoned_at'])
+            active = None
     if active:
         # 모든 문항이 이미 answered됐지만 completed_at이 없는 좀비 세트 처리
         all_answered = active.items.exists() and not active.items.filter(answered=False).exists()
@@ -527,19 +546,26 @@ def build_quiz_set(user):
 
 # ── 채점 ─────────────────────────────────────────────────────────────────────────
 
+# 정답 사다리 초반 간격(일). repetitions 0→3일, 1→10일, 2회차부터는 ease 배율.
+SRS_FIRST_INTERVAL = 3
+SRS_SECOND_INTERVAL = 10
+# 오답 시 다시 나오기까지(일).
+SRS_LAPSE_INTERVAL = 3
+
+
 def _apply_sm2(state, is_correct):
     quality = 5 if is_correct else 2
     if is_correct:
         if state.repetitions == 0:
-            state.interval_days = 1
+            state.interval_days = SRS_FIRST_INTERVAL
         elif state.repetitions == 1:
-            state.interval_days = 6
+            state.interval_days = SRS_SECOND_INTERVAL
         else:
             state.interval_days = max(1, round(state.interval_days * state.ease))
         state.repetitions += 1
     else:
         state.repetitions = 0
-        state.interval_days = 1
+        state.interval_days = SRS_LAPSE_INTERVAL
     state.ease = max(1.3, state.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)))
     state.last_result = (
         SrsState.LastResult.CORRECT if is_correct else SrsState.LastResult.WRONG

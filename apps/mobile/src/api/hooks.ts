@@ -13,6 +13,7 @@ import {
 import type { AxiosError } from 'axios';
 
 import apiClient from './client';
+import { getDeviceId } from '../lib/deviceId';
 import { isLoggedIn } from '../store/auth';
 import { deleteInquiry, getInquiries, getUnreadCount, markAllRead, postInquiry, type Inquiry } from './support';
 
@@ -110,6 +111,8 @@ export type LedgerReason =
   | 'attendance'
   | 'streak'
   | 'ad_bonus'
+  | 'referral_inviter'
+  | 'referral_invitee'
   | 'exchange'
   | 'exchange_refund'
   | 'admin_adjust';
@@ -315,6 +318,61 @@ export function useAbandonQuizSet() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz', 'set'] });
+    },
+  });
+}
+
+
+// ── 추천인 ──────────────────────────────────────────────────────────────────────
+
+export type ReferralStatus = {
+  /** 내 추천 코드. 게스트는 null. */
+  code: string | null;
+  is_guest: boolean;
+  invited_count: number;
+  /** 다음 1명을 초대하면 받을 캐시. 0이면 더 못 받음(강조 해제 신호). */
+  next_reward: number;
+  /** 초대로 지금까지 실제 받은 캐시 합. */
+  earned_cash: number;
+  /** 보상을 받을 수 있는 총 초대 인원. */
+  max_invites: number;
+  /** 코드를 입력하는 쪽이 받는 캐시(평생 1회, 고정). */
+  invitee_reward: number;
+  /** 내가 이미 추천인을 입력했는지(평생 1회). */
+  used_code: boolean;
+  /** 지금 추천인 코드를 입력할 수 있는지(기한·1회·게스트 반영). 서버 판단을 그대로 쓴다. */
+  can_redeem: boolean;
+  /** 입력 기한(ISO). 가입 후 N일. */
+  redeem_deadline: string;
+};
+
+export function useReferral() {
+  return useQuery({
+    queryKey: ['referral'],
+    queryFn: async () =>
+      (await apiClient.get<ReferralStatus>('/api/rewards/referral/')).data,
+  });
+}
+
+/**
+ * 추천인 코드 입력. 성공하면 양쪽에 캐시가 적립되므로 지갑·내역도 갱신한다.
+ * 기기 식별자를 함께 보낸다 — 서버가 기기당 1회로 제한한다(부계정 파밍 방어).
+ */
+export function useRedeemReferral() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const deviceId = await getDeviceId();
+      const res = await apiClient.post<ReferralStatus>('/api/rewards/referral/', {
+        code,
+        device_id: deviceId,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referral'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['ledger'] });
     },
   });
 }

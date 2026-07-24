@@ -31,9 +31,9 @@ const BURST_STAGGER_MS = 130;
  * ⚠️ 조건부로 렌더하면 보상이 뜨는 순간 중앙 정렬이 다시 계산돼 재생 중인 상자가
  *    위로 점프한다(끊겨 보이는 원인). 자리를 미리 잡아 레이아웃을 고정한다.
  */
-const REWARD_SLOT_H = 172;
+const REWARD_SLOT_H = 80;
 /** 상자 무대와 보상 문구 사이 간격. 파티클이 상자 아래로 떨어지므로 넉넉히 둔다. */
-const REWARD_GAP = 96;
+const REWARD_GAP = 150;
 
 export default function BoxOpenScreen({
   route,
@@ -102,7 +102,8 @@ export default function BoxOpenScreen({
   }, []);
 
   const isLast = currentIndex >= boxes.length - 1;
-  const remaining = boxes.length - currentIndex;
+  // 지금 보고 있는 상자는 빼고 센다 — 마지막 상자에서 "1개 남음"으로 뜨던 문제.
+  const remaining = boxes.length - currentIndex - 1;
 
   // 등급은 인벤토리에서 넘어온 box.grade로 개봉 전(밀봉)부터 공개.
   // 배경·glow·뱃지는 등급별 설정 한 곳에서(boxGradeStyle).
@@ -256,18 +257,21 @@ export default function BoxOpenScreen({
           <Icon name="close" size={18} color="rgba(255,255,255,0.65)" />
         </Pressable>
 
-        <View style={{
-          borderRadius: 20,
-          paddingHorizontal: 12,
-          paddingVertical: 5,
-          backgroundColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.1)',
-        }}>
-          <AppText variant="label" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {remaining}개 남음
-          </AppText>
-        </View>
+        {/* 남은 게 없으면 뱃지 자체를 숨긴다("0개 남음"은 표시할 이유가 없다). */}
+        {remaining > 0 && (
+          <View style={{
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.1)',
+          }}>
+            <AppText variant="label" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              {remaining}개 남음
+            </AppText>
+          </View>
+        )}
       </View>
 
       {/* 중앙 */}
@@ -280,10 +284,12 @@ export default function BoxOpenScreen({
         )}
 
         {/* 상자 무대.
-            ⚠️ zIndex를 쓰지 않는다 — 안드로이드에서 zIndex는 그리는 순서만 바꾸고 터치
-               판정과 어긋나서, 오른쪽 상자를 눌렀는데 가운데가 열리는 문제가 났다.
-               대신 뒤에 있는 상자부터(z 오름차순) 렌더링한다. 나중에 그린 자식이 위에
-               오고 터치도 먼저 받으므로 그림 순서와 터치 순서가 자동으로 일치한다. */}
+            ⚠️ 터치 영역은 '보이는 상자' rect로 둔다. Lottie(viewSize)는 rect보다 훨씬 크지만
+               `overflow: visible`로 rect 밖까지 그려질 뿐, 터치는 rect 안에서만 받는다.
+               (rect들은 서로 안 겹치므로 옆 상자를 눌러도 그 상자가 열린다. viewSize를 터치
+                영역으로 쓰면 가운데 상자가 화면 폭을 다 덮어 옆 상자 탭을 삼켜 버린다.)
+            ⚠️ zIndex는 쓰지 않는다(안드로이드 터치 판정과 어긋남) — 뒤 상자부터 렌더링해
+               가운데가 위에 그려지게만 한다. */}
         <View style={{ height: stageH, width: screenW }}>
           {[...slots.keys()]
             .sort((a, b) => slots[a].z - slots[b].z)
@@ -297,7 +303,6 @@ export default function BoxOpenScreen({
                   pressedScale={0.94}
                   accessibilityRole="button"
                   accessibilityLabel="상자 열기"
-                  // 보이는 상자 사각형이 곧 누르는 영역. 그 안에서 Lottie를 크게 그린다.
                   style={{
                     position: 'absolute',
                     left: rect.x,
@@ -307,6 +312,7 @@ export default function BoxOpenScreen({
                     opacity: slot.opacity,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    overflow: 'visible',
                   }}
                 >
                   <LottieView
@@ -318,35 +324,43 @@ export default function BoxOpenScreen({
                     speed={1.6}
                     // 갱신은 한 번만 흘리면 되므로 가운데 상자 하나에만 건다.
                     onAnimationFinish={slot.z === 2 ? flushRefresh : undefined}
-                    style={{ width: slot.viewSize, height: slot.viewSize, position: 'absolute' }}
+                    style={{ width: slot.viewSize, height: slot.viewSize }}
                   />
-
-                  {/* 상자별 획득 캐시 — 어느 상자에서 얼마가 나왔는지 붙여 보여준다. */}
-                  {openedSlots.includes(i) && rewards[i] !== undefined && (
-                    <Animated.View
-                      entering={FadeInUp.duration(300).delay(CHIP_DELAY_MS)}
-                      pointerEvents="none"
-                      style={{
-                        position: 'absolute',
-                        bottom: -20,
-                        borderRadius: 999,
-                        paddingHorizontal: 10,
-                        paddingVertical: 3,
-                        backgroundColor: 'rgba(0,0,0,0.55)',
-                        borderWidth: 1,
-                        borderColor: `${yellow[400]}66`,
-                      }}
-                    >
-                      <AppText
-                        variant="caption"
-                        style={{ color: yellow[400], fontWeight: '800' }}
-                      >
-                        +{rewards[i].toLocaleString()}
-                      </AppText>
-                    </Animated.View>
-                  )}
                 </PressableScale>
               );
+            })}
+
+          {/* 획득 캐시 칩 — 터치 영역과 분리해 '보이는 상자'(rect) 아래에 따로 얹는다.
+              (터치 영역은 viewSize라 커서, 칩을 그 안에 두면 위치가 어긋난다.) */}
+          {slots.map((slot, i) => {
+            if (!openedSlots.includes(i) || rewards[i] === undefined) { return null; }
+            const rect = slotRect(slot, screenW, stageH);
+            return (
+              <Animated.View
+                key={`chip-${currentIndex}-${i}`}
+                entering={FadeInUp.duration(300).delay(CHIP_DELAY_MS)}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: rect.x,
+                  width: rect.w,
+                  top: rect.y + rect.h + 110,
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 3,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
+                  borderWidth: 1,
+                  borderColor: `${yellow[400]}66`,
+                }}>
+                  <AppText variant="caption" style={{ color: yellow[400], fontWeight: '800' }}>
+                    +{rewards[i].toLocaleString()}
+                  </AppText>
+                </View>
+              </Animated.View>);
             })}
         </View>
 
@@ -470,7 +484,7 @@ export default function BoxOpenScreen({
       </View>
 
       {/* 하단 버튼 */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 16, paddingTop: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 30, paddingTop: 8 }}>
         {!allOpened ? (
           // 버튼은 남은 상자를 전부 연다. ⚠️ disabled를 쓰지 않는다 — Button의 disabled
           // 면색(bg-bg-tertiary)이 라이트 토큰이라 어두운 개봉 화면에서 흰색으로 번쩍인다.

@@ -17,6 +17,8 @@ class Inquiry(models.Model):
     class Meta:
         db_table = 'tbl_support_inquiry'
         ordering = ['-created_at']
+        verbose_name = '문의'
+        verbose_name_plural = '문의'
 
     def __str__(self):
         return f'Inquiry#{self.pk} by {self.user_id}'

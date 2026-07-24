@@ -15,6 +15,8 @@ class Notification(models.Model):
         STREAK = 'streak', '연속출석'
         BOX = 'box', '상자'
         EXCHANGE = 'exchange', '교환'
+        REFERRAL = 'referral', '친구 초대'
+        INQUIRY = 'inquiry', '문의 답변'
         QUIZ_REMINDER = 'quiz_reminder', '학습 리마인더'
         SYSTEM = 'system', '시스템'
 

@@ -17,6 +17,8 @@ export type NotificationType =
   | 'streak'
   | 'box'
   | 'exchange'
+  | 'referral'
+  | 'inquiry'
   | 'quiz_reminder'
   | 'system';
 

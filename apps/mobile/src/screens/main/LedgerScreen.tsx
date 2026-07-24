@@ -22,6 +22,8 @@ const REASON_LABEL: Record<LedgerReason, string> = {
   attendance: '출석 보너스',
   streak: '연속 출석 보너스',
   ad_bonus: '광고 보너스',
+  referral_inviter: '친구 초대 보상',
+  referral_invitee: '추천인 입력 보상',
   exchange: '기프티콘 교환',
   exchange_refund: '기프티콘 교환 환불',
   admin_adjust: '관리자 조정',
