@@ -1,0 +1,41 @@
+name: Claude Implement
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: github.event.label.name == 'claude'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--max-turns 30'
+          prompt: |
+            You are implementing a GitHub issue for the JapaVoca monorepo.
+            Read and follow the repository CLAUDE.md rules strictly (cash-ledger
+            integrity, design tokens, no hardcoded colors, etc).
+
+            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+
+            ${{ github.event.issue.body }}
+
+            Steps:
+            1. Create a new branch named claude/issue-${{ github.event.issue.number }}.
+            2. Implement the change with tests where the surrounding code has them.
+            3. Open a pull request targeting the default branch.
+            4. The PR body MUST include a "## 구현 요약" section describing:
+               - 접근(approach) taken and why
+               - 핵심 설계 결정(key design decisions)
+               - 건드린 파일/구조(files & structure touched)
+               - 트레이드오프(tradeoffs) or anything the reviewer should judge
+            Keep the diff focused on the issue. Do not change unrelated code.

@@ -9,7 +9,7 @@
  * 숫자가 안 바뀌면 → 제스처 콜백 자체가 안 도는 것(RNGH/worklets 통합 문제).
  */
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import {
   Gesture,
   GestureDetector,

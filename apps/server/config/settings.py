@@ -121,6 +121,8 @@ _db_url = os.environ.get('DATABASE_URL', '')
 if not _db_url:
     raise ImproperlyConfigured('DATABASE_URL 환경변수가 필요합니다 (.env 참고).')
 _u = urllib.parse.urlparse(_db_url)
+# 기본은 require(프로덕션/Supabase). CI의 평문 Postgres는 DB_SSLMODE=disable로.
+_db_sslmode = os.environ.get('DB_SSLMODE', 'require')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -133,7 +135,7 @@ DATABASES = {
         # cursor를 지원하지 않으므로 둘 다 끈다.
         'CONN_MAX_AGE': 0,
         'DISABLE_SERVER_SIDE_CURSORS': True,
-        'OPTIONS': {'sslmode': 'require'},
+        'OPTIONS': {'sslmode': _db_sslmode},
     }
 }
 

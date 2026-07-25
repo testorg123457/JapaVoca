@@ -68,6 +68,8 @@ export function ConfirmSheet({
     } else if (mounted) {
       animateOut();
     }
+    // visible 전환에만 반응하는 의도된 effect (animateOut/mounted 의존 제외)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   // mount된 직후 열기 애니메이션 실행
@@ -75,6 +77,8 @@ export function ConfirmSheet({
     if (mounted && visible) {
       animateIn();
     }
+    // mount 직후 1회만 실행하는 의도된 effect (animateIn/visible 의존 제외)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
   // 뒤로가기 버튼 처리
