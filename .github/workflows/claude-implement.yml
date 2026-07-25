@@ -20,23 +20,21 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          base_branch: main
           claude_args: '--max-turns 30'
           prompt: |
-            You are implementing a GitHub issue for the JapaVoca monorepo.
-            Read and follow the repository CLAUDE.md rules strictly (cash-ledger
-            integrity, design tokens, no hardcoded colors, etc).
+            Implement the change requested in GitHub issue #${{ github.event.issue.number }}
+            for the JapaVoca monorepo, following the repository CLAUDE.md rules strictly
+            (cash-ledger integrity, design tokens / no hardcoded colors, etc).
 
-            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+            Title: ${{ github.event.issue.title }}
 
             ${{ github.event.issue.body }}
 
-            Steps:
-            1. Create a new branch named claude/issue-${{ github.event.issue.number }}.
-            2. Implement the change with tests where the surrounding code has them.
-            3. Open a pull request targeting the default branch.
-            4. The PR body MUST include a "## 구현 요약" section describing:
-               - 접근(approach) taken and why
-               - 핵심 설계 결정(key design decisions)
-               - 건드린 파일/구조(files & structure touched)
-               - 트레이드오프(tradeoffs) or anything the reviewer should judge
-            Keep the diff focused on the issue. Do not change unrelated code.
+            Make the minimal, focused file changes needed to resolve the issue, and add
+            tests where the surrounding code already has them. Do not change unrelated code.
+            Do NOT run git or gh commands yourself — just edit the files; the branch, commit,
+            and pull request are created automatically.
+
+            In the pull request description, include a "## 구현 요약" section covering:
+            접근(approach) / 핵심 설계 결정 / 건드린 파일·구조 / 트레이드오프.
