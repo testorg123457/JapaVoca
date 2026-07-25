@@ -1,33 +1,39 @@
 /**
- * JapaneseTranslateScreen — 일본어 번역 진입.
+ * JapaneseTranslateScreen — 일본어 번역 진입(촬영 화면).
  *
  * 카메라로 촬영하거나 사진에서 골라, 서버(AI)로 OCR+번역한다.
- * 카메라 → 결과로 바로, 사진 → 범위 선택(크롭) → 결과.
+ * 카메라 → 크롭 → 결과, 사진 → 크롭 → 결과.
  *
- * 좌정렬 인트로 + 두 진입(주=촬영 elevated 타일 / 보조=사진 헤어라인 행).
- * 민트는 주액션(카메라 칩)에만.
+ * 디자인: 파파고·구글렌즈형 촬영 UI. 어두운 전체화면 + AF 코너로 감싼 뷰파인더 +
+ * 하단 컨트롤(가운데 큰 원형 셔터 / 왼쪽 갤러리). 카메라 화면이라 라이트/다크
+ * 무관하게 다크로 커밋한다(모든 카메라 앱의 관습). 색은 tokens 프리미티브만.
+ * ⚠️ 한자를 장식으로 깔지 말 것(촌스러움). docs/디자인-시스템-원칙.md 참조.
  */
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { StatusBar, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { AppHeader, AppText, Icon, PressableScale, useToast } from '../../components';
-import type { IconName } from '../../components/Icon';
-import { hairline, shadowStyle } from '../../theme/tokens';
-import { useThemeColors } from '../../theme/ThemeProvider';
+import { AppText, Icon, PressableScale, useToast } from '../../components';
+import { gray, mint, radius } from '../../theme/tokens';
 import { pickFromCamera, pickFromGallery } from '../../lib/translate/imageSource';
+import type { PickedImage } from '../../lib/translate/imageSource';
 import { classifyTranslateError, errorMessage } from '../../lib/translate/errors';
 import type { MainStackScreenProps } from '../../navigation/types';
 
+const BG = gray[900]; // 카메라 다크 그라운드
+
 export default function JapaneseTranslateScreen(): React.JSX.Element {
-  const c = useThemeColors();
   const navigation =
     useNavigation<MainStackScreenProps<'JapaneseTranslate'>['navigation']>();
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
 
-  async function run(pick: () => Promise<{ uri: string; width: number; height: number } | null>,
-                     onPicked: (img: { uri: string; width: number; height: number }) => void) {
+  async function run(
+    pick: () => Promise<PickedImage | null>,
+    onPicked: (img: PickedImage) => void,
+  ) {
     if (busy) {
       return;
     }
@@ -51,77 +57,114 @@ export default function JapaneseTranslateScreen(): React.JSX.Element {
     run(pickFromGallery, (img) => navigation.navigate('TranslateCrop', { image: img }));
 
   return (
-    <View className="flex-1 bg-bg-secondary">
-      <AppHeader title="일본어 번역" showBack />
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor={BG} />
 
-      <View className="px-xl" style={{ paddingTop: 12 }}>
-        {/* 인트로 — 좌정렬 */}
-        <AppText variant="display" className="text-text-primary">
-          일본어를 비춰 보세요
-        </AppText>
-        <AppText variant="body" className="text-text-secondary" style={{ marginTop: 8, lineHeight: 22 }}>
-          간판·메뉴·책 속 일본어를 찍으면{'\n'}바로 뜻을 알려드려요.
-        </AppText>
-
-        {/* 주액션 — 카메라(강조 타일) */}
+      {/* 상단 바 */}
+      <View className="flex-row items-center" style={{ height: 52, paddingHorizontal: 8 }}>
         <PressableScale
-          onPress={onCamera}
-          disabled={busy}
-          pressedScale={0.98}
-          className="mt-2xl flex-row items-center rounded-lg bg-bg-primary"
-          style={[{ gap: 14, padding: 16, opacity: busy ? 0.6 : 1 }, shadowStyle('sm')]}>
-          <ActionChip icon="camera" tone="brand" c={c} />
-          <View className="flex-1">
-            <AppText variant="subheading" className="text-text-primary">
-              카메라로 촬영
-            </AppText>
-            <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 2 }}>
-              지금 바로 찍어서 번역
-            </AppText>
-          </View>
-          <Icon name="chevron-right" size={20} color={c['text-tertiary']} />
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로"
+          className="items-center justify-center"
+          style={{ width: 44, height: 44 }}>
+          <Icon name="arrow-left" size={24} color={gray[0]} />
         </PressableScale>
+        <AppText variant="subheading" style={{ color: gray[0], marginLeft: 2 }}>
+          일본어 번역
+        </AppText>
+      </View>
 
-        {/* 보조액션 — 사진에서 선택(헤어라인 행) */}
+      {/* 헤드라인 */}
+      <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+        <AppText variant="display" style={{ color: gray[0] }}>
+          카메라를 대면{'\n'}바로 번역돼요
+        </AppText>
+        <AppText variant="body" style={{ color: gray[400], marginTop: 8, lineHeight: 22 }}>
+          간판·메뉴·책 속 일본어를 프레임에 담아 보세요.
+        </AppText>
+      </View>
+
+      {/* 뷰파인더 — AF 코너로 감싼 프레임 */}
+      <View style={{ flex: 1, marginHorizontal: 24, marginTop: 22, marginBottom: 8 }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Corner pos="tl" /><Corner pos="tr" />
+          <Corner pos="bl" /><Corner pos="br" />
+          <Icon name="camera" size={46} color={gray[600]} />
+        </View>
+      </View>
+
+      {/* 촬영 후 범위 조절 안내 */}
+      <AppText
+        variant="caption"
+        style={{ color: gray[500], textAlign: 'center', paddingHorizontal: 24 }}>
+        찍은 뒤 번역할 부분만 골라낼 수 있어요.
+      </AppText>
+
+      {/* 하단 컨트롤 — 갤러리 · 셔터 · (대칭용 여백) */}
+      <View
+        className="flex-row items-center justify-between"
+        style={{ paddingHorizontal: 30, paddingTop: 14, paddingBottom: insets.bottom > 0 ? 10 : 22 }}>
+        {/* 갤러리 */}
         <PressableScale
           onPress={onGallery}
           disabled={busy}
-          pressedScale={0.98}
-          className="mt-md flex-row items-center rounded-lg bg-bg-primary"
-          style={{ gap: 14, padding: 16, borderWidth: hairline, borderColor: c['border-secondary'], opacity: busy ? 0.6 : 1 }}>
-          <ActionChip icon="image" tone="neutral" c={c} />
-          <View className="flex-1">
-            <AppText variant="subheading" className="text-text-primary">
-              사진에서 선택
-            </AppText>
-            <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 2 }}>
-              갤러리에서 번역할 부분 고르기
-            </AppText>
-          </View>
-          <Icon name="chevron-right" size={20} color={c['text-tertiary']} />
+          pressedScale={0.94}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="갤러리에서 선택"
+          className="items-center justify-center"
+          style={{
+            width: 62,
+            height: 62,
+            borderRadius: radius.lg,
+            backgroundColor: gray[800],
+            borderWidth: 1,
+            borderColor: gray[700],
+            opacity: busy ? 0.5 : 1,
+          }}>
+          <Icon name="image" size={32} color={gray[300]} />
         </PressableScale>
+
+        {/* 셔터 */}
+        <PressableScale
+          onPress={onCamera}
+          disabled={busy}
+          pressedScale={0.92}
+          accessibilityRole="button"
+          accessibilityLabel="카메라로 촬영"
+          className="items-center justify-center"
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 999,
+            borderWidth: 4,
+            borderColor: gray[0],
+            opacity: busy ? 0.6 : 1,
+          }}>
+          <View style={{ width: 60, height: 60, borderRadius: 999, backgroundColor: mint[500] }} />
+        </PressableScale>
+
+        {/* 대칭용 여백(셔터 가운데 정렬) */}
+        <View style={{ width: 62, height: 62 }} />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-/** 진입 타일 좌측 원형 아이콘 칩. brand=주액션, neutral=보조. */
-function ActionChip({
-  icon,
-  tone,
-  c,
-}: {
-  icon: IconName;
-  tone: 'brand' | 'neutral';
-  c: ReturnType<typeof useThemeColors>;
-}): React.JSX.Element {
-  const bg = tone === 'brand' ? c['brand-subtle'] : c['bg-tertiary'];
-  const fg = tone === 'brand' ? c.brand : c['text-secondary'];
-  return (
-    <View
-      className="items-center justify-center rounded-full"
-      style={{ width: 48, height: 48, backgroundColor: bg }}>
-      <Icon name={icon} size={24} color={fg} />
-    </View>
-  );
+/** AF 코너 브라켓 — 뷰파인더 네 귀퉁이. mint 색. */
+function Corner({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }): React.JSX.Element {
+  const base = {
+    position: 'absolute' as const,
+    width: 30,
+    height: 30,
+    borderColor: mint[500],
+  };
+  const map = {
+    tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 12 },
+    tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 12 },
+    bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 12 },
+    br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 12 },
+  };
+  return <View style={[base, map[pos]]} />;
 }
