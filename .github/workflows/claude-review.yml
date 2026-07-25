@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +38,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # PR을 claude 봇이 만들므로, 봇이 트리거한 이벤트에서도 리뷰가 돌게 허용
           allowed_bots: '*'
+          show_full_output: true
           claude_args: '--max-turns 20 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
           prompt: |
             Mechanical code review for PR #${{ github.event.pull_request.number }}.
