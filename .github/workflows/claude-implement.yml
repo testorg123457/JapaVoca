@@ -34,8 +34,8 @@ jobs:
 
             Make the minimal, focused file changes needed to resolve the issue, and add
             tests where the surrounding code already has them. Do not change unrelated code.
-            Do NOT run git or gh commands yourself — just edit the files; the branch, commit,
-            and pull request are created automatically.
 
-            In the pull request description, include a "## 구현 요약" section covering:
+            Then commit your changes to a new branch named claude/issue-${{ github.event.issue.number }}
+            and open a pull request targeting the main branch. The pull request description
+            MUST include a "## 구현 요약" section covering:
             접근(approach) / 핵심 설계 결정 / 건드린 파일·구조 / 트레이드오프.
