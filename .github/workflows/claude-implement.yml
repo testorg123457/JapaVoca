@@ -22,20 +22,39 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           base_branch: main
           show_full_output: true
-          claude_args: '--max-turns 30 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
+          claude_args: '--model opus --max-turns 30 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
           prompt: |
-            Implement the change requested in GitHub issue #${{ github.event.issue.number }}
-            for the JapaVoca monorepo, following the repository CLAUDE.md rules strictly
-            (cash-ledger integrity, design tokens / no hardcoded colors, etc).
+            JapaVoca 모노레포의 GitHub 이슈 #${{ github.event.issue.number }}를 처리한다.
+            저장소 CLAUDE.md 규칙(캐시 원장 정합성 등)을 반드시 따른다.
 
-            Title: ${{ github.event.issue.title }}
+            제목: ${{ github.event.issue.title }}
 
             ${{ github.event.issue.body }}
 
-            Make the minimal, focused file changes needed to resolve the issue, and add
-            tests where the surrounding code already has them. Do not change unrelated code.
+            [1] 먼저 판단한다. 관련 코드를 실제로 열어보고 이 이슈에 변경이 필요한지 확인한다.
+                이미 해결됐거나·재현되지 않거나·문제가 아니라고 판단되면 PR을 만들지 말고,
+                이슈(#${{ github.event.issue.number }})에 "변경 불필요 + 근거(확인한 파일·위치)"를
+                코멘트로 남기고 종료한다. 억지로 바꾸지 않는다.
 
-            Then commit your changes to a new branch named claude/issue-${{ github.event.issue.number }}
-            and open a pull request targeting the main branch. The pull request description
-            MUST include a "## 구현 요약" section covering:
-            접근(approach) / 핵심 설계 결정 / 건드린 파일·구조 / 트레이드오프.
+            [2] 변경이 필요하면, 이슈가 단순하지 않은 경우 구현 전에 관련 코드·데이터 흐름·
+                영향 범위를 먼저 분석한다(어디를 건드리면 무엇이 영향받는지). 그다음 구현한다.
+
+            [3] 구현 원칙:
+                - 기존 코드의 패턴·네이밍·구조를 따르고, 주변 코드처럼 읽히게 쓴다.
+                - 디자인(UI) 변경 시 docs/디자인-시스템-원칙.md와 apps/mobile/src/theme/tokens.ts를
+                  먼저 읽고, 이미 있는 디자인 시스템·토큰을 사용한다. 색·간격 하드코딩 금지.
+                - 이슈에 필요한 최소·집중 변경만. 관련 없는 코드는 건드리지 않는다.
+                - 변경 영역에 테스트가 있으면 테스트도 추가/갱신한다.
+
+            [4] 품질: 단순하지 않으면 구현 전에 접근을 짧게 계획하고 엣지케이스·실패 경로를
+                함께 고려한다(특히 캐시·동시성·서버 검증. 해피패스만 짜지 않는다).
+                과하게 추상화하지 않는다(YAGNI). 새 의존성은 꼭 필요할 때만, 이유를 PR에 적는다.
+                PR을 열기 전 자신이 바꾼 diff를 리뷰어의 눈으로 다시 읽고 발견한 문제를 고친다.
+
+            [5] PR을 열기 전, 바뀐 영역에 해당하는 검사를 직접 돌려 통과를 확인하고 실패하면 고친다.
+                - mobile 변경: apps/mobile 에서 npx tsc --noEmit / npm run lint / npm test
+                - server 변경: apps/server 에서 python manage.py test
+
+            변경을 했다면 claude/issue-${{ github.event.issue.number }} 브랜치에 커밋하고 main으로
+            PR을 연다. PR 본문에 "## 구현 요약"(접근 / 핵심 설계 결정 / 건드린 파일·구조 /
+            트레이드오프)을 포함한다.
