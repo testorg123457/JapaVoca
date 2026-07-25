@@ -115,6 +115,11 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
     stopAuto();
     autoTimer.current = setInterval(() => {
       const next = (indexRef.current + 1) % count;
+      // 인덱스는 여기서 직접 갱신한다 — animated:false 스크롤은 모멘텀이 없어
+      // onMomentumScrollEnd가 오지 않는다. 그것만 믿으면 reduce motion일 때
+      // indexRef가 0에 멈춰 두 번째 배너에서 더 넘어가지 않는다(점도 안 움직인다).
+      indexRef.current = next;
+      setIndex(next);
       listRef.current?.scrollToOffset({ offset: next * itemW, animated: !reduceMotion });
     }, AUTO_MS);
   }, [count, itemW, reduceMotion, stopAuto]);
@@ -176,7 +181,7 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 12,
+                gap: spacing.lg,
                 height: CARD_H,
                 paddingHorizontal: spacing.xl,
                 borderRadius: radius.lg,
