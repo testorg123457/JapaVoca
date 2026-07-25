@@ -1,5 +1,7 @@
 # JapaVoca
 
+일본어 학습 + 캐시 리워드 안드로이드 앱.
+
 ## 백엔드 실행 (apps/server)
 
 ```bash
