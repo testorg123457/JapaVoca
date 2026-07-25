@@ -11,6 +11,7 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: write
       pull-requests: write
@@ -38,7 +39,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # PR을 claude 봇이 만들므로, 봇이 트리거한 이벤트에서도 리뷰가 돌게 허용
           allowed_bots: '*'
-          claude_args: '--model opus --max-turns 20 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
+          claude_args: '--model opus --max-turns 120 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
           prompt: |
             Mechanical code review for PR #${{ github.event.pull_request.number }}.
             Review ONLY the diff of this PR for: bugs, code-quality issues, and
