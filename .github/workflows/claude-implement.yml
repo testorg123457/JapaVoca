@@ -21,7 +21,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           base_branch: main
-          show_full_output: true
           claude_args: '--model opus --max-turns 30 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
           prompt: |
             JapaVoca 모노레포의 GitHub 이슈 #${{ github.event.issue.number }}를 처리한다.
