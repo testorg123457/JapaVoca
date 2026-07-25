@@ -10,10 +10,6 @@ concurrency:
 
 jobs:
   review:
-    # 봇이 방금 만든 커밋에는 다시 돌지 않음 (무한루프 방지)
-    if: >-
-      github.actor != 'claude[bot]' &&
-      github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,10 +20,22 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
-      - uses: anthropics/claude-code-action@v1
+      # 무한루프 방지: 리뷰가 스스로 만든 수정 커밋([claude-review])이면 다시 돌지 않음.
+      # (첫 리뷰나 사람/구현 커밋은 정상적으로 리뷰함)
+      - id: guard
+        run: |
+          MSG=$(git log -1 --format=%s)
+          echo "last commit: $MSG"
+          if printf '%s' "$MSG" | grep -q '\[claude-review\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--max-turns 20'
+          claude_args: '--max-turns 20 --allowedTools "Read,Edit,Write,MultiEdit,Bash,Glob,Grep,TodoWrite"'
           prompt: |
             Mechanical code review for PR #${{ github.event.pull_request.number }}.
             Review ONLY the diff of this PR for: bugs, code-quality issues, and
@@ -36,11 +44,15 @@ jobs:
             no hardcoded colors, emoji not used as functional icons, server-side
             answer/reward validation, etc).
 
-            If you find such issues, FIX them directly and commit to this PR's
-            branch. Keep fixes minimal and scoped to the problems found.
-
             Do NOT change the implementation's overall approach or direction —
-            that is the human's decision. If the only concerns are about approach/
-            direction (not bugs/quality), make no changes.
+            that is the human's decision. Only bugs/quality/rule violations.
 
-            If there are no mechanical issues, make no commits.
+            Steps:
+            1. If you find such issues, FIX them directly, then commit and push to
+               this PR's branch (claude/issue-...). The commit message MUST start
+               with "[claude-review]" so the review does not re-trigger itself.
+               Keep fixes minimal and scoped to the problems found.
+            2. Always post ONE concise PR comment summarizing the result in Korean:
+               - what you checked, and
+               - either the list of fixes you committed, or "수정할 것 없음"
+                 if nothing needed fixing.
