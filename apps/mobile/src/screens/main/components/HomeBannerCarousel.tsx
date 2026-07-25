@@ -6,9 +6,20 @@
  *
  * ⚠️ 홈 규칙: 그라데이션 히어로·꽉 찬 민트 블록 금지(사용자 취향). 절제된 카드형으로,
  *    색은 기능 신호(민트=액션, 옐로=캐시)로만. 디자인 시스템 토큰·컴포넌트만 사용.
+ *
+ * 시각 규칙(통일감이 핵심):
+ *  - 배너 3장 모두 **같은 면**을 쓴다 — 흰 면(bg-primary) + 헤어라인 보더 + radius.lg.
+ *    tone마다 면·보더가 달라지면 카드 언어가 무너져 "연한 컬러박스 모음"으로 읽힌다.
+ *    (바로 위 ListSection inset과 같은 언어라 홈 안에서 한 가족으로 보인다.)
+ *    ⚠️ 그림자는 쓰지 않는다 — 가로 스크롤(ScrollView) 안이라 사방이 잘려 지저분해진다.
+ *    면 구분은 헤어라인이 맡는다.
+ *  - tone은 **아이콘 칩 하나에만** 드러난다 = 기능 신호. 민트=액션(초대), 옐로=캐시(교환),
+ *    중립=그 외(번역). 제목은 언제나 Ink.
+ *  - 위계는 색이 아니라 굵기·크기·톤으로: 제목 heading(Ink) / 부제 caption(text-tertiary).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   FlatList,
   useWindowDimensions,
   View,
@@ -20,7 +31,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AppText, Icon, PressableScale } from '../../../components';
 import type { IconName } from '../../../components';
 import { useThemeColors } from '../../../theme/ThemeProvider';
-import { radius, spacing } from '../../../theme/tokens';
+import { hairline, radius, spacing } from '../../../theme/tokens';
 import type { MainStackParamList, MainStackScreenProps } from '../../../navigation/types';
 
 type BannerTone = 'mint' | 'amber' | 'neutral';
@@ -65,6 +76,10 @@ const HOME_BANNERS: Banner[] = [
 const H_PAD = spacing.xl; // 홈 좌우 패딩과 동일
 const AUTO_MS = 4500; // 자동 넘김 간격
 const RESUME_MS = 6000; // 스와이프 후 자동 넘김 재개까지
+const CARD_H = 84; // 카드 높이 고정 — 페이지마다 높이가 달라지면 캐러셀이 들썩인다
+const CHIP = 40; // 아이콘 칩
+const DOT = 5; // 점 인디케이터(현재 위치는 길쭉하게)
+const DOT_ACTIVE_W = 16;
 
 export function HomeBannerCarousel(): React.JSX.Element | null {
   const c = useThemeColors();
@@ -75,10 +90,21 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
   const listRef = useRef<FlatList<Banner>>(null);
   const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const count = HOME_BANNERS.length;
+
+  // 시스템 "동작 줄이기"면 넘김을 애니메이션 없이(즉시) 한다 — 자동 순환 자체는 유지.
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((on) => {
+      if (alive) { setReduceMotion(on); }
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => { alive = false; sub.remove(); };
+  }, []);
 
   const stopAuto = useCallback(() => {
     if (autoTimer.current) { clearInterval(autoTimer.current); autoTimer.current = null; }
@@ -89,9 +115,9 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
     stopAuto();
     autoTimer.current = setInterval(() => {
       const next = (indexRef.current + 1) % count;
-      listRef.current?.scrollToOffset({ offset: next * itemW, animated: true });
+      listRef.current?.scrollToOffset({ offset: next * itemW, animated: !reduceMotion });
     }, AUTO_MS);
-  }, [count, itemW, stopAuto]);
+  }, [count, itemW, reduceMotion, stopAuto]);
 
   useEffect(() => {
     startAuto();
@@ -117,19 +143,18 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
 
   if (count === 0 || itemW <= 0) { return null; }
 
-  const toneBg: Record<BannerTone, string> = {
-    mint: c['brand-subtle'],
-    amber: c['gold-subtle'],
-    neutral: c['bg-primary'],
-  };
-  const toneFg: Record<BannerTone, string> = {
-    mint: c.brand,
-    amber: c.gold,
-    neutral: c['text-secondary'],
+  /**
+   * 칩 색 — tone이 드러나는 유일한 자리. 면(bg-primary)·보더는 tone과 무관하게 통일한다.
+   * amber는 "amber-subtle 면 + amber-strong 아이콘"이 리워드 계열 기존 컨벤션.
+   */
+  const chip: Record<BannerTone, { bg: string; fg: string }> = {
+    mint: { bg: c['brand-subtle'], fg: c.brand },
+    amber: { bg: c['amber-subtle'], fg: c['amber-strong'] },
+    neutral: { bg: c['bg-tertiary'], fg: c['text-secondary'] },
   };
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: spacing.lg }}>
       <FlatList
         ref={listRef}
         data={HOME_BANNERS}
@@ -143,56 +168,63 @@ export function HomeBannerCarousel(): React.JSX.Element | null {
         onScrollBeginDrag={onTouchStart}
         renderItem={({ item }) => (
           <View style={{ width: itemW }}>
-            <PressableScale onPress={() => navigation.navigate(item.screen as never)} pressedScale={0.98}>
+            <PressableScale
+              onPress={() => navigation.navigate(item.screen as never)}
+              pressedScale={0.98}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}. ${item.subtitle}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                height: CARD_H,
+                paddingHorizontal: spacing.xl,
+                borderRadius: radius.lg,
+                backgroundColor: c['bg-primary'],
+                borderWidth: hairline,
+                borderColor: c['border-secondary'],
+              }}>
               <View
                 style={{
-                  flexDirection: 'row',
+                  width: CHIP,
+                  height: CHIP,
+                  borderRadius: radius.md,
                   alignItems: 'center',
-                  gap: 14,
-                  height: 84,
-                  paddingHorizontal: 16,
-                  borderRadius: radius.lg,
-                  backgroundColor: toneBg[item.tone],
-                  borderWidth: 1,
-                  borderColor: item.tone === 'neutral' ? c['border-secondary'] : 'transparent',
+                  justifyContent: 'center',
+                  backgroundColor: chip[item.tone].bg,
                 }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 13,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: item.tone === 'neutral' ? c['bg-tertiary'] : c['bg-primary'],
-                  }}>
-                  <Icon name={item.icon} size={22} color={toneFg[item.tone]} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="subheading" className="text-text-primary">
-                    {item.title}
-                  </AppText>
-                  <AppText variant="caption" className="text-text-secondary">
-                    {item.subtitle}
-                  </AppText>
-                </View>
-                <Icon name="chevron-right" size={18} color={c['text-tertiary']} />
+                <Icon name={item.icon} size={20} color={chip[item.tone].fg} />
               </View>
+              {/* 한 줄 고정 — 폰트 확대/문구 변경으로 줄이 늘어도 카드 높이가 흔들리지 않게. */}
+              <View style={{ flex: 1, gap: 3 }}>
+                <AppText variant="heading" numberOfLines={1} className="text-text-primary">
+                  {item.title}
+                </AppText>
+                <AppText variant="caption" numberOfLines={1} className="text-text-tertiary">
+                  {item.subtitle}
+                </AppText>
+              </View>
+              <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />
             </PressableScale>
           </View>
         )}
       />
 
-      {/* 점 인디케이터 — 배너 2개 이상일 때만 */}
+      {/* 점 인디케이터 — 배너 2개 이상일 때만. 활성 점은 Ink(민트는 배너 안 칩에만 쓴다).
+          위치 표시일 뿐이라 스크린리더에는 숨긴다(각 배너가 이미 읽힌다). */}
       {count > 1 && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.sm }}>
           {HOME_BANNERS.map((b, i) => (
             <View
               key={b.id}
               style={{
-                height: 6,
-                width: i === index ? 16 : 6,
-                borderRadius: 999,
-                backgroundColor: i === index ? c.brand : c['border-secondary'],
+                height: DOT,
+                width: i === index ? DOT_ACTIVE_W : DOT,
+                borderRadius: radius.full,
+                backgroundColor: i === index ? c['text-primary'] : c['border-secondary'],
               }}
             />
           ))}
