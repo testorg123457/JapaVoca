@@ -808,12 +808,18 @@ export function LockQuizView({
     };
   }, [phase, loadSet]);
 
-  // 새 세트 시작 시 복습 화면 자동 닫힘
-  useEffect(() => {
-    if ((phase.type === 'playing' || phase.type === 'noContent') && reviewOpen) {
-      setReviewOpen(false);
-    }
-  }, [phase.type, reviewOpen]);
+  /**
+   * 복습(오답노트)은 사용자가 닫을 때만 닫힌다.
+   *
+   * ⚠️ 예전엔 phase가 playing/noContent가 되면 복습을 자동으로 닫았는데, 세트를 끝내면
+   *    복습을 열자마자 loadSet()이 돌기 때문에 새 세트가 바로 잡히는 순간 복습이 꺼져버렸다
+   *    (다 읽기도 전에). 새 세트는 복습 뒤에서 대기시키고, 닫아야 보이게 한다.
+   */
+  const handleCloseReview = useCallback(() => {
+    setReviewOpen(false);
+    // 복습을 읽는 동안 흐른 시간이 새 세트 첫 문제의 answer_ms에 섞이지 않게 다시 시작.
+    startRef.current = Date.now();
+  }, []);
 
   const recordEntry = useCallback((question: QuizSetQuestion, selectedIndex: number, isCorrect: boolean) => {
     reviewEntriesRef.current = [
@@ -1233,12 +1239,13 @@ export function LockQuizView({
         />
       )}
 
-      {/* 복습 화면 — 세트 완료 즉시 자동 열림, 새 세트 준비 시 자동 닫힘 */}
+      {/* 복습 화면 — 세트 완료 즉시 자동 열림. 닫는 건 사용자만(새 세트는 뒤에서 대기) */}
       {reviewOpen && lastReviewData && (
         <QuizReviewModal
           data={lastReviewData}
           cooldownUntil={phase.type === 'cooldown' ? phase.cooldownUntil : undefined}
-          onClose={() => setReviewOpen(false)}
+          nextReady={phase.type === 'playing'}
+          onClose={handleCloseReview}
         />
       )}
     </View>

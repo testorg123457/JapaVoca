@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -42,21 +42,26 @@ function formatSecs(ms: number): string {
     : `${sec}초`;
 }
 
-function CooldownLabel({ until }: { until?: string }): React.JSX.Element {
-  const [text, setText] = useState(() => {
+/**
+ * 다음 세트 상태 한 줄.
+ * ready = 새 세트가 이미 뒤에 준비됨(이 화면을 닫으면 바로 시작) → 카운트다운 불필요.
+ */
+function NextSetLabel({ until, ready }: { until?: string; ready: boolean }): React.JSX.Element {
+  const label = useCallback(() => {
+    if (ready) { return '닫으면 다음 세트 시작'; }
     if (!until) { return '새 세트 준비 중...'; }
     const diff = new Date(until).getTime() - Date.now();
     return diff > 0 ? `새 세트까지 ${formatSecs(diff)}` : '새 세트 준비 중...';
-  });
+  }, [until, ready]);
+
+  const [text, setText] = useState(label);
 
   useEffect(() => {
-    if (!until) { return; }
-    const id = setInterval(() => {
-      const diff = new Date(until).getTime() - Date.now();
-      setText(diff > 0 ? `새 세트까지 ${formatSecs(diff)}` : '새 세트 준비 중...');
-    }, 1000);
+    setText(label());
+    if (ready || !until) { return; }
+    const id = setInterval(() => setText(label()), 1000);
     return () => clearInterval(id);
-  }, [until]);
+  }, [label, ready, until]);
 
   return (
     <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.7)' }}>
@@ -260,10 +265,12 @@ function EntryRow({
 export function QuizReviewModal({
   data,
   cooldownUntil,
+  nextReady = false,
   onClose,
 }: {
   data: ReviewData;
   cooldownUntil?: string;
+  nextReady?: boolean;
   onClose: () => void;
 }): React.JSX.Element {
   const correct = data.entries.filter(e => e.isCorrect).length;
@@ -301,7 +308,7 @@ export function QuizReviewModal({
               <AppText variant="caption" style={{ color: C.onBrand }}>
                 {correct} / {total} 정답
               </AppText>
-              <CooldownLabel until={cooldownUntil} />
+              <NextSetLabel until={cooldownUntil} ready={nextReady} />
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
               <Icon name="close" size={20} color={C.onBrand} strokeWidth={2.2} />
