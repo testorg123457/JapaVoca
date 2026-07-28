@@ -76,8 +76,20 @@ export function addPendingAnswer(answer: PendingAnswer): void {
   storage.set(PENDING_KEY, JSON.stringify([...current, answer]));
 }
 
-export function clearPendingAnswers(): void {
-  storage.remove(PENDING_KEY);
+/**
+ * 전송에 성공한 답안만 큐에서 뺀다.
+ *
+ * ⚠️ 큐를 통째로 비우면 안 된다. 전송이 오가는 동안 사용자가 새로 푼 답이 큐에 쌓일 수
+ *    있는데, 그걸 보내지도 않고 같이 지워버리면 답이 조용히 사라진다.
+ */
+export function removePendingAnswers(tokens: string[]): void {
+  const sent = new Set(tokens);
+  const remaining = getPendingAnswers().filter(a => !sent.has(a.question_token));
+  if (remaining.length) {
+    storage.set(PENDING_KEY, JSON.stringify(remaining));
+  } else {
+    storage.remove(PENDING_KEY);
+  }
 }
 
 // ── 복습 데이터 ──────────────────────────────────────────────────────────────────

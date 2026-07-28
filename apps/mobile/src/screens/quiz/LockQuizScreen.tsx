@@ -45,7 +45,7 @@ import { quizInstruction } from '../../lib/quizCopy';
 import {
   addPendingAnswer,
   clearCachedSet,
-  clearPendingAnswers,
+  removePendingAnswers,
   getCachedSet,
   getCachedComponentTree,
   getCursor,
@@ -682,6 +682,7 @@ export function LockQuizView({
   const submitLockRef = useRef(false);
   const mountedRef = useRef(true);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushingRef = useRef(false);
   const reviewEntriesRef = useRef<ReviewEntry[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [lastReviewData, setLastReviewDataState] = useState<ReviewData | null>(null);
@@ -694,12 +695,17 @@ export function LockQuizView({
 
   // 오프라인 pending 동기화
   const flushPending = useCallback(async () => {
+    if (flushingRef.current) { return; }
     const pending = getPendingAnswers();
     if (!pending.length) { return; }
+    flushingRef.current = true;
     try {
       await syncAnswers(pending);
-      clearPendingAnswers();
-    } catch { /* 다음 기회에 재시도 */ }
+      // 보낸 것만 뺀다 — 전송 중에 새로 쌓인 답까지 지우면 그 답이 사라진다.
+      removePendingAnswers(pending.map(a => a.question_token));
+    } catch { /* 다음 기회에 재시도 */ } finally {
+      flushingRef.current = false;
+    }
   }, []);
 
   // 세트 로드
@@ -715,16 +721,21 @@ export function LockQuizView({
     if (!opts?.forceServer && cached && savedCursor < cached.questions.length - 1) {
       startRef.current = Date.now();
       setPhase({ type: 'playing', cursor: savedCursor, set: cached });
+      // 캐시로 재개해도 밀린 답은 비운다(진행을 막지는 않으므로 기다리지 않는다).
+      flushPending();
       return;
     }
 
     setPhase({ type: 'loading' });
 
     try {
+      // ⚠️ 반드시 getQuizSet() 앞에서 기다린다.
+      //    밀린 답을 올리기 전에 세트를 받아오면 서버의 answered 플래그가 낡은 값이라,
+      //    이미 푼 문항을 '안 푼 것'으로 보고 방금 끝낸 세트를 처음부터 다시 풀게 된다.
+      await flushPending();
       const set = await getQuizSet();
       if (!mountedRef.current) { return; }
       setIsOnline(true);
-      flushPending();
 
       if (set.cooldown_until && !set.questions.length) {
         setPhase({ type: 'cooldown', cooldownUntil: set.cooldown_until });

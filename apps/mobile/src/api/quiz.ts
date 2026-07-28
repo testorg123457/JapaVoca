@@ -150,8 +150,14 @@ export type SyncResult = {
   is_correct?: boolean;
 };
 
+// 동기화는 세트 조회를 앞에서 기다리게 하므로 상한을 둔다.
+// (전역 timeout은 안 건다 — 번역 OCR처럼 오래 걸리는 게 정상인 요청도 있어서)
+const SYNC_TIMEOUT_MS = 8000;
+
 export async function syncAnswers(items: SyncItem[]): Promise<SyncResult[]> {
-  const response = await apiClient.post<SyncResult[]>('/api/quiz/sync/', items);
+  const response = await apiClient.post<SyncResult[]>('/api/quiz/sync/', items, {
+    timeout: SYNC_TIMEOUT_MS,
+  });
   return response.data;
 }
 
