@@ -1,10 +1,12 @@
 import api from './client';
+import type { Reading } from './quiz';
 
 export interface ComponentNode {
   character: string;
   meaning_ko: string;
-  on_reading: string;
-  kun_reading: string;
+  /** 훈독 우선, 없으면 음독. 최대 3개.
+   *  ⚠️ optional — 이 필드가 생기기 전 캐시된 트리엔 없다 */
+  readings?: Reading[];
   components: string[];
   is_leaf: boolean;
 }

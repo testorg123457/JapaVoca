@@ -7,9 +7,10 @@ import { withAlpha } from '../../../theme/quiz/withAlpha';
 import { useQuizTheme } from '../../../theme/quiz/useQuizTheme';
 import { useSpeak } from '../../../lib/useSpeak';
 
-export function AudioButton({ text }: { text: string }): React.JSX.Element {
+/** readings: 순서대로 읽을 발음 목록. `lib/readingView.speakList()`로 만든다. */
+export function AudioButton({ readings }: { readings: string[] }): React.JSX.Element {
   const theme = useQuizTheme();
-  const { speaking, toggle } = useSpeak(text);
+  const { speaking, toggle } = useSpeak(readings);
 
   return (
     <TouchableOpacity

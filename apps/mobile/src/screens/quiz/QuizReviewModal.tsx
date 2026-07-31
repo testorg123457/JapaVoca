@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText, Icon, ToastView } from '../../components';
 import { NETWORK_ERROR_MESSAGE } from '../../lib/toastBus';
 import { toggleBookmark, type QuizItemType } from '../../api/quiz';
+import { readingLine, speakList } from '../../lib/readingView';
 import { useSpeak } from '../../lib/useSpeak';
 import { gray, mint, red, yellow, primitives, radius, shadowStyle } from '../../theme/tokens';
 import { withAlpha } from '../../theme/quiz/withAlpha';
@@ -82,8 +83,8 @@ function NextSetLabel({
   );
 }
 
-function SpeakButton({ text }: { text: string }): React.JSX.Element {
-  const { speaking, toggle } = useSpeak(text);
+function SpeakButton({ readings }: { readings: string[] }): React.JSX.Element {
+  const { speaking, toggle } = useSpeak(readings);
   return (
     <TouchableOpacity
       onPress={toggle}
@@ -142,7 +143,8 @@ function EntryRow({
   const { question, selectedIndex, isCorrect } = entry;
   const { detail, choices, answer_index, item_type, item_id } = question;
 
-  const speakText = detail.on_reading || detail.reading || detail.surface;
+  const readings = speakList(detail);
+  const line = readingLine(detail);
 
   return (
     <View>
@@ -226,13 +228,13 @@ function EntryRow({
 
           {/* 읽기 + 버튼 */}
           <View style={{ padding: 12, gap: 8 }}>
-            {!!(detail.reading || detail.on_reading) && (
+            {!!line && (
               <AppText variant="caption" style={{ color: C.weak }}>
-                {detail.on_reading || detail.reading}
+                {line}
               </AppText>
             )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <SpeakButton text={speakText} />
+              <SpeakButton readings={readings} />
               <BookmarkButton itemType={item_type} itemId={item_id} onNetworkError={onNetworkError} />
             </View>
           </View>

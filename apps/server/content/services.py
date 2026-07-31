@@ -2,6 +2,7 @@
 import re
 
 from .models import Kanji
+from .readings import kanji_readings
 
 
 def _parse_component_pairs(components_str: str) -> list[tuple[str, str]]:
@@ -25,8 +26,7 @@ def _walk(char: str, visited: set, nodes: dict, depth: int, fallback_meaning: st
         nodes[char] = {
             'character': char,
             'meaning_ko': fallback_meaning,
-            'on_reading': '',
-            'kun_reading': '',
+            'readings': [],
             'components': [],
             'is_leaf': True,
         }
@@ -40,8 +40,7 @@ def _walk(char: str, visited: set, nodes: dict, depth: int, fallback_meaning: st
     nodes[char] = {
         'character': char,
         'meaning_ko': kanji.meaning_ko,
-        'on_reading': kanji.on_reading,
-        'kun_reading': kanji.kun_reading,
+        'readings': kanji_readings(kanji),
         'components': children,
         'is_leaf': len(children) == 0,
     }

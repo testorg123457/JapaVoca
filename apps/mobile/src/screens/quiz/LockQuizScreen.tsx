@@ -43,6 +43,7 @@ import {
 } from '../../api/content';
 import { useBoxes } from '../../api/hooks';
 import { quizInstruction } from '../../lib/quizCopy';
+import { readingLine, speakList } from '../../lib/readingView';
 import { playSfx, preloadSfx } from '../../lib/sfx';
 import {
   addPendingAnswer,
@@ -70,6 +71,7 @@ import {
 } from './components/ChoiceCard';
 import { QuizBackground } from './components/QuizBackground';
 import { AudioButton } from './components/AudioButton';
+import { canApplyReveal } from './revealPatch';
 
 export type LockQuizActions = {
   onUnlock: () => void;
@@ -121,7 +123,7 @@ function NodeRow({
 
   if (!node) { return null; }
 
-  const readings = [node.on_reading, node.kun_reading].filter(Boolean).join(' / ');
+  const readings = (node.readings ?? []).map(r => r.display).join(' · ');
 
   return (
     <View>
@@ -369,22 +371,26 @@ function AnswerReveal({
   const accentBg    = isCorrect ? withAlpha(c.correct, 0.12) : withAlpha(c.wrong, 0.12);
   const accentColor = isCorrect ? c.correct                  : c.wrong;
 
-  // 정답 순간 연출 — 결과 아이콘 칩 pop(+정답 시 "상자 +1" 뱃지가 뒤이어 pop).
-  // 정답 글자·정보 블록은 아래에서 살짝 올라오며 fade-in. 마운트 시 1회.
+  // 정답 순간 연출 — 결과 아이콘 칩 pop, 정답 글자·정보 블록은 아래에서 올라오며 fade-in.
+  // 마운트 시 1회.
   const chipScale = useRef(new Animated.Value(0)).current;
   const boxScale = useRef(new Animated.Value(0)).current;
   const revealFade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(chipScale, { toValue: 1, friction: 5, tension: 160, useNativeDriver: true }).start();
     Animated.timing(revealFade, { toValue: 1, duration: 260, delay: 80, useNativeDriver: true }).start();
-    if (isCorrect && boxGrade && !offlineMode) {
-      Animated.sequence([
-        Animated.delay(150),
-        Animated.spring(boxScale, { toValue: 1, friction: 4.5, tension: 170, useNativeDriver: true }),
-      ]).start();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // "상자 +1" 뱃지는 별도 effect다.
+  // ⚠️ 위 마운트 effect에 같이 두면 안 된다. 낙관적 UI로 화면을 먼저 넘기기 때문에
+  //    boxGrade는 마운트 시엔 null이고 서버 응답이 온 뒤 채워진다. [] 의존성이면 그 전환을
+  //    놓쳐서 애니메이션이 시작되지 않고, opacity가 0에 머물러 뱃지가 아예 안 보인다.
+  const showBoxBadge = isCorrect && !!boxGrade && !offlineMode;
+  useEffect(() => {
+    if (!showBoxBadge) { return; }
+    Animated.spring(boxScale, { toValue: 1, friction: 4.5, tension: 170, useNativeDriver: true }).start();
+  }, [showBoxBadge, boxScale]);
   const revealTranslate = revealFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
 
   // 정답 글자 크기 — 글자 수 기반(한자·가나 공통). 긴 단어일수록 작게, 단계는 완만하게.
@@ -422,7 +428,7 @@ function AnswerReveal({
 
         {/* 우측: 상자뱃지 + 북마크 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {isCorrect && boxGrade && !offlineMode && (
+          {showBoxBadge && (
             <Animated.View style={{
               backgroundColor: withAlpha(c.amber, 0.16),
               borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3,
@@ -472,8 +478,8 @@ function AnswerReveal({
               {detail.meaning}
             </AppText>
           )}
-          {!!detail.on_reading && (
-            <AppText variant="caption" style={{ color: c.textSecondary }}>{detail.on_reading}</AppText>
+          {!!readingLine(detail) && (
+            <AppText variant="caption" style={{ color: c.textSecondary }}>{readingLine(detail)}</AppText>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
             {!!question.jlpt_level && (
@@ -486,7 +492,7 @@ function AnswerReveal({
                 </AppText>
               </View>
             )}
-            <AudioButton text={detail.on_reading || detail.surface} />
+            <AudioButton readings={speakList(detail)} />
           </View>
         </View>
       </Animated.View>
@@ -604,7 +610,7 @@ function AnswerReveal({
                 <AppText style={{ color: c.textPrimary, fontSize: 17, fontWeight: '700', lineHeight: 24, flex: 1 }}>
                   {ex.origin}
                 </AppText>
-                <AudioButton text={ex.reading || ex.origin} />
+                <AudioButton readings={[ex.reading || ex.origin]} />
               </View>
               {!!ex.reading && ex.reading !== ex.origin && (
                 <AppText variant="caption" style={{ color: c.textTertiary }}>
@@ -691,6 +697,8 @@ export function LockQuizView({
   const startRef = useRef(0);
   const submitLockRef = useRef(false);
   const mountedRef = useRef(true);
+  // 서버가 답안 토큰을 거부했을 때, 결과 화면을 걷어내지 않고 '다음'에서 세트를 다시 받도록 예약.
+  const resyncOnNextRef = useRef(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushingRef = useRef<Promise<void> | null>(null);
   const reviewEntriesRef = useRef<ReviewEntry[]>([]);
@@ -877,21 +885,62 @@ export function LockQuizView({
     ];
   }, []);
 
-  const handleSelect = useCallback(async (choiceIndex: number) => {
+  /**
+   * reveal 단계를 뒤늦게 보정한다. 서버 응답이 오기 전에 화면을 이미 넘겼으므로,
+   * 도착 시점에 사용자가 아직 같은 문항의 결과를 보고 있을 때만 반영한다.
+   * (다음 문제로 넘어갔거나 세트를 다시 받았으면 그냥 버린다)
+   */
+  const patchReveal = useCallback((cursor: number, token: string, patch: Partial<Extract<Phase, { type: 'reveal' }>>) => {
+    setPhase(prev => (canApplyReveal(prev, cursor, token) ? { ...prev, ...patch } : prev));
+  }, []);
+
+  /**
+   * 선택지를 누른 순간.
+   *
+   * ⚠️ 서버 채점을 기다리지 않는다. 예전엔 `await submitAnswer()` 뒤에 reveal로 넘어가서
+   *    정답 표시·효과음·상자 뱃지가 전부 왕복 시간만큼 밀렸다(체크리스트 D "반응이 즉각적이지 않음").
+   *    정답키(`answer_index`)는 오프라인 채점용으로 이미 세트 페이로드에 들어있으니,
+   *    그걸로 즉시 판정해 화면을 넘기고 서버 응답으로 뒤에서 보정한다.
+   *
+   *    낙관적으로 앞당기는 건 *표시*뿐이다. 상자 지급·캐시 적립은 그대로 서버가 결정하고,
+   *    클라이언트는 응답이 온 뒤에만 뱃지를 띄운다(CLAUDE.md: 캐시는 서버에서 검증).
+   */
+  const handleSelect = useCallback((choiceIndex: number) => {
     if (submitLockRef.current || phase.type !== 'playing') { return; }
     submitLockRef.current = true;
 
     const { cursor, set } = phase;
     const question = set.questions[cursor];
     const answerMs = Date.now() - startRef.current;
+    const token = question.question_token;
+    const isCorrect = choiceIndex === question.answer_index;
 
-    if (isOnline) {
-      try {
-        const res = await submitAnswer({
-          question_token: question.question_token,
-          choice_index: choiceIndex,
-          answer_ms: answerMs,
-        });
+    const queueOffline = () => {
+      addPendingAnswer({
+        question_token: token,
+        choice_index: choiceIndex,
+        answer_ms: answerMs,
+        answered_at: new Date().toISOString(),
+      });
+    };
+
+    // ── 즉시 반응 ──
+    if (!isOnline) { queueOffline(); }
+    recordEntry(question, choiceIndex, isCorrect);
+    markAnswered(cursor); // 제출 즉시 진행 확정 — 결과 화면에서 나갔다 와도 다시 안 나오게
+    setPhase({
+      type: 'reveal', cursor, set,
+      selectedIndex: choiceIndex,
+      isCorrect,
+      boxGrade: null,        // 서버 응답이 오면 patchReveal로 채운다
+      offlineMode: !isOnline,
+    });
+
+    if (!isOnline) { return; }
+
+    // ── 뒤에서 서버 채점 ──
+    submitAnswer({ question_token: token, choice_index: choiceIndex, answer_ms: answerMs })
+      .then(res => {
         if (!mountedRef.current) { return; }
         setIsOnline(true);
         if (res.box_id !== null) { boxes.refetch(); }
@@ -905,56 +954,43 @@ export function LockQuizView({
             : '';
           showToast(`${countPart}캐시 ${res.milestone_bonus} 획득`, 'info');
         }
-        recordEntry(question, choiceIndex, res.is_correct);
-        markAnswered(cursor); // 제출 즉시 진행 확정 — 결과 화면에서 나갔다 와도 다시 안 나오게
-        setPhase({
-          type: 'reveal', cursor, set,
-          selectedIndex: choiceIndex,
-          isCorrect: res.is_correct,
-          boxGrade: res.box_grade,
-          offlineMode: false,
-        });
-      } catch (err: any) {
+        // 로컬 판정과 서버 판정은 같은 correct_index에서 나오므로 어긋날 일이 없다.
+        // 그래도 어긋나면 서버가 맞다 — SRS·캐시가 서버 판정으로 기록되기 때문.
+        if (res.is_correct !== isCorrect) {
+          recordEntry(question, choiceIndex, res.is_correct);
+        }
+        patchReveal(cursor, token, { isCorrect: res.is_correct, boxGrade: res.box_grade });
+      })
+      .catch((err: any) => {
         if (!mountedRef.current) { return; }
         if (!err?.response) {
+          // 제출 중 망이 끊겼다 — 표시는 이미 로컬 판정으로 맞게 나가 있으니 큐에만 넣는다.
           setIsOnline(false);
-          const isCorrect = choiceIndex === question.answer_index;
-          addPendingAnswer({
-            question_token: question.question_token,
-            choice_index: choiceIndex,
-            answer_ms: answerMs,
-            answered_at: new Date().toISOString(),
-          });
-          recordEntry(question, choiceIndex, isCorrect);
-          markAnswered(cursor);
-          setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
+          queueOffline();
+          patchReveal(cursor, token, { offlineMode: true });
         } else {
           // 서버가 토큰을 거부(만료/이미 채점됨 등) — 로컬 캐시 커서가 서버와 어긋난 상태다.
-          // 같은 토큰을 재시도해봐야 계속 실패하므로 캐시를 비우고 서버 기준으로 다시 불러온다.
-          // (재조회 자체가 네트워크 문제로 실패할 수 있으니 그 경우엔 배너로 안내한다.)
-          submitLockRef.current = false;
-          clearCachedSet();
-          loadSet({ forceServer: true, notifyOnNetworkFailure: true });
+          // 같은 토큰을 재시도해봐야 계속 실패하므로 세트를 서버 기준으로 다시 받아야 한다.
+          // 다만 지금 화면엔 결과가 이미 떠 있으므로 그 자리에서 걷어내지 않고,
+          // '다음'을 누를 때 재조회하도록 예약한다(결과를 보다가 화면이 튀는 걸 막는다).
+          resyncOnNextRef.current = true;
         }
-      }
-    } else {
-      const isCorrect = choiceIndex === question.answer_index;
-      addPendingAnswer({
-        question_token: question.question_token,
-        choice_index: choiceIndex,
-        answer_ms: answerMs,
-        answered_at: new Date().toISOString(),
       });
-      recordEntry(question, choiceIndex, isCorrect);
-      markAnswered(cursor);
-      setPhase({ type: 'reveal', cursor, set, selectedIndex: choiceIndex, isCorrect, boxGrade: null, offlineMode: true });
-    }
-  }, [phase, isOnline, boxes, recordEntry, loadSet, queryClient, showToast]);
+  }, [phase, isOnline, boxes, recordEntry, patchReveal, queryClient, showToast]);
 
   const handleNext = useCallback(() => {
     if (phase.type !== 'reveal') { return; }
     const { cursor, set } = phase;
     const nextCursor = cursor + 1;
+
+    // 서버가 토큰을 거부해 세트가 어긋난 상태 — 결과를 다 보여준 뒤 여기서 다시 받는다.
+    if (resyncOnNextRef.current) {
+      resyncOnNextRef.current = false;
+      submitLockRef.current = false;
+      clearCachedSet();
+      loadSet({ forceServer: true, notifyOnNetworkFailure: true });
+      return;
+    }
 
     if (nextCursor >= set.questions.length) {
       // 세트 완료 → 복습 데이터 저장 후 즉시 복습 화면 열기, 쿨다운은 백그라운드 진행
@@ -1160,7 +1196,7 @@ export function LockQuizView({
         {/* 음성 버튼 */}
         {showAudio && (
           <View style={{ alignItems: 'center', marginBottom: 4 }}>
-            <AudioButton text={currentQuestion.detail.reading || currentQuestion.prompt} />
+            <AudioButton readings={speakList(currentQuestion.detail)} />
           </View>
         )}
 

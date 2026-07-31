@@ -53,14 +53,23 @@ export type WordExampleSentence = {
   translation: string;
 };
 
+/** 발음 하나. 표시용과 재생용이 다르다 — 서버 `content/readings.py` 참고.
+ *  display 'た（べる）' = 괄호는 오쿠리가나(한자 몫이 아닌 딸린 히라가나)
+ *  speak   'たべる'     = 괄호를 떼고 붙인 실제 단어. TTS엔 이쪽을 넘긴다 */
+export type Reading = {
+  display: string;
+  speak: string;
+};
+
 export type QuizSetDetail = {
   surface: string;
   reading: string;
   meaning: string;
   components: string;
   stroke_count: number | null;
-  on_reading: string;
-  kun_reading: string;
+  /** 한자 전용(훈독 우선, 없으면 음독) 최대 3개. 단어·가나는 빈 배열.
+   *  ⚠️ optional — 이 필드가 생기기 전 MMKV에 캐시된 세트엔 없다 */
+  readings?: Reading[];
   /** 가나일 때 'hira'|'kata', 그 외 null */
   script: 'hira' | 'kata' | null;
   /** 가나 퀴즈 전용 — 랜덤 풀에서 선택된 예시 단어 최대 2개 */

@@ -14,6 +14,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from content.models import Kana, KanaExample, Kanji, Word, WordExample, WordMeaning
+from content.readings import display_line, kanji_readings
 from rewards.models import CashBox
 
 from .models import Bookmark, ItemType, QuizLog, QuizSet, QuizSetItem, SrsState
@@ -91,8 +92,7 @@ def _item_extra(item_type, item_id):
     kanji = Kanji.objects.filter(id=item_id).only('on_reading', 'kun_reading', 'jlpt_level').first()
     if not kanji:
         return '', ''
-    reading = ' · '.join(p for p in (kanji.on_reading, kanji.kun_reading) if p)
-    return reading, (kanji.jlpt_level or '')
+    return display_line(kanji_readings(kanji)), (kanji.jlpt_level or '')
 
 
 def _item_detail(item_type, item_id, word_type=None):
@@ -112,8 +112,7 @@ def _item_detail(item_type, item_id, word_type=None):
             'meaning': kana.romaji,
             'components': '',
             'stroke_count': None,
-            'on_reading': '',
-            'kun_reading': '',
+            'readings': [],
             'script': kana.script,
             'example_words': example_words,
         }
@@ -121,14 +120,14 @@ def _item_detail(item_type, item_id, word_type=None):
         kanji = Kanji.objects.filter(id=item_id).first()
         if not kanji:
             return {}
+        readings = kanji_readings(kanji)
         return {
             'surface': kanji.character,
-            'reading': ' / '.join(p for p in (kanji.on_reading, kanji.kun_reading) if p),
+            'reading': display_line(readings),
             'meaning': kanji.meaning_ko,
             'components': kanji.components,
             'stroke_count': kanji.stroke_count,
-            'on_reading': kanji.on_reading,
-            'kun_reading': kanji.kun_reading,
+            'readings': readings,
             'script': None,
         }
     # WORD
@@ -160,8 +159,7 @@ def _item_detail(item_type, item_id, word_type=None):
         'meaning': meaning,
         'components': components,
         'stroke_count': None,
-        'on_reading': '',
-        'kun_reading': '',
+        'readings': [],
         'script': None,
         'examples': examples,
     }
@@ -836,7 +834,7 @@ def get_bookmarks_with_detail(user):
                 'item_type': b.item_type,
                 'item_id': b.item_id,
                 'surface': obj.character,
-                'reading': obj.on_reading or obj.kun_reading,
+                'reading': display_line(kanji_readings(obj)),
                 'meaning': obj.meaning_ko,
                 'jlpt_level': obj.jlpt_level or '',
             })
