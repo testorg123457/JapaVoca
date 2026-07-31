@@ -23,6 +23,7 @@ import Tts from 'react-native-tts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { AppText, Icon, PressableScale, useToast } from '../../components';
 import {
@@ -977,8 +978,22 @@ export function LockQuizView({
     }
   }, [phase, loadSet]);
 
+  /**
+   * 상자 뱃지 → 개봉 화면.
+   *
+   * ⚠️ 연타를 막아야 한다. 막지 않으면 개봉 화면이 스택에 두 번 쌓여서, 하나를 닫고
+   *    뒤로 가면 또 상자 화면이 나온다. (홈도 같은 이유로 잠금을 걸어 뒀다)
+   *    화면으로 돌아오면 잠금을 푼다.
+   */
+  const boxNavLockRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      boxNavLockRef.current = false;
+    }, []),
+  );
   const openBoxes = useCallback(() => {
-    if (!boxes.data || !boxes.data.length) { return; }
+    if (boxNavLockRef.current || !boxes.data || !boxes.data.length) { return; }
+    boxNavLockRef.current = true;
     onOpenBoxes(boxes.data);
   }, [boxes.data, onOpenBoxes]);
 

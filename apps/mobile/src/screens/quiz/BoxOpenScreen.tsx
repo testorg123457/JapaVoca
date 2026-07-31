@@ -101,6 +101,19 @@ export default function BoxOpenScreen({
   const flushRef = useRef(flushRefresh);
   flushRef.current = flushRefresh;
 
+  /**
+   * 홈으로 나가기.
+   *
+   * ⚠️ navigate('Home')를 쓰면 안 된다. React Navigation 7의 navigate는 이미 스택에 있는
+   *    화면으로 '돌아가는' 게 아니라 그 화면을 빼서 맨 위로 올린다(StackRouter의 NAVIGATE:
+   *    routes.filter(...) 후 push). 그래서 [Home, BoxOpen] 이 [BoxOpen, Home] 이 되고,
+   *    홈에서 뒤로가기를 누르면 방금 닫은 상자 화면이 다시 나온다.
+   *    Home 은 이 스택의 첫 화면이므로 popToTop 이 정확히 [Home] 만 남긴다.
+   */
+  const goHome = useCallback(() => {
+    navigation.popToTop();
+  }, [navigation]);
+
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
@@ -166,10 +179,10 @@ export default function BoxOpenScreen({
         //    (안 하면 캐시는 늘었는데 홈 잔액이 앱 재시작 전까지 옛날 값으로 남는다)
         pendingRefreshRef.current = true;
         showToast('상자 개봉 결과를 확인하지 못했어요. 지갑에서 확인해주세요.', 'error');
-        navigation.navigate('Home');
+        goHome();
       }
     },
-    [box, navigation, slots, showToast],
+    [box, goHome, slots, showToast],
   );
 
   /**
@@ -229,7 +242,7 @@ export default function BoxOpenScreen({
     clearTimers();
     flushRefresh(); // 애니메이션이 끝나기 전에 넘어가는 경우의 안전망
     if (isLast) {
-      navigation.navigate('Home');
+      goHome();
       return;
     }
     setCurrentIndex((i) => i + 1);
@@ -261,7 +274,7 @@ export default function BoxOpenScreen({
         paddingBottom: 8,
       }}>
         <Pressable
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => goHome()}
           hitSlop={8}
           style={{
             width: 38,
