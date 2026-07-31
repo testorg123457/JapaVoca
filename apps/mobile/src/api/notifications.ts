@@ -13,8 +13,6 @@ import {
 import apiClient from './client';
 
 export type NotificationType =
-  | 'attendance'
-  | 'streak'
   | 'box'
   | 'exchange'
   | 'referral'

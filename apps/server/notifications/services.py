@@ -1,6 +1,6 @@
 """notifications 서비스 — 인앱 알림 생성 헬퍼.
 
-이벤트 지점(출석/교환 등)에서 호출. 캐시 트랜잭션과 묶지 말고, 커밋 이후
+이벤트 지점(상자/교환 등)에서 호출. 캐시 트랜잭션과 묶지 말고, 커밋 이후
 transaction.on_commit 으로 호출해 알림 실패가 캐시에 영향 없게 한다.
 """
 from django.db import transaction

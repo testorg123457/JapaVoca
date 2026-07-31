@@ -19,8 +19,6 @@ import { formatTime, groupByDate } from '../../lib/dateSections';
 const REASON_LABEL: Record<LedgerReason, string> = {
   quiz_box: '퀴즈 상자',
   quiz_milestone: '퀴즈 10문제 보너스',
-  attendance: '출석 보너스',
-  streak: '연속 출석 보너스',
   ad_bonus: '광고 보너스',
   referral_inviter: '친구 초대 보상',
   referral_invitee: '추천인 입력 보상',

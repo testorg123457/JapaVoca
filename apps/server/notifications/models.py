@@ -11,8 +11,6 @@ class Notification(models.Model):
     """유저 인앱 알림 1건."""
 
     class Type(models.TextChoices):
-        ATTENDANCE = 'attendance', '출석'
-        STREAK = 'streak', '연속출석'
         BOX = 'box', '상자'
         EXCHANGE = 'exchange', '교환'
         REFERRAL = 'referral', '친구 초대'

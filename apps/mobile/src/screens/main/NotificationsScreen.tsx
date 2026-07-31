@@ -26,8 +26,6 @@ import {
 import type { MainStackScreenProps, MainStackParamList } from '../../navigation/types';
 
 const TYPE_ICON: Record<NotificationType, IconName> = {
-  attendance: 'calendar',
-  streak: 'flame',
   box: 'gift',
   exchange: 'gift',
   referral: 'user',

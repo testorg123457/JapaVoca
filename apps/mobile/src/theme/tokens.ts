@@ -129,7 +129,7 @@ const lightSemantic = {
   header: mint[500], // #1F9660
   'on-header': gray[0], // 헤더 위 텍스트/아이콘(흰색)
   // 기능색
-  amber: yellow[400], // 캐시/리워드/출석 강조
+  amber: yellow[400], // 캐시/리워드 강조
   'amber-subtle': yellow[50],
   'amber-strong': yellow[600], // 옅은 배경 없이 캐시를 글자로 쓸 때
   danger: red[500], // 경고/오답/사용(−) — 브랜드(민트)와 분리된 전용 레드

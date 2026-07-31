@@ -14,7 +14,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Attendance, CashBox, Daily, Ledger, Wallet
+from .models import CashBox, Daily, Ledger, Wallet
 
 # 개봉 시 등급별 캐시 보상 범위.
 BOX_REWARD_RANGE = {
@@ -163,87 +163,6 @@ def list_unopened_boxes(user):
     return CashBox.objects.filter(
         user=user, status=CashBox.Status.UNOPENED,
     ).order_by('-created_at')
-
-
-# 출석 보상 — 캐시는 주지 않고, 누적 출석 N회마다 보라 상자 1개를 지급한다.
-# streak_count 는 '연속 출석' 표시용으로만 유지(보상 계산엔 쓰지 않음).
-ATTENDANCE_CYCLE_LENGTH = 7
-
-
-class AlreadyCheckedIn(CashError):
-    """오늘 이미 출석 체크함."""
-
-
-def get_today_attendance(user) -> dict:
-    """오늘 출석 여부 + 스트릭 + 누적 출석 수 조회. 부수효과 없음(체크인은 check_in() 으로만).
-
-    total_count 를 ATTENDANCE_CYCLE_LENGTH 로 나눈 나머지가 보라 상자까지의 진행도다.
-    """
-    today = timezone.localdate()
-    total_count = Attendance.objects.filter(user=user).count()
-    latest = Attendance.objects.filter(user=user).order_by('-date').first()
-    if latest is None:
-        return {'checked_in': False, 'streak_count': 0, 'total_count': 0}
-    return {
-        'checked_in': latest.date == today,
-        'streak_count': latest.streak_count,
-        'total_count': total_count,
-    }
-
-
-@transaction.atomic
-def check_in(user) -> Attendance:
-    """출석 체크 — 하루 1회. 캐시는 지급하지 않고, 누적 출석 N(=ATTENDANCE_CYCLE_LENGTH)회마다
-    보라 상자 1개를 지급한다(미개봉). streak_count 는 연속 출석 표시용으로만 유지한다.
-
-    하루 1회만 허용(Attendance.user+date unique 제약). 이미 체크인했으면 AlreadyCheckedIn.
-    상자 지급 여부는 attendance.is_cycle_reward 에 기록한다.
-    """
-    today = timezone.localdate()
-    yesterday = today - timedelta(days=1)
-
-    previous = Attendance.objects.filter(user=user, date=yesterday).first()
-    streak_count = previous.streak_count + 1 if previous else 1
-
-    try:
-        attendance = Attendance.objects.create(
-            user=user, date=today, streak_count=streak_count,
-            bonus_cash=0, is_cycle_reward=False,
-        )
-    except IntegrityError as exc:
-        raise AlreadyCheckedIn('오늘 이미 출석 체크했습니다.') from exc
-
-    # 누적 출석 수가 주기(7)의 배수가 되면 보라 상자 지급.
-    total_count = Attendance.objects.filter(user=user).count()
-    box_granted = total_count % ATTENDANCE_CYCLE_LENGTH == 0
-    if box_granted:
-        CashBox.objects.create(user=user, grade=CashBox.Grade.PURPLE)
-        attendance.is_cycle_reward = True
-        attendance.save(update_fields=['is_cycle_reward'])
-
-    daily, _ = Daily.objects.get_or_create(user=user, date=today)
-    daily = Daily.objects.select_for_update().get(pk=daily.pk)
-    daily.attended = True
-    daily.save(update_fields=['attended', 'updated_at'])
-
-    remaining = ATTENDANCE_CYCLE_LENGTH - (total_count % ATTENDANCE_CYCLE_LENGTH)
-
-    # 인앱 알림은 트랜잭션 커밋 이후에 생성(실패해도 상자 지급에 영향 없게).
-    # 매일 뜨는 '오늘 출석 완료'는 알림함만 채우고 정보가 없어 제거했다.
-    # 실제로 보상을 받은 7일 사이클에만 알린다.
-    def _notify():
-        from notifications.models import Notification
-        from notifications.services import notify
-        notify(
-            user, Notification.Type.STREAK,
-            '출석 7번 달성!',
-            '보상을 받았어요. 홈에서 확인해 보세요.',
-            data={'screen': 'Home'}, push=True,
-        )
-
-    if box_granted:
-        transaction.on_commit(_notify)
-    return attendance
 
 
 def get_today_daily(user) -> dict:

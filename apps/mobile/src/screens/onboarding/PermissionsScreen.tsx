@@ -118,14 +118,14 @@ export default function PermissionsScreen(): React.JSX.Element {
     {
       icon: 'bell',
       title: '알림',
-      desc: '캐시 적립·출석 리마인드 알림을 받아요.',
+      desc: '캐시 적립·학습 리마인드 알림을 받아요.',
       granted: notif,
       required: true,
     },
     {
       icon: 'flame',
       title: '배터리 사용량 최적화 중지',
-      desc: '백그라운드 알림·출석 체크가 끊기지 않게 해요.',
+      desc: '백그라운드 알림·잠금화면 학습이 끊기지 않게 해요.',
       granted: battery,
       required: false,
     },

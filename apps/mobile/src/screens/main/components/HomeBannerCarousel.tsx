@@ -1,5 +1,5 @@
 /**
- * HomeBannerCarousel — 홈(출석 위) 자동 순환 배너.
+ * HomeBannerCarousel — 홈 하단 자동 순환 배너.
  *
  * 여러 배너를 좌우로 자동 넘긴다. 스와이프하면 잠깐 멈췄다 다시 돈다. 하단 점으로 위치 표시.
  * 배너 추가/삭제는 아래 HOME_BANNERS 배열만 고치면 된다.

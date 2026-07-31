@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Attendance, CashBox, Daily, Ledger, Wallet
+from .models import CashBox, Daily, Ledger, Wallet
 
 
 @admin.register(Wallet)
@@ -37,18 +37,9 @@ class CashBoxAdmin(admin.ModelAdmin):
     raw_id_fields = ('user',)
 
 
-@admin.register(Attendance)
-class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'date', 'streak_count', 'bonus_cash', 'is_cycle_reward')
-    list_filter = ('is_cycle_reward',)
-    search_fields = ('user__google_uid', 'user__email')
-    raw_id_fields = ('user',)
-
-
 @admin.register(Daily)
 class DailyAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'date', 'quiz_count', 'correct_count', 'boxes_earned',
-                    'cash_earned', 'ad_bonus_count', 'attended')
-    list_filter = ('attended',)
+                    'cash_earned', 'ad_bonus_count')
     search_fields = ('user__google_uid', 'user__email')
     raw_id_fields = ('user',)

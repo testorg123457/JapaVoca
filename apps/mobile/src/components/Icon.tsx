@@ -107,7 +107,7 @@ export function Icon({ name, size = 24, color = gray[900], strokeWidth = 2 }: Ic
                 <Circle cx="8" cy="17" r="2.6" {...fill} />
               </>
             );
-          case 'flame': // 연속 출석(스트릭) — 채움형
+          case 'flame': // 불꽃(연속·활성 강조) — 채움형
             return (
               <Path
                 d="M12.5 3 c.3 2.2 2 3.3 3.2 4.9 1.2 1.5 1.8 3.2 1.8 5.1 a5.5 5.5 0 0 1-11 0 c0-1.6 .6-3 1.6-4 .2 1.3 1 2 1.9 2 1.2 0 1.7-1 1.4-2.4 -.4-1.9 0-4 -.4-5.6z"

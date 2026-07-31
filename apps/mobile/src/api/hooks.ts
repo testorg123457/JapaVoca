@@ -2,7 +2,7 @@
  * 화면에서 쓰는 데이터 훅 모음 — React Query 기반.
  *
  * 백엔드 실제 응답(apps/server rewards/accounts 코드 직접 확인 기준)에 맞춘
- * 타입을 그대로 노출한다. 캐시 잔액/출석/일일현황은 모두 서버가 단일 진실원.
+ * 타입을 그대로 노출한다. 캐시 잔액/일일현황은 모두 서버가 단일 진실원.
  */
 import {
   useInfiniteQuery,
@@ -10,8 +10,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import type { AxiosError } from 'axios';
-
 import apiClient from './client';
 import { getDeviceId } from '../lib/deviceId';
 import { isLoggedIn } from '../store/auth';
@@ -108,8 +106,6 @@ export type LedgerDirection = 'earn' | 'use';
 export type LedgerReason =
   | 'quiz_box'
   | 'quiz_milestone'
-  | 'attendance'
-  | 'streak'
   | 'ad_bonus'
   | 'referral_inviter'
   | 'referral_invitee'
@@ -168,44 +164,6 @@ export function useBoxes() {
   });
 }
 
-export type AttendanceStatus = {
-  checked_in: boolean;
-  streak_count: number;
-  /** 누적 출석 수. total_count % 7 이 보라 상자까지의 진행도. */
-  total_count: number;
-  /** 이번 체크인으로 보라 상자를 받았는지(POST 응답에만). */
-  box_granted?: boolean;
-};
-
-/** 오늘 출석 상태 조회(읽기 전용). */
-export function useAttendanceStatus() {
-  return useQuery({
-    queryKey: ['attendance', 'today'],
-    queryFn: async () =>
-      (await apiClient.get<AttendanceStatus>('/api/rewards/attendance/today/')).data,
-  });
-}
-
-/** 출석 체크 뮤테이션. 이미 체크인(409)이면 서버가 돌려준 현재 상태로 캐시만 갱신하고 조용히 무시. */
-export function useAttendance() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      (await apiClient.post<AttendanceStatus>('/api/rewards/attendance/today/')).data,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance'] }); // today + month 달력 갱신
-      queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
-      queryClient.invalidateQueries({ queryKey: ['boxes'] }); // 7회째 보라 상자 지급 → 상자 카드 갱신
-      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 출석 알림 생성됨
-    },
-    onError: (error: AxiosError<AttendanceStatus>) => {
-      if (error.response?.status === 409 && error.response.data) {
-        queryClient.setQueryData(['attendance', 'today'], error.response.data);
-      }
-    },
-  });
-}
-
 export type DailyToday = {
   quiz_count: number;
   correct_count: number;
@@ -216,35 +174,6 @@ export function useDailyToday() {
   return useQuery({
     queryKey: ['daily', 'today'],
     queryFn: async () => (await apiClient.get<DailyToday>('/api/rewards/daily/today/')).data,
-  });
-}
-
-export type AttendanceDay = {
-  date: string; // YYYY-MM-DD
-  attended: boolean;
-  streak_count: number;
-  bonus_cash: number;
-  quiz_count: number;
-  correct_count: number;
-};
-
-export type AttendanceMonth = {
-  year: number;
-  month: number;
-  streak_count: number;
-  days: AttendanceDay[];
-};
-
-/** 월별 출석/학습량(달력용). Attendance+Daily 정확 데이터(추정 아님). */
-export function useAttendanceMonth(year: number, month: number) {
-  return useQuery({
-    queryKey: ['attendance', 'month', year, month],
-    queryFn: async () =>
-      (
-        await apiClient.get<AttendanceMonth>('/api/rewards/attendance/month/', {
-          params: { year, month },
-        })
-      ).data,
   });
 }
 

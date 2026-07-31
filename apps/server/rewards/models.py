@@ -56,8 +56,6 @@ class Ledger(models.Model):
         # earn
         QUIZ_BOX = 'quiz_box', '퀴즈 상자'
         QUIZ_MILESTONE = 'quiz_milestone', '퀴즈 10문제 보너스'
-        ATTENDANCE = 'attendance', '출석'
-        STREAK = 'streak', '연속출석'
         AD_BONUS = 'ad_bonus', '광고 보너스'
         REFERRAL_INVITER = 'referral_inviter', '친구 초대 보상'
         REFERRAL_INVITEE = 'referral_invitee', '추천인 입력 보상'
@@ -75,7 +73,7 @@ class Ledger(models.Model):
     amount = models.BigIntegerField(help_text='항상 양수(절대값). 부호는 direction 이 결정')
     reason = models.CharField(max_length=20, choices=Reason.choices)
     ref_type = models.CharField(
-        max_length=50, blank=True, help_text='관련 엔티티 종류(cash_box / gift_exchange / attendance …)',
+        max_length=50, blank=True, help_text='관련 엔티티 종류(cash_box / gift_exchange …)',
     )
     ref_id = models.PositiveIntegerField(null=True, blank=True, help_text='관련 엔티티 id')
     balance_after = models.BigIntegerField(help_text='거래 직후 잔액 스냅샷(감사용)')
@@ -153,32 +151,6 @@ class CashBox(models.Model):
         return f'box(user={self.user_id}, {self.grade}, {self.status})'
 
 
-class Attendance(models.Model):
-    """출석 / 연속출석. 하루 1건."""
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendances',
-    )
-    date = models.DateField(help_text='출석 일자')
-    streak_count = models.PositiveIntegerField(default=1, help_text='연속 출석 일수')
-    bonus_cash = models.PositiveIntegerField(default=0, help_text='지급 보너스 캐시')
-    is_cycle_reward = models.BooleanField(default=False, help_text='7일 사이클 대형 보너스 여부')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'tbl_rewards_attendance'
-        verbose_name = '출석'
-        verbose_name_plural = '출석'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'date'], name='uniq_attendance_user_date',
-            ),
-        ]
-
-    def __str__(self):
-        return f'{self.user_id} {self.date} streak={self.streak_count}'
-
-
 class Daily(models.Model):
     """데일리 현황 — 당일 문제수/적립/일일상한 체크용 집계. 하루 1건."""
 
@@ -191,7 +163,6 @@ class Daily(models.Model):
     boxes_earned = models.PositiveIntegerField(default=0, help_text='당일 획득 상자 수(일일 상한 체크)')
     cash_earned = models.BigIntegerField(default=0, help_text='당일 적립 캐시 합')
     ad_bonus_count = models.PositiveIntegerField(default=0, help_text='당일 광고 보너스 횟수')
-    attended = models.BooleanField(default=False, help_text='당일 출석 여부')
     # 규칙 0: created_at 기본 + 갱신 추적 updated_at.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
