@@ -42,6 +42,7 @@ import {
 } from '../../api/content';
 import { useBoxes } from '../../api/hooks';
 import { quizInstruction } from '../../lib/quizCopy';
+import { playSfx, preloadSfx } from '../../lib/sfx';
 import {
   addPendingAnswer,
   clearCachedSet,
@@ -63,7 +64,9 @@ import type { MainStackScreenProps } from '../../navigation/types';
 import { QuizThemeProvider } from '../../theme/quiz/QuizThemeProvider';
 import { useQuizTheme } from '../../theme/quiz/useQuizTheme';
 import { withAlpha } from '../../theme/quiz/withAlpha';
-import { ChoiceCard } from './components/ChoiceCard';
+import {
+  CARD_INNER_W_DEFAULT, CARD_INNER_W_PANEL, ChoiceCard, choiceFontSize,
+} from './components/ChoiceCard';
 import { QuizBackground } from './components/QuizBackground';
 import { AudioButton } from './components/AudioButton';
 
@@ -147,9 +150,11 @@ function NodeRow({
           )}
         </View>
       </View>
-      {!alreadySeen && !node.is_leaf && node.components.map(child => (
+      {/* ⚠️ key에 인덱스를 넣는다. 林(木+木)처럼 같은 구성자가 반복되는 한자가 있어
+          글자만으로는 형제 간 key가 겹친다. */}
+      {!alreadySeen && !node.is_leaf && node.components.map((child, i) => (
         <NodeRow
-          key={`${child}-${depth + 1}`}
+          key={`${depth + 1}-${i}-${child}`}
           char={child}
           depth={depth + 1}
           nodes={nodes}
@@ -205,22 +210,22 @@ function KanjiPane({
       </AppText>
     );
   }
-  if (!data || data.root_components.length === 0) {
+  if (!data || !data.nodes[character]) {
     return (
       <AppText variant="body" style={{ color: c.textTertiary }}>구성 정보 없음</AppText>
     );
   }
+  // depth 0 = 이 한자 자신, depth 1 = 구성자, depth 2~ = 구성자의 구성자.
+  // (예전엔 구성자부터 그리고 본체는 visited로 배제해서, 정작 공부 중인 한자의
+  //  뜻·음훈독을 볼 수 없었다. 본체를 트리 뿌리로 세운다.)
   return (
     <View style={{ gap: 4 }}>
-      {data.root_components.map(char => (
-        <NodeRow
-          key={char}
-          char={char}
-          depth={0}
-          nodes={data.nodes}
-          visited={new Set([character])}
-        />
-      ))}
+      <NodeRow char={character} depth={0} nodes={data.nodes} visited={new Set()} />
+      {data.root_components.length === 0 && (
+        <AppText variant="caption" style={{ color: c.textTertiary, marginTop: 4 }}>
+          더 쪼갤 구성자가 없어요
+        </AppText>
+      )}
     </View>
   );
 }
@@ -505,7 +510,11 @@ function AnswerReveal({
             <View style={{ flex: 1, gap: 6 }}>
               <AppText variant="body" style={{ color: c.textSecondary }}>{detail.components}</AppText>
               <PressableScale onPress={() => {
-                const chars = [...detail.surface].filter(ch => ch >= '一' && ch <= '鿿');
+                // 중복 제거 — 日曜日처럼 같은 한자가 두 번 나오면 탭이 두 개 생기고
+                // key도 겹친다. 같은 글자는 한 번만 보여주면 된다.
+                const chars = [...new Set(
+                  [...detail.surface].filter(ch => ch >= '一' && ch <= '鿿'),
+                )];
                 onShowComponents(chars.length > 0 ? chars : [detail.surface]);
               }}>
                 <View style={{
@@ -682,7 +691,7 @@ export function LockQuizView({
   const submitLockRef = useRef(false);
   const mountedRef = useRef(true);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flushingRef = useRef(false);
+  const flushingRef = useRef<Promise<void> | null>(null);
   const reviewEntriesRef = useRef<ReviewEntry[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [lastReviewData, setLastReviewDataState] = useState<ReviewData | null>(null);
@@ -693,19 +702,28 @@ export function LockQuizView({
     return () => clearInterval(id);
   }, []);
 
-  // 오프라인 pending 동기화
-  const flushPending = useCallback(async () => {
-    if (flushingRef.current) { return; }
+  /**
+   * 오프라인 pending 동기화.
+   *
+   * ⚠️ 진행 중인 flush가 있으면 그 프로미스를 **그대로 돌려준다**. boolean 플래그로
+   *    "이미 도는 중이니 그냥 반환"하면, 아래 loadSet의 `await flushPending()`이
+   *    즉시 통과해 세트 조회가 동기화를 앞질러 버린다(고치려던 버그가 그대로 재현).
+   */
+  const flushPending = useCallback((): Promise<void> => {
+    if (flushingRef.current) { return flushingRef.current; }
     const pending = getPendingAnswers();
-    if (!pending.length) { return; }
-    flushingRef.current = true;
-    try {
-      await syncAnswers(pending);
-      // 보낸 것만 뺀다 — 전송 중에 새로 쌓인 답까지 지우면 그 답이 사라진다.
-      removePendingAnswers(pending.map(a => a.question_token));
-    } catch { /* 다음 기회에 재시도 */ } finally {
-      flushingRef.current = false;
-    }
+    if (!pending.length) { return Promise.resolve(); }
+
+    const task = (async () => {
+      try {
+        await syncAnswers(pending);
+        // 보낸 것만 뺀다 — 전송 중에 새로 쌓인 답까지 지우면 그 답이 사라진다.
+        removePendingAnswers(pending.map(a => a.question_token));
+      } catch { /* 다음 기회에 재시도 */ }
+    })().finally(() => { flushingRef.current = null; });
+
+    flushingRef.current = task;
+    return task;
   }, []);
 
   // 세트 로드
@@ -767,8 +785,15 @@ export function LockQuizView({
       // 서버의 answered 플래그 기준으로 첫 미답변 문항으로 커서 이동
       const firstUnanswered = set.questions.findIndex(q => !q.answered);
       if (firstUnanswered === -1) {
-        // 모든 문항이 이미 answered — 새 세트 또는 쿨다운 상태를 다시 요청
-        loadSet();
+        // 모든 문항이 이미 answered — 새 세트 또는 쿨다운 상태를 다시 요청.
+        // ⚠️ 한 번만 다시 묻는다. 서버가 계속 같은(전부 답한) 세트를 주면 무한 재귀로
+        //    네트워크를 두들기게 된다. 캐시를 비우고 서버 기준으로 한 번만 재조회한다.
+        if (opts?.forceServer) {
+          setPhase({ type: 'noContent' });
+          return;
+        }
+        clearCachedSet();
+        loadSet({ forceServer: true });
         return;
       }
       setCursor(firstUnanswered);
@@ -782,11 +807,17 @@ export function LockQuizView({
         setIsOnline(false);
         if (opts?.notifyOnNetworkFailure) { showNetworkError(); }
         const cached = getCachedSet();
-        if (cached && cached.questions.length) {
-          const cursor = getCursor();
-          const safeCursor = cursor < cached.questions.length ? cursor : 0;
+        // ⚠️ 커서가 세트 끝을 넘었다고 0으로 되돌리면 안 된다. 그러면 이미 다 푼 세트를
+        //    1번부터 통째로 다시 풀리고, 그 답들은 온라인 복귀 후 전부 '이미 채점됨'으로
+        //    버려진다(SRS·상자·통계 반영 없음). 캐시의 answered 플래그로 이어갈 자리를 찾고,
+        //    남은 문항이 없으면 오프라인에서 할 게 없으므로 그대로 알린다.
+        const resumeAt = cached
+          ? cached.questions.findIndex(q => !q.answered)
+          : -1;
+        if (cached && cached.questions.length && resumeAt !== -1) {
+          setCursor(resumeAt);
           startRef.current = Date.now();
-          setPhase({ type: 'playing', cursor: safeCursor, set: cached });
+          setPhase({ type: 'playing', cursor: resumeAt, set: cached });
         } else {
           setPhase({ type: 'noContent' });
         }
@@ -799,6 +830,7 @@ export function LockQuizView({
 
   useEffect(() => {
     mountedRef.current = true;
+    preloadSfx(); // 첫 정답에서 소리가 안 나지 않게 미리 디코딩
     loadSet();
     return () => {
       mountedRef.current = false;
@@ -832,7 +864,12 @@ export function LockQuizView({
     startRef.current = Date.now();
   }, []);
 
+  /**
+   * 답이 확정된 순간 호출 — 복습 데이터 적재 + 효과음.
+   * (온라인 채점 / 제출 중 끊김 / 오프라인, 세 경로 모두 여기를 지난다)
+   */
   const recordEntry = useCallback((question: QuizSetQuestion, selectedIndex: number, isCorrect: boolean) => {
+    playSfx(isCorrect ? 'correct' : 'wrong');
     reviewEntriesRef.current = [
       ...reviewEntriesRef.current.filter(e => e.question.question_token !== question.question_token),
       { question, selectedIndex, isCorrect },
@@ -1056,6 +1093,13 @@ export function LockQuizView({
       currentQuestion.question_type === 'word_to_meaning' ||
       currentQuestion.item_type === 'kana';
 
+    // 네 선택지가 같은 크기를 쓰도록 가장 긴 것 기준으로 한 번에 정한다(ChoiceCard 주석 참고).
+    // 사진 테마는 패널이 한 겹 더 있어 카드가 좁으므로 그 폭으로 계산한다.
+    const choiceSize = choiceFontSize(
+      currentQuestion.choices.map((ch) => ch.text),
+      theme.shape.contentPanel ? CARD_INNER_W_PANEL : CARD_INNER_W_DEFAULT,
+    );
+
     return (
       // 문제+선택지 블록을 약 6px 위로: 세로 중앙 정렬이라 하단 여백을 12 늘리면 중앙이 6 위로 이동.
       <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 32 }}>
@@ -1123,6 +1167,7 @@ export function LockQuizView({
               text={choice.text}
               visual="default"
               disabled={false}
+              fontSize={choiceSize}
               onPress={() => handleSelect(choice.index)}
             />
           ))}
@@ -1255,7 +1300,11 @@ export function LockQuizView({
         <QuizReviewModal
           data={lastReviewData}
           cooldownUntil={phase.type === 'cooldown' ? phase.cooldownUntil : undefined}
-          nextReady={phase.type === 'playing'}
+          nextStatus={
+            phase.type === 'playing' ? 'ready'
+              : phase.type === 'noContent' ? 'unavailable'
+                : 'waiting'
+          }
           onClose={handleCloseReview}
         />
       )}

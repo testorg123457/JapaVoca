@@ -6,6 +6,12 @@
  */
 import apiClient from './client';
 
+/**
+ * 번역 요청 상한(ms). 공용 기본값(12초)보다 길게 준다 —
+ * 이미지 업로드 + 서버의 Gemini OCR·번역 왕복이라 수십 초가 정상 범위다.
+ */
+const TRANSLATE_TIMEOUT_MS = 60000;
+
 export interface TranslateImageResult {
   original: string;
   korean: string;
@@ -16,11 +22,14 @@ export async function translateImage(fileUri: string): Promise<TranslateImageRes
   form.append('image', { uri: fileUri, type: 'image/jpeg', name: 'photo.jpg' } as never);
   const res = await apiClient.post<TranslateImageResult>('/api/translate/image/', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: TRANSLATE_TIMEOUT_MS,
   });
   return res.data;
 }
 
 export async function translateText(text: string): Promise<{ korean: string }> {
-  const res = await apiClient.post<{ korean: string }>('/api/translate/text/', { text });
+  const res = await apiClient.post<{ korean: string }>('/api/translate/text/', { text }, {
+    timeout: TRANSLATE_TIMEOUT_MS,
+  });
   return res.data;
 }

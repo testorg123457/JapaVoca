@@ -14,7 +14,9 @@ import { useMe } from '../../api/hooks';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
 import type { MainStackScreenProps } from '../../navigation/types';
 import { yellow } from '../../theme/tokens';
-import { boxBurstHeight, boxBurstLayout, slotRect } from './boxBurstLayout';
+import {
+  boxBurstHeight, boxBurstLayout, boxStageTouchPad, slotRect, slotTouchRect,
+} from './boxBurstLayout';
 import { boxGradeStyle } from './boxGradeStyle';
 import { BoxBackdrop } from './components/BoxBackdrop';
 
@@ -34,6 +36,11 @@ const BURST_STAGGER_MS = 130;
 const REWARD_SLOT_H = 80;
 /** 상자 무대와 보상 문구 사이 간격. 파티클이 상자 아래로 떨어지므로 넉넉히 둔다. */
 const REWARD_GAP = 150;
+/**
+ * 상자를 세로 중앙에서 살짝 아래로 내리는 양(px).
+ * 레이아웃이 아니라 transform이라 탭 영역도 그림과 함께 같이 내려간다.
+ */
+const STAGE_OFFSET_Y = 6;
 
 export default function BoxOpenScreen({
   route,
@@ -64,7 +71,10 @@ export default function BoxOpenScreen({
   const burstCount = Math.max(1, box?.burst_count ?? 1);
   // 상자 무대는 좌우 패딩 없이 화면 폭을 다 쓴다 — 옆 상자를 최대한 크게 두기 위해.
   const slots = useMemo(() => boxBurstLayout(burstCount, screenW), [burstCount, screenW]);
+  /** 그림 기준 높이 — 상자가 놓이는 자리는 이 값으로 계산한다(탭 여백과 무관하게 고정). */
   const stageH = boxBurstHeight(slots);
+  /** 탭 영역을 아래로 넓힌 만큼 무대를 키운다. 안 키우면 안드로이드에서 그 부분이 안 눌린다. */
+  const touchPad = boxStageTouchPad(slots);
   /** 가운데부터 열리도록 한 재생 순서(가운데 → 좌 → 우). */
   const playOrder = useMemo(() => (slots.length === 3 ? [1, 0, 2] : [0]), [slots]);
 
@@ -96,10 +106,16 @@ export default function BoxOpenScreen({
     timersRef.current = [];
   }, []);
 
-  useEffect(() => () => {
-    mountedRef.current = false;
-    timersRef.current.forEach(clearTimeout);
-    flushRef.current();
+  useEffect(() => {
+    // ⚠️ 마운트마다 true로 되돌린다. cleanup에서 false만 찍고 끝내면, effect가 다시 도는
+    //    상황(Fast Refresh 등)에서 false로 굳어 doOpen의 `if (!mountedRef.current) return`이
+    //    항상 걸린다 — phase가 'opening'에 갇혀 화면이 멈춘 것처럼 보인다.
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      timersRef.current.forEach(clearTimeout);
+      flushRef.current();
+    };
   }, []);
 
   const isLast = currentIndex >= boxes.length - 1;
@@ -145,7 +161,11 @@ export default function BoxOpenScreen({
         }
         lockRef.current = false;
         setPhase('sealed');
-        showToast('상자 개봉에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+        // ⚠️ 응답을 못 받은 것과 서버가 처리 안 한 것을 구분할 수 없다. 타임아웃인데 서버는
+        //    이미 적립을 커밋했을 수 있으므로, 실패로 보더라도 지갑·상자 목록은 갱신한다.
+        //    (안 하면 캐시는 늘었는데 홈 잔액이 앱 재시작 전까지 옛날 값으로 남는다)
+        pendingRefreshRef.current = true;
+        showToast('상자 개봉 결과를 확인하지 못했어요. 지갑에서 확인해주세요.', 'error');
         navigation.navigate('Home');
       }
     },
@@ -290,12 +310,21 @@ export default function BoxOpenScreen({
                 영역으로 쓰면 가운데 상자가 화면 폭을 다 덮어 옆 상자 탭을 삼켜 버린다.)
             ⚠️ zIndex는 쓰지 않는다(안드로이드 터치 판정과 어긋남) — 뒤 상자부터 렌더링해
                가운데가 위에 그려지게만 한다. */}
-        <View style={{ height: stageH, width: screenW }}>
+        {/* ⚠️ 무대 높이는 그림(stageH)이 아니라 탭 여백까지 포함한 값이다. 안드로이드가
+            부모 밖 터치를 안 주기 때문. 늘린 만큼 marginBottom 음수로 상쇄해서
+            가운데 정렬은 그대로 둔다(상자가 위로 밀려 올라가지 않게). */}
+        <View style={{
+          height: stageH + touchPad,
+          width: screenW,
+          marginBottom: -touchPad,
+          transform: [{ translateY: STAGE_OFFSET_Y }],
+        }}>
           {[...slots.keys()]
             .sort((a, b) => slots[a].z - slots[b].z)
             .map((i) => {
               const slot = slots[i];
               const rect = slotRect(slot, screenW, stageH);
+              const touch = slotTouchRect(slot, screenW, stageH);
               return (
                 <PressableScale
                   key={`${currentIndex}-${i}`}
@@ -305,13 +334,11 @@ export default function BoxOpenScreen({
                   accessibilityLabel="상자 열기"
                   style={{
                     position: 'absolute',
-                    left: rect.x,
-                    top: rect.y,
-                    width: rect.w,
-                    height: rect.h,
+                    left: touch.x,
+                    top: touch.y,
+                    width: touch.w,
+                    height: touch.h,
                     opacity: slot.opacity,
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     overflow: 'visible',
                   }}
                 >
@@ -324,7 +351,20 @@ export default function BoxOpenScreen({
                     speed={1.6}
                     // 갱신은 한 번만 흘리면 되므로 가운데 상자 하나에만 건다.
                     onAnimationFinish={slot.z === 2 ? flushRefresh : undefined}
-                    style={{ width: slot.viewSize, height: slot.viewSize }}
+                    // ⚠️ 터치 판정에서 뺀다. Lottie 뷰는 상자의 3.6배라 부모 밖까지 뻗는데,
+                    //    RN은 overflow visible + clipChildren=false면 부모 밖 좌표도 자식으로
+                    //    내려보낸다(TouchTargetHelper). 그대로 두면 가운데 상자의 캔버스가
+                    //    옆 상자 영역을 덮어 엉뚱한 상자가 열릴 수 있다. 판정은 Pressable 사각형만.
+                    //    (LottieView는 pointerEvents prop을 안 받아 style로 준다)
+                    // 탭 영역이 커져도 그림은 안 움직이게, '보이는 상자' 중심에 절대배치한다.
+                    style={{
+                      pointerEvents: 'none',
+                      position: 'absolute',
+                      left: rect.x + rect.w / 2 - touch.x - slot.viewSize / 2,
+                      top: rect.y + rect.h / 2 - touch.y - slot.viewSize / 2,
+                      width: slot.viewSize,
+                      height: slot.viewSize,
+                    }}
                   />
                 </PressableScale>
               );

@@ -22,6 +22,15 @@ export type OpenBoxResult = {
 };
 
 /**
+ * 개봉 요청 상한(ms).
+ *
+ * ⚠️ 없으면 안 된다. 개봉 화면은 응답을 받아야 'opening' → 'revealed'로 넘어가는데,
+ *    요청이 끝나지도 실패하지도 않으면 그 상태에 갇혀 화면이 멈춘 것처럼 보인다
+ *    (탭·버튼이 전부 phase 가드에 막힘). 끊긴 네트워크에서 응답이 영영 안 오는 경우가 있다.
+ */
+const OPEN_TIMEOUT_MS = 15000;
+
+/**
  * 상자 개봉. adVerified 는 "보상형 광고를 봤는지"를 서버에 알려 audit(opened_via_ad)에
  * 반영한다. ⚠️ 단, 이 클라 주장값은 보상 크기 결정에 신뢰돼선 안 되고, 실제 검증은
  * 추후 AdMob SSV 서버 콜백으로 대체해야 한다(CLAUDE.md).
@@ -33,6 +42,7 @@ export async function openBox(
   const response = await apiClient.post<OpenBoxResult>(
     `/api/rewards/boxes/${boxId}/open/`,
     { ad_verified: adVerified },
+    { timeout: OPEN_TIMEOUT_MS },
   );
   return response.data;
 }

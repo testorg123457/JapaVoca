@@ -2,7 +2,10 @@ import {
   ART_RATIO,
   boxBurstHeight,
   boxBurstLayout,
+  boxStageTouchPad,
   MAX_BOX_SIZE,
+  slotRect,
+  slotTouchRect,
 } from '../src/screens/quiz/boxBurstLayout';
 
 const PHONE_W = 390; // 무대는 화면 폭을 다 쓴다
@@ -96,6 +99,64 @@ describe('boxBurstLayout', () => {
     for (const slot of boxBurstLayout(3, PHONE_W)) {
       expect(slot.viewSize).toBeGreaterThan(slot.size * 3);
       expect(slot.viewSize).toBe(Math.round(slot.size / ART_RATIO));
+    }
+  });
+});
+
+describe('slotTouchRect — 탭 영역', () => {
+  const stageH = (slots: ReturnType<typeof boxBurstLayout>) => boxBurstHeight(slots);
+
+  it('보이는 상자를 항상 품는다 — 지금 눌러서 열리던 자리를 뺏지 않는다', () => {
+    for (const count of [1, 3]) {
+      const slots = boxBurstLayout(count, PHONE_W);
+      const h = stageH(slots);
+      for (const s of slots) {
+        const vis = slotRect(s, PHONE_W, h);
+        const touch = slotTouchRect(s, PHONE_W, h);
+        expect(touch.x).toBeLessThanOrEqual(vis.x);
+        expect(touch.y).toBeLessThanOrEqual(vis.y);
+        expect(touch.x + touch.w).toBeGreaterThanOrEqual(vis.x + vis.w);
+        expect(touch.y + touch.h).toBeGreaterThanOrEqual(vis.y + vis.h);
+      }
+    }
+  });
+
+  it('아래로 더 많이 넓힌다 — 그림이 사각형보다 아래에 그려지므로', () => {
+    const slots = boxBurstLayout(1, PHONE_W);
+    const h = stageH(slots);
+    const vis = slotRect(slots[0], PHONE_W, h);
+    const touch = slotTouchRect(slots[0], PHONE_W, h);
+    const padTop = vis.y - touch.y;
+    const padBottom = (touch.y + touch.h) - (vis.y + vis.h);
+    expect(padBottom).toBeGreaterThan(padTop);
+  });
+
+  it('탭 영역이 실제로 커진다', () => {
+    const slots = boxBurstLayout(1, PHONE_W);
+    const h = stageH(slots);
+    const vis = slotRect(slots[0], PHONE_W, h);
+    const touch = slotTouchRect(slots[0], PHONE_W, h);
+    expect(touch.w * touch.h).toBeGreaterThan(vis.w * vis.h * 1.5);
+  });
+
+  it('묶음에서 이웃과 가로로 안 겹친다 — 엉뚱한 상자가 열리면 안 된다', () => {
+    const slots = boxBurstLayout(3, PHONE_W);
+    const h = stageH(slots);
+    const rects = slots.map(s => slotTouchRect(s, PHONE_W, h)).sort((a, b) => a.x - b.x);
+    for (let i = 1; i < rects.length; i += 1) {
+      expect(rects[i].x).toBeGreaterThanOrEqual(rects[i - 1].x + rects[i - 1].w);
+    }
+  });
+
+  it('무대 여유분은 아래로 넓힌 양을 덮는다 — 안드로이드 부모 밖 터치 방지', () => {
+    for (const count of [1, 3]) {
+      const slots = boxBurstLayout(count, PHONE_W);
+      const h = stageH(slots);
+      const pad = boxStageTouchPad(slots);
+      for (const s of slots) {
+        const touch = slotTouchRect(s, PHONE_W, h);
+        expect(touch.y + touch.h).toBeLessThanOrEqual(h + pad);
+      }
     }
   });
 });

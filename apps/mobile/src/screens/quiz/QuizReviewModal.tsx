@@ -12,6 +12,7 @@ import { NETWORK_ERROR_MESSAGE } from '../../lib/toastBus';
 import { toggleBookmark, type QuizItemType } from '../../api/quiz';
 import { useSpeak } from '../../lib/useSpeak';
 import { gray, mint, red, yellow, primitives, radius, shadowStyle } from '../../theme/tokens';
+import { withAlpha } from '../../theme/quiz/withAlpha';
 import type { ReviewData, ReviewEntry } from '../../store/quizSet';
 
 // 라이트 팔레트 — tokens.ts 단일 소스
@@ -43,16 +44,27 @@ function formatSecs(ms: number): string {
 }
 
 /**
- * 다음 세트 상태 한 줄.
- * ready = 새 세트가 이미 뒤에 준비됨(이 화면을 닫으면 바로 시작) → 카운트다운 불필요.
+ * 다음 세트 상태.
+ * - `ready`: 새 세트가 이미 뒤에 준비됨(닫으면 바로 시작) → 카운트다운 불필요
+ * - `unavailable`: 못 불러옴(오프라인·콘텐츠 없음) → 기다려도 안 온다고 알려야 한다
+ * - `waiting`: 쿨다운 중이거나 로딩 중
  */
-function NextSetLabel({ until, ready }: { until?: string; ready: boolean }): React.JSX.Element {
+export type NextSetStatus = 'ready' | 'waiting' | 'unavailable';
+
+/** 다음 세트 상태 한 줄. */
+function NextSetLabel({
+  until, status,
+}: { until?: string; status: NextSetStatus }): React.JSX.Element {
+  const ready = status === 'ready';
   const label = useCallback(() => {
-    if (ready) { return '닫으면 다음 세트 시작'; }
+    if (status === 'ready') { return '닫으면 다음 세트 시작'; }
+    // ⚠️ 못 불러온 상태에서 '준비 중'이라고 하면 안 된다. 자동 닫힘을 없앤 뒤로는
+    //    이 화면이 계속 떠 있어서, 영영 오지 않을 세트를 기다리는 것처럼 보인다.
+    if (status === 'unavailable') { return '지금은 새 세트를 불러올 수 없어요'; }
     if (!until) { return '새 세트 준비 중...'; }
     const diff = new Date(until).getTime() - Date.now();
     return diff > 0 ? `새 세트까지 ${formatSecs(diff)}` : '새 세트 준비 중...';
-  }, [until, ready]);
+  }, [until, status]);
 
   const [text, setText] = useState(label);
 
@@ -64,7 +76,7 @@ function NextSetLabel({ until, ready }: { until?: string; ready: boolean }): Rea
   }, [label, ready, until]);
 
   return (
-    <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.7)' }}>
+    <AppText variant="caption" style={{ color: withAlpha(C.onBrand, 0.7) }}>
       {text}
     </AppText>
   );
@@ -265,12 +277,12 @@ function EntryRow({
 export function QuizReviewModal({
   data,
   cooldownUntil,
-  nextReady = false,
+  nextStatus = 'waiting',
   onClose,
 }: {
   data: ReviewData;
   cooldownUntil?: string;
-  nextReady?: boolean;
+  nextStatus?: NextSetStatus;
   onClose: () => void;
 }): React.JSX.Element {
   const correct = data.entries.filter(e => e.isCorrect).length;
@@ -308,7 +320,7 @@ export function QuizReviewModal({
               <AppText variant="caption" style={{ color: C.onBrand }}>
                 {correct} / {total} 정답
               </AppText>
-              <NextSetLabel until={cooldownUntil} ready={nextReady} />
+              <NextSetLabel until={cooldownUntil} status={nextStatus} />
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
               <Icon name="close" size={20} color={C.onBrand} strokeWidth={2.2} />

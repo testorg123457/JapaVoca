@@ -15,6 +15,8 @@ import { radius } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
 import { clearCachedSet } from '../../store/quizSet';
+import { isSfxEnabled, setSfxEnabled } from '../../store/sfx';
+import { preloadSfx } from '../../lib/sfx';
 import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -36,6 +38,9 @@ export default function SettingsScreen(): React.JSX.Element {
   // 토글만 눌러도 학습 버튼이 "저장 중"이 된다. 학습 저장 액션에만 반응하는 별도 상태.
   const [studySaving, setStudySaving] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 효과음은 기기 설정(MMKV)이라 서버 프로필과 무관하다. MMKV는 반응형이 아니므로
+  // 초기값만 읽어 로컬 state로 들고 간다.
+  const [sfxOn, setSfxOn] = useState(isSfxEnabled);
 
   const m = me.data;
 
@@ -179,6 +184,16 @@ export default function SettingsScreen(): React.JSX.Element {
         <ListSection title="캐시 · 내역">
           <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
           <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} last />
+        </ListSection>
+
+        {/* 소리 */}
+        <ListSection title="소리">
+          <ToggleRow
+            title="정답 · 오답 효과음"
+            value={sfxOn}
+            onValueChange={(v) => { setSfxOn(v); setSfxEnabled(v); if (v) { preloadSfx(); } }}
+            last
+          />
         </ListSection>
 
         {/* 알림 */}

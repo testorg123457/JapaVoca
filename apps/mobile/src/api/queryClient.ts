@@ -5,8 +5,9 @@
  * 알린다(화면마다 처리 불필요). 서버가 응답한 오류(4xx/5xx)는 여기서 토스트를 띄우지
  * 않고 각 화면이 알아서 다룬다.
  *
- * 재시도: 네트워크 오류만 최대 2회 재시도(일시적 끊김 자동 복구). 그 외 오류는
- * 재시도하지 않는다(4xx/5xx를 반복 호출하지 않도록).
+ * 재시도: 여기서 하지 않는다. 네트워크 끊김 재시도는 axios 레이어(api/retry.ts)로
+ * 옮겼다 — React Query를 거치지 않는 직접 호출(퀴즈 세트·채점·북마크)까지 함께
+ * 덮기 위해서. 여기에도 남겨두면 두 겹이 곱해져 재시도가 과해진다.
  * (⚠️ refetchOnReconnect는 NetInfo 연동이 있어야 동작하므로 지금은 켜지 않는다.)
  */
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
@@ -22,9 +23,7 @@ export const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: notifyIfNetworkError }),
   mutationCache: new MutationCache({ onError: notifyIfNetworkError }),
   defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => isNetworkError(error) && failureCount < 2,
-    },
+    queries: { retry: false },
   },
 });
 

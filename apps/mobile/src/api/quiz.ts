@@ -96,7 +96,11 @@ export type QuizSetResponse = {
 };
 
 export async function getQuizSet(): Promise<QuizSetResponse> {
-  const response = await apiClient.get<QuizSetResponse>('/api/quiz/set/');
+  // 재시도 안 한다 — 실패하면 곧바로 캐시된 세트로 오프라인 진행하는 게 낫다.
+  // (잠금화면 퀴즈는 오프라인이 정상 사용 시나리오라 매번 몇 초씩 기다리면 안 된다)
+  const response = await apiClient.get<QuizSetResponse>('/api/quiz/set/', {
+    skipNetworkRetry: true,
+  });
   return response.data;
 }
 
@@ -150,9 +154,10 @@ export type SyncResult = {
   is_correct?: boolean;
 };
 
-// 동기화는 세트 조회를 앞에서 기다리게 하므로 상한을 둔다.
-// (전역 timeout은 안 건다 — 번역 OCR처럼 오래 걸리는 게 정상인 요청도 있어서)
-const SYNC_TIMEOUT_MS = 8000;
+// 동기화는 세트 조회 앞에서 기다리게 되므로 상한을 짧게 둔다.
+// ⚠️ 길면 잠금화면 진입이 그만큼 로딩에 머문다(오프라인 즉시 진행이 이 화면의 핵심).
+//    실패해도 큐는 그대로 남아 다음 기회에 재시도되므로 손실은 없다.
+const SYNC_TIMEOUT_MS = 3000;
 
 export async function syncAnswers(items: SyncItem[]): Promise<SyncResult[]> {
   const response = await apiClient.post<SyncResult[]>('/api/quiz/sync/', items, {

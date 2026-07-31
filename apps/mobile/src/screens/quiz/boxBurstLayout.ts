@@ -81,3 +81,42 @@ export function slotRect(s: BoxSlot, stageW: number, stageH: number) {
   const y = stageH - s.size + s.dy;
   return { x, y, w: s.size, h: s.size };
 }
+
+/**
+ * 탭 영역 여백(보이는 상자 크기 대비).
+ *
+ * ⚠️ 탭 영역을 '보이는 상자' 사각형과 똑같이 두면 상자 위쪽을 눌러야만 열린다.
+ *    Lottie 그림이 캔버스 정중앙이 아니라 아래로 치우쳐 있어서, 눈에 보이는 상자가
+ *    사각형보다 아래에 그려지기 때문이다. 그래서 아래로 크게 넓힌다.
+ *    (위쪽도 조금 남겨둔다 — 지금 눌러서 열리던 자리를 뺏지 않으려고.)
+ *
+ * 가로는 거의 못 넓힌다. 옆 상자와 6px 정도밖에 안 떨어져 있어서(SIDE_DX 참고)
+ * 넓히면 이웃 영역을 삼켜 엉뚱한 상자가 열린다.
+ */
+export const TOUCH_PAD_BOTTOM = 0.6;
+export const TOUCH_PAD_TOP = 0.18;
+export const TOUCH_PAD_X = 0.03;
+
+/** 탭 영역 사각형. 그림은 그대로 두고 누를 수 있는 범위만 넓힌다. */
+export function slotTouchRect(s: BoxSlot, stageW: number, stageH: number) {
+  const r = slotRect(s, stageW, stageH);
+  const padX = Math.round(s.size * TOUCH_PAD_X);
+  const padTop = Math.round(s.size * TOUCH_PAD_TOP);
+  const padBottom = Math.round(s.size * TOUCH_PAD_BOTTOM);
+  return {
+    x: r.x - padX,
+    y: r.y - padTop,
+    w: r.w + padX * 2,
+    h: r.h + padTop + padBottom,
+  };
+}
+
+/**
+ * 탭 영역이 무대 아래로 삐져나가는 양.
+ *
+ * ⚠️ 안드로이드는 부모 밖의 터치를 자식에게 안 준다. 아래로 넓힌 만큼 무대 높이를
+ *    늘려야 실제로 눌린다(늘린 만큼은 marginBottom 음수로 상쇄해 그림 위치는 유지).
+ */
+export function boxStageTouchPad(slots: BoxSlot[]): number {
+  return Math.round(Math.max(...slots.map((s) => s.size)) * TOUCH_PAD_BOTTOM);
+}
