@@ -33,8 +33,6 @@ import BookmarkScreen from '../screens/main/BookmarkScreen';
 import JapaneseTranslateScreen from '../screens/main/JapaneseTranslateScreen';
 import TranslateCropScreen from '../screens/main/TranslateCropScreen';
 import TranslateResultScreen from '../screens/main/TranslateResultScreen';
-import StyleGuideScreen from '../screens/StyleGuideScreen';
-import GestureDebugScreen from '../screens/GestureDebugScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -73,14 +71,6 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="TranslateCrop" component={TranslateCropScreen} />
       <Stack.Screen name="TranslateResult" component={TranslateResultScreen} />
       <Stack.Screen name="Bookmarks" component={BookmarkScreen} />
-      {__DEV__ && (
-        <Stack.Screen
-          name="StyleGuide"
-          component={StyleGuideScreen}
-          options={{ presentation: 'fullScreenModal' }}
-        />
-      )}
-      {__DEV__ && <Stack.Screen name="GestureDebug" component={GestureDebugScreen} />}
     </Stack.Navigator>
   );
 }

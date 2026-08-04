@@ -34,7 +34,6 @@ import type { MainStackScreenProps } from '../../navigation/types';
 const REASON_LABEL: Record<LedgerReason, string> = {
   quiz_box: '퀴즈 상자',
   quiz_milestone: '퀴즈 10문제 보너스',
-  ad_bonus: '광고 보너스',
   referral_inviter: '친구 초대 보상',
   referral_invitee: '추천인 입력 보상',
   exchange: '기프티콘 교환',

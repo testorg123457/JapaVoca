@@ -40,6 +40,6 @@ class CashBoxAdmin(admin.ModelAdmin):
 @admin.register(Daily)
 class DailyAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'date', 'quiz_count', 'correct_count', 'boxes_earned',
-                    'cash_earned', 'ad_bonus_count')
+                    'cash_earned')
     search_fields = ('user__google_uid', 'user__email')
     raw_id_fields = ('user',)

@@ -6,7 +6,7 @@
  *   → QueryClientProvider → AuthProvider → NavigationContainer → RootNavigator
  *
  * 디자인 시스템은 디자인 토큰(src/theme/tokens.ts 단일 소스) + NativeWind 기반.
- * 공용 UI(Button/Card/CashBadge/AppText)는 src/components/에 NativeWind로 구현.
+ * 공용 UI(Button/Card/AppText)는 src/components/에 NativeWind로 구현.
  *
  * @format
  */

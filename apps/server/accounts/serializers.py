@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'provider', 'google_uid', 'email', 'nickname', 'is_guest',
             'selected_jlpt_level', 'jlpt_level_word', 'jlpt_level_kanji',
             'study_mode', 'study_level', 'study_kana_hiragana', 'study_kana_katakana',
-            'push_enabled', 'push_quiz_reminder', 'push_marketing',
+            'push_enabled', 'push_marketing',
             'status', 'created_at',
         )
         read_only_fields = fields
@@ -53,7 +53,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'nickname', 'selected_jlpt_level', 'jlpt_level_word', 'jlpt_level_kanji',
-            'push_enabled', 'push_quiz_reminder', 'push_marketing',
+            'push_enabled', 'push_marketing',
             'study_mode', 'study_level', 'study_kana_hiragana', 'study_kana_katakana',
         )
 

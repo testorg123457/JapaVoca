@@ -31,11 +31,6 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
             onValueChange={(v) => patch({ push_enabled: v })}
           />
           <ToggleRow
-            title="학습 리마인더"
-            value={m?.push_quiz_reminder ?? true}
-            onValueChange={(v) => patch({ push_quiz_reminder: v })}
-          />
-          <ToggleRow
             title="마케팅 · 이벤트 알림"
             value={m?.push_marketing ?? false}
             onValueChange={(v) => patch({ push_marketing: v })}

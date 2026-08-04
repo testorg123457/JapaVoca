@@ -109,7 +109,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     # 푸시 알림 환경설정.
     push_enabled = models.BooleanField(default=True, help_text='전체 푸시 수신')
-    push_quiz_reminder = models.BooleanField(default=True, help_text='학습 리마인더 푸시')
     push_marketing = models.BooleanField(default=False, help_text='마케팅/이벤트 푸시(동의 기반)')
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE,

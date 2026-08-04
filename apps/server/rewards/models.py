@@ -56,7 +56,6 @@ class Ledger(models.Model):
         # earn
         QUIZ_BOX = 'quiz_box', '퀴즈 상자'
         QUIZ_MILESTONE = 'quiz_milestone', '퀴즈 10문제 보너스'
-        AD_BONUS = 'ad_bonus', '광고 보너스'
         REFERRAL_INVITER = 'referral_inviter', '친구 초대 보상'
         REFERRAL_INVITEE = 'referral_invitee', '추천인 입력 보상'
         # use
@@ -162,7 +161,6 @@ class Daily(models.Model):
     correct_count = models.PositiveIntegerField(default=0, help_text='당일 정답 수')
     boxes_earned = models.PositiveIntegerField(default=0, help_text='당일 획득 상자 수(일일 상한 체크)')
     cash_earned = models.BigIntegerField(default=0, help_text='당일 적립 캐시 합')
-    ad_bonus_count = models.PositiveIntegerField(default=0, help_text='당일 광고 보너스 횟수')
     # 규칙 0: created_at 기본 + 갱신 추적 updated_at.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -34,7 +34,6 @@ export type MeResponse = {
   study_kana_hiragana: boolean;
   study_kana_katakana: boolean;
   push_enabled: boolean;
-  push_quiz_reminder: boolean;
   push_marketing: boolean;
   status: string;
   created_at: string;
@@ -59,7 +58,6 @@ export type ProfileUpdate = {
   study_kana_hiragana?: boolean;
   study_kana_katakana?: boolean;
   push_enabled?: boolean;
-  push_quiz_reminder?: boolean;
   push_marketing?: boolean;
 };
 
@@ -106,7 +104,6 @@ export type LedgerDirection = 'earn' | 'use';
 export type LedgerReason =
   | 'quiz_box'
   | 'quiz_milestone'
-  | 'ad_bonus'
   | 'referral_inviter'
   | 'referral_invitee'
   | 'exchange'
