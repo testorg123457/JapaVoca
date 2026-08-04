@@ -1,4 +1,4 @@
-import { formatTime, groupByDate, sectionTitle } from '../src/lib/dateSections';
+import { formatTime, groupByDate, relativeTime, sectionTitle } from '../src/lib/dateSections';
 
 const NOW = new Date('2026-07-23T15:00:00');
 const at = (iso: string) => ({ created_at: iso });
@@ -66,5 +66,32 @@ describe('formatTime', () => {
   it('시간만, 두 자리로', () => {
     expect(formatTime('2026-07-23T09:05:00')).toBe('09:05');
     expect(formatTime('2026-07-23T23:59:00')).toBe('23:59');
+  });
+});
+
+describe('relativeTime', () => {
+  it('1분 안쪽은 방금', () => {
+    expect(relativeTime('2026-07-23T14:59:30', NOW)).toBe('방금');
+    expect(relativeTime('2026-07-23T15:00:00', NOW)).toBe('방금');
+  });
+
+  it('기기 시계가 앞서 미래로 찍혀도 방금으로 흡수한다', () => {
+    expect(relativeTime('2026-07-23T15:10:00', NOW)).toBe('방금');
+  });
+
+  it('한 시간 안쪽은 분, 같은 날은 시간', () => {
+    expect(relativeTime('2026-07-23T14:48:00', NOW)).toBe('12분 전');
+    expect(relativeTime('2026-07-23T14:00:00', NOW)).toBe('1시간 전');
+    expect(relativeTime('2026-07-23T09:00:00', NOW)).toBe('6시간 전');
+  });
+
+  it('자정을 넘기면 시간 단위를 쓰지 않는다 — 어제 일이 오늘로 읽히면 안 된다', () => {
+    // 5시간 전이지만 날짜가 바뀌었으므로 '어제'.
+    expect(relativeTime('2026-07-22T22:00:00', new Date('2026-07-23T03:00:00'))).toBe('어제');
+  });
+
+  it('그 이전은 날짜, 해가 다르면 연도까지', () => {
+    expect(relativeTime('2026-07-18T10:00:00', NOW)).toBe('7월 18일');
+    expect(relativeTime('2025-12-03T10:00:00', NOW)).toBe('2025년 12월 3일');
   });
 });

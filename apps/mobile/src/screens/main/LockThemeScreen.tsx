@@ -47,7 +47,7 @@ export default function LockThemeScreen(): React.JSX.Element {
       setPhotoUri(picked.uri);
       choose(CUSTOM_THEME_ID);
     } catch {
-      showToast('사진을 불러오지 못했어요. 다른 사진으로 다시 시도해주세요.', 'error');
+      showToast('사진을 불러오지 못했어요. 다른 사진을 골라주세요', 'error');
     }
   };
 

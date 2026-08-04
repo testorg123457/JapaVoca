@@ -12,7 +12,7 @@
  */
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
-import { emitNetworkError } from '../lib/toastBus';
+import { emitNetworkError, setNetworkRetryAction } from '../lib/toastBus';
 import { isNetworkError } from './errors';
 
 function notifyIfNetworkError(error: unknown): void {
@@ -25,6 +25,18 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: false },
   },
+});
+
+/**
+ * 네트워크 토스트의 "다시 시도" — 지금 화면이 쓰고 있는 쿼리만 다시 부른다.
+ *
+ * 토스트는 어떤 요청이 실패했는지 모른다. 그래서 무엇을 다시 부를지는 api 레이어가
+ * 정해 여기서 한 번 등록한다. `type: 'active'`라 화면 밖 캐시까지 긁지 않는다.
+ * ⚠️ 쿼리(GET)만 다시 부른다 — 실패한 mutation을 자동으로 재실행하면 캐시 적립·
+ *    상자 개봉이 중복될 수 있다(CLAUDE.md 캐시 정합성).
+ */
+setNetworkRetryAction(() => {
+  queryClient.refetchQueries({ type: 'active' });
 });
 
 export default queryClient;

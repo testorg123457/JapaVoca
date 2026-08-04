@@ -4,19 +4,24 @@
  * 항목 탭 → 읽음 처리 + data.screen 있으면 해당 화면 이동.
  * 백엔드 /api/notifications/ (읽기 + 읽음 처리만, 캐시 무관).
  *
- * 구조: 큰 "알림" 타이틀 + "새로운 알림 / 지난 알림" 두 섹션. 날짜는 섹션이 아니라
- * 각 행의 서브텍스트로 둔다(이번 방문의 새 알림을 위로 묶어 보여주는 게 목적이라,
- * 날짜별 섹션보다 '새/지난' 구분이 이 화면엔 더 맞다).
- * 미읽음 표시는 행 점이 아니라 섹션 + 아이콘 칩 색으로만 낸다(점이 중복이라 뺌).
+ * 구조: "새로운 알림 / 지난 알림" 두 섹션. 날짜별로 자르지 않는 이유는, 이 화면의 일은
+ * '이번에 뭐가 새로 왔나'를 보여주는 것이기 때문.
+ *
+ * 디자인 — 캐시 내역과 같은 목록 언어(풀폭 행 + 헤어라인 + LogSectionHeader)를 쓰되,
+ * 한 가지가 다르다: **여기선 아이콘이 정보다.** 상자·교환·문의는 종류가 실제 구분이라
+ * 칩을 남긴다(내역 화면은 부호가 그 일을 하므로 뺐다). 칩 색은 종류가 아니라 **읽음
+ * 여부**를 말한다 — 종류마다 색을 칠하면 장식이 된다(원칙 §2).
+ * 시각은 본문 아래가 아니라 제목 오른쪽에 둔다. 눈이 제일 먼저 훑는 줄이라 거기서 읽힌다.
  */
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Pressable, SectionList, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { AppHeader, AppText, Icon } from '../../components';
+import { AppHeader, AppText, EmptyState, Icon, LogSectionHeader } from '../../components';
 import type { IconName } from '../../components';
+import { radius } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { sectionTitle } from '../../lib/dateSections';
+import { relativeTime } from '../../lib/dateSections';
 import {
   useMarkAllRead,
   useNotifications,
@@ -27,7 +32,7 @@ import type { MainStackScreenProps, MainStackParamList } from '../../navigation/
 
 const TYPE_ICON: Record<NotificationType, IconName> = {
   box: 'gift',
-  exchange: 'gift',
+  exchange: 'store',
   referral: 'user',
   inquiry: 'mail',
   quiz_reminder: 'book',
@@ -38,6 +43,14 @@ const TYPE_ICON: Record<NotificationType, IconName> = {
 const NAVIGABLE: (keyof MainStackParamList)[] = [
   'Home', 'LockQuiz', 'Kana', 'Settings', 'Exchange', 'Ledger', 'AccountSettings', 'Inquiry',
 ];
+
+/** 이 알림을 눌러서 갈 곳이 있는지. 없으면 눌림 반응도 주지 않는다(빈 약속 금지). */
+function targetScreen(item: NotificationItem): keyof MainStackParamList | null {
+  const screen = item.data?.screen;
+  return typeof screen === 'string' && (NAVIGABLE as string[]).includes(screen)
+    ? (screen as keyof MainStackParamList)
+    : null;
+}
 
 function Row({
   item,
@@ -52,41 +65,44 @@ function Row({
   // 새 알림은 브랜드 틴트 칩(활성색), 지난 알림은 중립 회색 칩.
   const chipBg = unread ? c['brand-subtle'] : c['bg-tertiary'];
   const iconColor = unread ? c.brand : c['text-tertiary'];
+  const navigable = targetScreen(item) !== null;
   return (
     <Pressable
       onPress={() => onPress(item)}
-      className="flex-row items-start bg-bg-secondary px-xl py-lg active:opacity-70"
-      style={{ gap: 14 }}>
+      disabled={!navigable}
+      className={`flex-row items-start border-b border-border-tertiary bg-bg-primary px-xl ${
+        navigable ? 'active:opacity-60' : ''
+      }`}
+      style={{ gap: 13, paddingVertical: 14 }}>
       <View
         className="items-center justify-center"
-        style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: chipBg }}>
-        <Icon name={TYPE_ICON[item.type]} size={22} color={iconColor} />
+        style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: chipBg }}>
+        <Icon name={TYPE_ICON[item.type]} size={21} color={iconColor} />
       </View>
 
-      <View className="flex-1" style={{ gap: 3, paddingTop: 1 }}>
-        <AppText variant="subheading" className="text-text-primary" numberOfLines={2}>
-          {item.title}
-        </AppText>
+      <View className="flex-1" style={{ paddingTop: 1 }}>
+        <View className="flex-row items-start" style={{ gap: 8 }}>
+          <AppText
+            variant="heading"
+            className={`flex-1 ${unread ? 'text-text-primary' : 'text-text-secondary'}`}
+            numberOfLines={1}>
+            {item.title}
+          </AppText>
+          <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 3 }}>
+            {relativeTime(item.created_at)}
+          </AppText>
+        </View>
         {item.body ? (
-          <AppText variant="caption" className="text-text-secondary" numberOfLines={2}>
+          <AppText
+            variant="body"
+            className={unread ? 'text-text-secondary' : 'text-text-tertiary'}
+            numberOfLines={2}
+            style={{ marginTop: 3 }}>
             {item.body}
           </AppText>
         ) : null}
-        <AppText variant="caption" className="text-text-tertiary" style={{ marginTop: 1 }}>
-          {sectionTitle(item.created_at)}
-        </AppText>
       </View>
     </Pressable>
-  );
-}
-
-function SectionLabel({ title }: { title: string }): React.JSX.Element {
-  return (
-    <View className="bg-bg-secondary px-xl pb-md pt-xl">
-      <AppText variant="label" className="text-text-tertiary">
-        {title}
-      </AppText>
-    </View>
   );
 }
 
@@ -132,32 +148,26 @@ export default function NotificationsScreen(): React.JSX.Element {
 
   function handlePress(item: NotificationItem) {
     // 읽음 처리는 진입 시 일괄로 끝났으므로 여기선 이동만 담당한다.
-    const screen = item.data?.screen;
-    if (typeof screen === 'string' && (NAVIGABLE as string[]).includes(screen)) {
-      navigation.navigate(screen as keyof MainStackParamList as never);
+    const screen = targetScreen(item);
+    if (screen) {
+      navigation.navigate(screen as never);
     }
   }
 
   return (
-    <View className="flex-1 bg-bg-secondary">
-      {/* 큰 타이틀은 본문 상단에 두므로 헤더는 뒤로가기만 담당한다. */}
-      <AppHeader showBack />
+    <View className="flex-1 bg-bg-primary">
+      <AppHeader title="알림" showBack />
       <SectionList
         sections={sections}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <Row item={item} unread={looksUnread(item.id)} onPress={handlePress} />
         )}
-        renderSectionHeader={({ section }) => <SectionLabel title={section.title} />}
+        renderSectionHeader={({ section }) => (
+          <LogSectionHeader title={section.title} first={section === sections[0]} />
+        )}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View className="px-xl pb-sm pt-lg">
-            <AppText variant="hero" className="text-text-primary">
-              알림
-            </AppText>
-          </View>
-        }
         onEndReachedThreshold={0.4}
         onEndReached={() => {
           if (list.hasNextPage && !list.isFetchingNextPage) {
@@ -166,20 +176,19 @@ export default function NotificationsScreen(): React.JSX.Element {
         }}
         ListEmptyComponent={
           list.isLoading ? (
-            <ActivityIndicator className="mt-2xl" color={c.brand} />
+            <ActivityIndicator style={{ marginTop: 72 }} color={c.brand} />
           ) : (
-            <View className="mt-2xl items-center gap-sm px-xl">
-              <Icon name="bell" size={28} color={c['text-tertiary']} />
-              <AppText variant="caption" className="text-center text-text-tertiary">
-                알림이 없어요.
-              </AppText>
-            </View>
+            <EmptyState
+              icon="bell"
+              title="알림이 없어요"
+              description="상자·기프티콘 소식이 도착하면 여기에 모여요."
+            />
           )
         }
         ListFooterComponent={
           list.isFetchingNextPage ? <ActivityIndicator className="my-lg" color={c.brand} /> : null
         }
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
       />
     </View>
   );

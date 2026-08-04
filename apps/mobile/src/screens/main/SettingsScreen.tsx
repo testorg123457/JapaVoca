@@ -1,129 +1,55 @@
 /**
- * SettingsScreen — 설정.
+ * SettingsScreen — 설정 목차.
  *
- * 행+구분선 리스트(카드 X). 실제 동작: 단어/한자 급수(별도), 푸시 토글, 캐시/구매 내역,
- * 알림 화면. 일부(계정/잠금화면)는 안내 스텁. (로그아웃은 계정 설정 화면에 있음)
- * 비즈니스 로직은 기존 훅(useUpdateProfile 등) 그대로 — 화면은 호출만.
+ * 이 화면은 **무엇을 바꿀지 고르는 목차**다. 실제 조작은 각 하위 화면에서 한다.
+ * (조작 항목이 19개라 한 화면에 다 놓으면 쏟아지고, 더 잘게 쪼개면 깊이만 깊어진다.
+ *  이 규모에는 "짧은 목차 + 깊이 2단계"가 맞다. 근거는 docs/설정-구조-개선안.md)
+ *
+ * 묶는 축 = **무엇을 바꾸는가**: 학습 / 앱 / 리워드 / 지원.
+ *
+ * ⚠️ 프로필 블록이 계정 설정으로 가는 문이다(예전엔 아무 데도 안 가는 장식이었다).
+ *    덕분에 "계정" 섹션 한 줄이 통째로 사라졌다.
+ * ⚠️ 알림 **목록**은 여기 없다 — 홈 헤더 종(미읽음 뱃지)이 담당한다. 여기 "알림"은 설정만.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
 
-import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, StudySelector, Tag, ToggleRow, useToast } from '../../components';
-import { radius } from '../../theme/tokens';
+import { AppHeader, AppText, Icon, ListRow, ListSection, PressableScale, Tag } from '../../components';
 import { useThemeColors } from '../../theme/ThemeProvider';
-import { useMe, useUpdateProfile, useAbandonQuizSet, useUnreadInquiryCount, type ProfileUpdate } from '../../api/hooks';
-import { clearCachedSet } from '../../store/quizSet';
-import { isSfxEnabled, setSfxEnabled } from '../../store/sfx';
-import { preloadSfx } from '../../lib/sfx';
-import { isStudyValid, type StudySelection } from '../onboarding/studyContent';
+import { useMe, useUnreadInquiryCount } from '../../api/hooks';
+import { TABS } from '../onboarding/studyContent';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 const APP_VERSION = 'v0.0.1';
 
+/**
+ * 학습 트랙 요약 — "한자단어 · N3". 아직 안 정했으면 안내로 대체.
+ * ⚠️ 가나 트랙은 급수(JLPT)가 없어 모드 이름만 나온다.
+ */
+function studySummary(m: ReturnType<typeof useMe>['data']): string {
+  if (!m?.study_mode) { return '설정 필요'; }
+  const mode = TABS.find((t) => t.mode === m.study_mode)?.label ?? m.study_mode;
+  return m.study_level ? `${mode} · ${String(m.study_level).toUpperCase()}` : mode;
+}
+
 export default function SettingsScreen(): React.JSX.Element {
-  const { showToast } = useToast();
   const c = useThemeColors();
   const navigation = useNavigation<MainStackScreenProps<'Settings'>['navigation']>();
   const me = useMe();
-  const updateProfile = useUpdateProfile();
-  const abandonQuizSet = useAbandonQuizSet();
   const unreadInquiry = useUnreadInquiryCount();
   const hasUnreadInquiry = (unreadInquiry.data?.count ?? 0) > 0;
-  const [studySel, setStudySel] = useState<StudySelection | null>(null);
-  const studyInitialized = useRef(false);
-  const [justSaved, setJustSaved] = useState(false);
-  // 학습 저장 전용 로딩 — updateProfile은 알림 토글과 공유하므로 그 isPending을 쓰면
-  // 토글만 눌러도 학습 버튼이 "저장 중"이 된다. 학습 저장 액션에만 반응하는 별도 상태.
-  const [studySaving, setStudySaving] = useState(false);
-  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 효과음은 기기 설정(MMKV)이라 서버 프로필과 무관하다. MMKV는 반응형이 아니므로
-  // 초기값만 읽어 로컬 state로 들고 간다.
-  const [sfxOn, setSfxOn] = useState(isSfxEnabled);
 
   const m = me.data;
-
-  // me 로드 후 딱 한 번만 초기화(useRef 플래그로 이후 변경에 의한 재초기화 방지).
-  useEffect(() => {
-    if (m && !studyInitialized.current) {
-      studyInitialized.current = true;
-      setStudySel({
-        mode: (m.study_mode as StudySelection['mode']) ?? null,
-        level: (m.study_level as StudySelection['level']) ?? null,
-        hiragana: m.study_kana_hiragana,
-        katakana: m.study_kana_katakana,
-      });
-    }
-  }, [m]);
-
-  function changeStudy(next: StudySelection) {
-    setStudySel(next);
-    setJustSaved(false);
-  }
-
-  function isPendingStudyChange(): boolean {
-    if (!studySel || !m) return false;
-    return (
-      studySel.mode !== m.study_mode ||
-      studySel.level !== m.study_level ||
-      studySel.hiragana !== m.study_kana_hiragana ||
-      studySel.katakana !== m.study_kana_katakana
-    );
-  }
-
-  function applyStudyChange() {
-    if (!studySel || !isStudyValid(studySel)) return;
-    setStudySaving(true);
-    updateProfile.mutate(
-      {
-        study_mode: studySel.mode,
-        study_level: studySel.level,
-        study_kana_hiragana: studySel.hiragana,
-        study_kana_katakana: studySel.katakana,
-      },
-      {
-        onSuccess: () => {
-          abandonQuizSet.mutate(undefined, {
-            onSuccess: () => {
-              clearCachedSet(); // 학습 설정 변경 시 캐시 클리어: 다음 진입 시 새 세트 요청
-              setStudySaving(false);
-              setJustSaved(true);
-              if (savedTimer.current) { clearTimeout(savedTimer.current); }
-              savedTimer.current = setTimeout(() => setJustSaved(false), 1500);
-            },
-            onError: () => setStudySaving(false),
-          });
-        },
-        onError: () => {
-          setStudySaving(false);
-          showToast('설정 변경에 실패했어요.', 'error');
-          if (m) {
-            setStudySel({
-              mode: (m.study_mode as StudySelection['mode']) ?? null,
-              level: (m.study_level as StudySelection['level']) ?? null,
-              hiragana: m.study_kana_hiragana,
-              katakana: m.study_kana_katakana,
-            });
-          }
-        },
-      },
-    );
-  }
-
-  const patch = (data: ProfileUpdate) =>
-    updateProfile.mutate(data, { onError: () => showToast('설정 변경에 실패했어요.', 'error') });
-
-  const studyLoading = studySaving;
-  const studyPending = isPendingStudyChange() && !!studySel && isStudyValid(studySel);
-  const studySolid = studyLoading || justSaved || studyPending;
 
   return (
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="설정" showBack />
       <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
-        {/* 프로필 */}
-        <View
+        {/* 프로필 = 계정 설정 진입점 */}
+        <PressableScale
+          onPress={() => navigation.navigate('AccountSettings')}
+          pressedScale={0.99}
           className="flex-row items-center border-y border-border-tertiary bg-bg-primary px-xl py-lg"
           style={{ gap: 14 }}>
           <View
@@ -147,92 +73,54 @@ export default function SettingsScreen(): React.JSX.Element {
             label={m?.provider === 'kakao' ? 'Kakao' : m?.is_guest ? 'Guest' : 'Google'}
             variant={m?.is_guest ? 'amber' : 'neutral'}
           />
-        </View>
+          <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />
+        </PressableScale>
 
-        {/* 학습 트랙 */}
-        <View className="px-xl">
-          <AppText variant="label" className="text-text-tertiary" style={{ marginBottom: 12 }}>
-            학습
-          </AppText>
-          {studySel ? <StudySelector value={studySel} onChange={changeStudy} /> : null}
-          <PressableScale
-            onPress={applyStudyChange}
-            disabled={!studyPending || studyLoading}
-            pressedScale={0.99}
-            style={{
-              marginTop: 8,
-              borderRadius: radius.md,
-              paddingVertical: 17,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 7,
-              backgroundColor: studySolid ? c.brand : c['brand-subtle'],
-            }}>
-            <AppText variant="subheading" style={{ color: studySolid ? c['on-brand'] : c.brand, fontWeight: '700' }}>
-              {studyLoading ? '저장 중…' : justSaved ? '설정되었습니다' : '이 설정으로 학습하기'}
-            </AppText>
-            {justSaved ? (
-              <Animated.View entering={ZoomIn.springify().damping(13).stiffness(200)}>
-                <Icon name="check" size={18} color={c['on-brand']} strokeWidth={3} />
-              </Animated.View>
-            ) : null}
-          </PressableScale>
-        </View>
-
-        {/* 캐시 · 내역 (친구 초대는 계정 설정 안에 있어 여기선 중복 제거) */}
-        <ListSection title="캐시 · 내역">
-          <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
-          <ListRow leftIcon="gift" title="기프티콘 보관함" onPress={() => navigation.navigate('GifticonWallet')} last />
-        </ListSection>
-
-        {/* 소리 */}
-        <ListSection title="소리">
-          <ToggleRow
-            title="정답 · 오답 효과음"
-            value={sfxOn}
-            onValueChange={(v) => { setSfxOn(v); setSfxEnabled(v); if (v) { preloadSfx(); } }}
-            last
-          />
-        </ListSection>
-
-        {/* 알림 */}
-        <ListSection title="알림">
-          <ListRow leftIcon="bell" title="알림 보기" onPress={() => navigation.navigate('Notifications')} />
-          <ToggleRow
-            title="푸시 알림"
-            value={m?.push_enabled ?? true}
-            onValueChange={(v) => patch({ push_enabled: v })}
-          />
-          <ToggleRow
-            title="학습 리마인더"
-            value={m?.push_quiz_reminder ?? true}
-            onValueChange={(v) => patch({ push_quiz_reminder: v })}
-          />
-          <ToggleRow
-            title="마케팅 · 이벤트 알림"
-            value={m?.push_marketing ?? false}
-            onValueChange={(v) => patch({ push_marketing: v })}
-            last
-          />
-        </ListSection>
-
-        {/* 계정 */}
-        <ListSection title="계정">
+        <ListSection title="학습">
           <ListRow
-            leftIcon="user"
-            title="계정 설정"
-            onPress={() => navigation.navigate('AccountSettings')}
+            leftIcon="book"
+            title="학습 트랙"
+            value={studySummary(m)}
+            showChevron
+            onPress={() => navigation.navigate('StudySettings')}
           />
           <ListRow
             leftIcon="lock"
-            title="잠금화면 설정"
+            title="잠금화면 학습"
             onPress={() => navigation.navigate('LockSettings')}
             last
           />
         </ListSection>
 
-        {/* 지원 */}
+        <ListSection title="앱">
+          <ListRow
+            leftIcon="bell"
+            title="알림"
+            onPress={() => navigation.navigate('NotificationSettings')}
+          />
+          <ListRow
+            leftIcon="sparkles"
+            title="화면 · 소리"
+            onPress={() => navigation.navigate('DisplaySettings')}
+            last
+          />
+        </ListSection>
+
+        <ListSection title="리워드">
+          <ListRow leftIcon="wallet" title="캐시 내역" onPress={() => navigation.navigate('Ledger')} />
+          <ListRow
+            leftIcon="gift"
+            title="기프티콘 보관함"
+            onPress={() => navigation.navigate('GifticonWallet')}
+          />
+          <ListRow
+            leftIcon="user"
+            title="친구 초대"
+            onPress={() => navigation.navigate('Referral')}
+            last
+          />
+        </ListSection>
+
         <ListSection title="지원">
           <ListRow
             leftIcon="mail"
@@ -243,7 +131,6 @@ export default function SettingsScreen(): React.JSX.Element {
           />
         </ListSection>
 
-        {/* 버전 — 맨 아래 */}
         <AppText variant="caption" className="text-center text-text-tertiary">
           {APP_VERSION}
         </AppText>

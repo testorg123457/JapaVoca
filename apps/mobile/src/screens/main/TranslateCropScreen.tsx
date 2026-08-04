@@ -12,7 +12,7 @@ import CropOverlay from './components/CropOverlay';
 import { hairline } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/ThemeProvider';
 import { cropToRect, toPixelRect, type Rect } from '../../lib/translate/cropImage';
-import { classifyTranslateError, errorMessage } from '../../lib/translate/errors';
+import { classifyTranslateError, toastText } from '../../lib/translate/errors';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 export default function TranslateCropScreen({
@@ -37,7 +37,7 @@ export default function TranslateCropScreen({
       const cropped = await cropToRect(image.uri, pixel);
       navigation.replace('TranslateResult', { uri: cropped });
     } catch (e) {
-      showToast(errorMessage(classifyTranslateError(e)).message, 'error');
+      showToast(toastText(classifyTranslateError(e)), 'error');
       setBusy(false);
     }
   }

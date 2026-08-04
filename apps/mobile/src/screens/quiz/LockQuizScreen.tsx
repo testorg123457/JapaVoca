@@ -950,7 +950,7 @@ export function LockQuizView({
           queryClient.invalidateQueries({ queryKey: ['wallet'] });
           queryClient.invalidateQueries({ queryKey: ['daily', 'today'] });
           const countPart = typeof res.today_correct_count === 'number'
-            ? `정답 ${res.today_correct_count}개! `
+            ? `정답 ${res.today_correct_count}개 · `
             : '';
           showToast(`${countPart}캐시 ${res.milestone_bonus} 획득`, 'info');
         }

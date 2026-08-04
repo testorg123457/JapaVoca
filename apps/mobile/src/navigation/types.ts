@@ -4,11 +4,7 @@
  * 화면 컴포넌트는 여기서 파생한 ScreenProps 타입으로 route/navigation 을
  * 타입 안전하게 받는다.
  */
-import type {
-  CompositeScreenProps,
-  NavigatorScreenParams,
-} from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BoxItem } from '../api/hooks';
 import type { GiftExchange } from '../api/exchange';
@@ -44,10 +40,18 @@ export type MainStackParamList = {
   BoxOpen: { boxes: BoxItem[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;
-  /** 설정(헤더 우측 버튼으로 진입). */
+  /** 설정(헤더 우측 버튼으로 진입). 첫 화면은 "무엇을 바꿀지 고르는 목차"다. */
   Settings: undefined;
-  /** 계정 설정(설정 > 계정 설정) — 테마·계정연결·약관·회원탈퇴. */
+  /** 계정 설정(설정 > 프로필 탭) — 계정연결·약관·회원탈퇴. */
   AccountSettings: undefined;
+  /** 학습 설정(설정 > 학습 > 학습 트랙) — 트랙·급수·가나 선택. */
+  StudySettings: undefined;
+  /** 알림 설정(설정 > 앱 > 알림) — 푸시 토글들. 알림 '목록'은 Notifications. */
+  NotificationSettings: undefined;
+  /** 화면·소리(설정 > 앱) — 테마 모드 + 효과음. */
+  DisplaySettings: undefined;
+  /** 친구 초대(설정 > 리워드) — 내 코드 공유 + 추천인 코드 입력 진입. */
+  Referral: undefined;
   /** 잠금화면 학습 설정(설정 > 잠금화면 설정). */
   LockSettings: undefined;
   /** 잠금화면 퀴즈 테마 선택(잠금화면 설정 > 잠금화면 디자인). */
@@ -79,16 +83,6 @@ export type MainStackParamList = {
   StyleGuide: undefined;
 };
 
-/**
- * @deprecated 하단 탭 제거됨(홈 단일 스크롤로 통합). 타입은 deprecated된
- * WalletScreen/SettingsScreen의 컴파일 호환을 위해서만 남겨둔다.
- */
-export type BottomTabParamList = {
-  Home: undefined;
-  Wallet: undefined;
-  Settings: undefined;
-};
-
 /** 화면별 props 헬퍼 타입. */
 export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
   NativeStackScreenProps<AuthStackParamList, T>;
@@ -98,13 +92,6 @@ export type MainStackScreenProps<T extends keyof MainStackParamList> =
 
 export type OnboardingStackScreenProps<T extends keyof OnboardingStackParamList> =
   NativeStackScreenProps<OnboardingStackParamList, T>;
-
-/** @deprecated 하단 탭 제거됨. deprecated 화면 컴파일 호환용. */
-export type BottomTabScreenPropsFor<T extends keyof BottomTabParamList> =
-  CompositeScreenProps<
-    BottomTabScreenProps<BottomTabParamList, T>,
-    NativeStackScreenProps<MainStackParamList>
-  >;
 
 /**
  * 전역 navigation 타입 보강 — useNavigation 등을 파라미터 없이 써도

@@ -69,7 +69,7 @@ export default function LoginScreen(): React.JSX.Element {
       }
       startOnboarding({ method: 'google', idToken: response.data.idToken });
     } catch {
-      showToast('로그인에 실패했어요. 다시 시도해주세요.', 'error');
+      showToast('로그인하지 못했어요', 'error');
     } finally {
       setLoadingMethod(null);
     }
@@ -84,7 +84,7 @@ export default function LoginScreen(): React.JSX.Element {
     } catch (err) {
       const code = (err as { code?: number })?.code;
       if (code === -1 || code === -1002) { return; }
-      showToast('로그인에 실패했어요. 다시 시도해주세요.', 'error');
+      showToast('로그인하지 못했어요', 'error');
     } finally {
       setLoadingMethod(null);
     }

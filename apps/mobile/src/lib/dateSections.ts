@@ -34,6 +34,34 @@ export function sectionTitle(iso: string, now: Date = new Date()): string {
   return `${yearPrefix}${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 }
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+
+/**
+ * "방금" / "12분 전" / "3시간 전" / "어제" / "7월 18일" / "2025년 12월 3일".
+ *
+ * 알림 목록처럼 "언제 왔는지"가 본문 옆에 붙는 자리용. 섹션 헤더가 날짜를 담당하는
+ * 목록에는 `formatTime`을 쓴다.
+ *
+ * ⚠️ 자정을 넘기면 '시간 전'을 쓰지 않는다 — 새벽 1시에 보는 "5시간 전"은 어제 일인데
+ *    오늘 일로 읽힌다. 하루가 바뀌면 '어제'/날짜로 떨어뜨린다.
+ * ⚠️ 미래 시각(기기 시계 오차)은 '방금'으로 흡수한다.
+ */
+export function relativeTime(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  const diff = now.getTime() - d.getTime();
+  if (diff < MINUTE) { return '방금'; }
+  if (diff < HOUR) { return `${Math.floor(diff / MINUTE)}분 전`; }
+  if (dateKey(d) === dateKey(now)) { return `${Math.floor(diff / HOUR)}시간 전`; }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (dateKey(d) === dateKey(yesterday)) { return '어제'; }
+
+  const yearPrefix = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}년 ` : '';
+  return `${yearPrefix}${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
 export type DateSection<T> = { title: string; data: T[] };
 
 /**

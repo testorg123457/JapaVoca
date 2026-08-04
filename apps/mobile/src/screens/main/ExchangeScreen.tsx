@@ -74,7 +74,7 @@ export default function ExchangeScreen(): React.JSX.Element {
       return;
     }
     if (balance < product.price_cash) {
-      showToast('보유 캐시가 부족해요. 퀴즈를 풀고 캐시를 모아보세요.', 'error');
+      showToast('보유 캐시가 부족해요', 'error');
       return;
     }
     lockRef.current = true;
@@ -85,7 +85,7 @@ export default function ExchangeScreen(): React.JSX.Element {
       // 광고를 끝까지 보지 않았으면(스킵·미로드 포함) 서버 호출 없이 종료 — 차감 없음.
       if (!earned) {
         lockRef.current = false;
-showToast('광고를 끝까지 시청해야 교환할 수 있어요. 잠시 후 다시 시도해주세요.', 'error');
+showToast('광고를 끝까지 봐야 교환할 수 있어요', 'error');
         return;
       }
       // SSV 확인 — Mock 모드(required=false)면 1회 조회로 즉시 통과.
@@ -93,7 +93,7 @@ showToast('광고를 끝까지 시청해야 교환할 수 있어요. 잠시 후 
       const status = await pollAdStatus(nonce).finally(() => setVerifying(false));
       if (status.required && !status.verified) {
         lockRef.current = false;
-showToast('광고 확인이 지연되고 있어요. 캐시는 차감되지 않았어요. 잠시 후 다시 시도해주세요.', 'error');
+showToast('광고 확인이 지연되고 있어요. 캐시는 차감되지 않았어요', 'error');
         return;
       }
       requestExchange.mutate(
@@ -107,7 +107,7 @@ showToast('광고 확인이 지연되고 있어요. 캐시는 차감되지 않�
           onSuccess: () => {
             lockRef.current = false;
             delete keyRef.current[product.code]; // 성공 — 다음 구매는 새 키.
-            showToast(`${product.name} 교환이 완료됐어요.`);
+            showToast(`${product.name} 교환이 완료됐어요`);
           },
           onError: (error) => {
             lockRef.current = false;
@@ -117,7 +117,7 @@ showToast('광고 확인이 지연되고 있어요. 캐시는 차감되지 않�
             if (response) {
               delete keyRef.current[product.code];
             }
-            showToast(response?.data?.detail ?? '교환에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+            showToast(response?.data?.detail ?? '교환하지 못했어요', 'error');
           },
         },
       );

@@ -18,7 +18,7 @@ import { AppText, Icon, PressableScale, useToast } from '../../components';
 import { gray, mint, radius } from '../../theme/tokens';
 import { pickFromCamera, pickFromGallery } from '../../lib/translate/imageSource';
 import type { PickedImage } from '../../lib/translate/imageSource';
-import { classifyTranslateError, errorMessage } from '../../lib/translate/errors';
+import { classifyTranslateError, toastText } from '../../lib/translate/errors';
 import type { MainStackScreenProps } from '../../navigation/types';
 
 const BG = gray[900]; // 카메라 다크 그라운드
@@ -44,7 +44,7 @@ export default function JapaneseTranslateScreen(): React.JSX.Element {
         onPicked(img);
       }
     } catch (e) {
-      showToast(errorMessage(classifyTranslateError(e)).message, 'error');
+      showToast(toastText(classifyTranslateError(e)), 'error');
     } finally {
       setBusy(false);
     }

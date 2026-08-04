@@ -41,7 +41,7 @@ export default function ReferralRedeemScreen(): React.JSX.Element {
     setError('');
     redeem.mutate(code, {
       onSuccess: () => {
-        showToast(`${reward.toLocaleString()} 캐시를 받았어요.`);
+        showToast(`캐시 ${reward.toLocaleString()} 받았어요`);
         navigation.goBack();
       },
       onError: (err) => {

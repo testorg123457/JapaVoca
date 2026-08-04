@@ -110,10 +110,10 @@ export default function StudySelectScreen(): React.JSX.Element {
         // 401 = 토큰 만료(구글 1시간) → 재로그인 유도
         const status = axios.isAxiosError(err) ? err.response?.status : null;
         if (status === 401) {
-          showToast('로그인 정보가 만료됐어요. 다시 로그인해주세요.', 'error');
+          showToast('로그인 정보가 만료됐어요. 다시 로그인해주세요', 'error');
           signOut();
         } else {
-          showToast('저장에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+          showToast('저장하지 못했어요', 'error');
         }
       } finally {
         setLocalPending(false);
@@ -131,7 +131,7 @@ export default function StudySelectScreen(): React.JSX.Element {
       });
       onComplete();
     } catch {
-      showToast('저장에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+      showToast('저장하지 못했어요', 'error');
     }
   }
 

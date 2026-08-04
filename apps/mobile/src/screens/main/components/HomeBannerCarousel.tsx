@@ -53,7 +53,7 @@ const HOME_BANNERS: Banner[] = [
     subtitle: '친구가 코드를 입력하면 둘 다 받아요',
     icon: 'user',
     tone: 'mint',
-    screen: 'AccountSettings',
+    screen: 'Referral',
   },
   {
     id: 'translate',

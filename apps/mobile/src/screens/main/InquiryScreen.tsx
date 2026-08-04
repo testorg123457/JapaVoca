@@ -128,13 +128,13 @@ export default function InquiryScreen(): React.JSX.Element {
       await postInquiry.mutateAsync(trimmed);
       if (!mountedRef.current) { return; }
       setText('');
-      showToast('문의를 보냈어요. 감사합니다!');
+      showToast('문의를 보냈어요');
     } catch (err: any) {
       if (!mountedRef.current) { return; }
       if (err?.response?.status === 429) {
-        showToast('오늘 문의 한도에 도달했어요.', 'error');
+        showToast('오늘 보낼 수 있는 문의를 다 썼어요', 'error');
       } else {
-        showToast('문의 전송에 실패했어요. 다시 시도해주세요.', 'error');
+        showToast('문의를 보내지 못했어요', 'error');
       }
     }
   }
@@ -144,7 +144,7 @@ export default function InquiryScreen(): React.JSX.Element {
     setDeleteTarget(null);
     if (id === null) { return; }
     deleteInquiry.mutate(id, {
-      onError: () => showToast('삭제에 실패했어요. 다시 시도해주세요.', 'error'),
+      onError: () => showToast('삭제하지 못했어요', 'error'),
     });
   }
 

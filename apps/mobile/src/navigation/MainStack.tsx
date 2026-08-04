@@ -25,6 +25,10 @@ import GifticonDetailScreen from '../screens/main/GifticonDetailScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import InquiryScreen from '../screens/main/InquiryScreen';
 import ReferralRedeemScreen from '../screens/main/ReferralRedeemScreen';
+import ReferralScreen from '../screens/main/ReferralScreen';
+import StudySettingsScreen from '../screens/main/StudySettingsScreen';
+import NotificationSettingsScreen from '../screens/main/NotificationSettingsScreen';
+import DisplaySettingsScreen from '../screens/main/DisplaySettingsScreen';
 import BookmarkScreen from '../screens/main/BookmarkScreen';
 import JapaneseTranslateScreen from '../screens/main/JapaneseTranslateScreen';
 import TranslateCropScreen from '../screens/main/TranslateCropScreen';
@@ -51,6 +55,9 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="Kana" component={KanaScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+      <Stack.Screen name="StudySettings" component={StudySettingsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="DisplaySettings" component={DisplaySettingsScreen} />
       <Stack.Screen name="LockSettings" component={LockSettingsScreen} />
       <Stack.Screen name="LockTheme" component={LockThemeScreen} />
       <Stack.Screen name="TermsDetail" component={TermsDetailScreen} />
@@ -60,6 +67,7 @@ export default function MainStack(): React.JSX.Element {
       <Stack.Screen name="GifticonDetail" component={GifticonDetailScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Inquiry" component={InquiryScreen} />
+      <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="ReferralRedeem" component={ReferralRedeemScreen} />
       <Stack.Screen name="JapaneseTranslate" component={JapaneseTranslateScreen} />
       <Stack.Screen name="TranslateCrop" component={TranslateCropScreen} />

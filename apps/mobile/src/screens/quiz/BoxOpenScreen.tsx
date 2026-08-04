@@ -18,6 +18,7 @@ import {
   boxBurstHeight, boxBurstLayout, boxStageTouchPad, slotRect, slotTouchRect,
 } from './boxBurstLayout';
 import { boxGradeStyle } from './boxGradeStyle';
+import { planRefresh, type OpenOutcome } from './boxOpenRefresh';
 import { BoxBackdrop } from './components/BoxBackdrop';
 
 const AD_EVERY = 3;
@@ -41,6 +42,11 @@ const REWARD_GAP = 150;
  * 레이아웃이 아니라 transform이라 탭 영역도 그림과 함께 같이 내려간다.
  */
 const STAGE_OFFSET_Y = 6;
+/**
+ * 개봉이 끝난 뒤 나가기 버튼을 조금 더 잠가 두는 시간(ms).
+ * 보상 연출이 자리를 잡기 전에 눌리는 걸 막는다. 흐림도 이 시간만큼 함께 유지된다.
+ */
+const LEAVE_LOCK_RELEASE_MS = 200;
 
 export default function BoxOpenScreen({
   route,
@@ -101,8 +107,11 @@ export default function BoxOpenScreen({
   const flushRef = useRef(flushRefresh);
   flushRef.current = flushRefresh;
 
+  /** 프로그램이 내보내는 이탈 — 아래 beforeRemove 가드를 통과시킨다. */
+  const allowLeaveRef = useRef(false);
+
   /**
-   * 홈으로 나가기.
+   * 홈으로 나가기(확인 없이 즉시).
    *
    * ⚠️ navigate('Home')를 쓰면 안 된다. React Navigation 7의 navigate는 이미 스택에 있는
    *    화면으로 '돌아가는' 게 아니라 그 화면을 빼서 맨 위로 올린다(StackRouter의 NAVIGATE:
@@ -111,7 +120,53 @@ export default function BoxOpenScreen({
    *    Home 은 이 스택의 첫 화면이므로 popToTop 이 정확히 [Home] 만 남긴다.
    */
   const goHome = useCallback(() => {
+    allowLeaveRef.current = true;
     navigation.popToTop();
+  }, [navigation]);
+
+  /**
+   * 개봉 중(약 1초)에는 나가지 못하게 막는다.
+   *
+   * 서버는 `POST /open/`이 날아간 순간 이미 개봉을 커밋하고 캐시를 지급한다. 그런데
+   * 사용자에겐 아직 상자가 안 터졌으니 "안 열었다"고 느낀다. 그 사이에 나가면 돈은
+   * 받았는데 **뭘 받았는지 모른 채** 상자만 사라진다 — 리워드 앱에서 보여주는 순간이
+   * 통째로 날아가는 셈이다. 1초짜리 구간이라 확인 시트를 세우기보단 그냥 잠근다.
+   *
+   * ⚠️ **흐림과 실제 잠금은 반드시 같은 값 하나를 봐야 한다.**
+   *    예전엔 흐림은 `phase`(렌더)로, 이탈 차단은 beforeRemove 리스너가 클로저로 잡은
+   *    `phase`로 판단했다. effect는 화면을 그린 뒤에 도니까, X는 이미 안 흐려졌는데
+   *    리스너는 옛 phase를 들고 이탈을 막는 구간이 생긴다(연출·쿼리 갱신으로 JS 스레드가
+   *    바쁘면 한참 벌어진다). "안 흐린데 안 눌리는" 상태의 정체가 이거였다.
+   *    그래서 `locked` 하나로 합치고, 리스너는 ref로 **항상 현재 값**을 읽는다
+   *    (ref는 렌더 중 갱신되므로 리스너를 다시 구독할 필요도 없다).
+   */
+  const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(locked);
+  lockedRef.current = locked;
+
+  useEffect(() => {
+    if (phase === 'opening') {
+      setLocked(true);
+      return;
+    }
+    // 개봉이 끝나면 조금 더 잠갔다 푼다 — 연출이 자리를 잡기 전에 눌리지 않도록.
+    const timer = setTimeout(() => setLocked(false), LEAVE_LOCK_RELEASE_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  /**
+   * ⚠️ X 버튼만 막으면 안 된다 — 하드웨어 뒤로가기·엣지 스와이프로 그냥 빠져나간다.
+   *    beforeRemove가 그 경로를 전부 받는다.
+   * ⚠️ 갇히지 않는 근거: 개봉 요청엔 15초 상한이 있고(`api/boxes.ts`), 타임아웃이면
+   *    catch에서 phase가 'sealed'로 풀리며 자동으로 홈으로 나간다.
+   * (광고를 보는 동안은 phase가 아직 'sealed'라 X가 정상 동작한다 — 광고는 길 수 있으므로.)
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (allowLeaveRef.current || !lockedRef.current) { return; }
+      e.preventDefault();
+    });
+    return unsubscribe;
   }, [navigation]);
 
   const clearTimers = useCallback(() => {
@@ -151,34 +206,46 @@ export default function BoxOpenScreen({
       setPhase('opening');
       playSlots(targets);
 
+      /**
+       * 갱신 예약/즉시 흘리기는 `planRefresh` 한 곳에서 정한다.
+       *
+       * ⚠️ **화면을 떠났어도 반드시 부른다.** 예전엔 응답 처리 맨 앞에서
+       *    `if (!mountedRef.current) return`으로 걷어차서, 개봉 중 나가면 서버는 열었는데
+       *    상자 목록을 무효화하지 못했다 → 홈에 유령 상자가 남고 다시 누르면 409.
+       */
+      const settle = (outcome: OpenOutcome): boolean => {
+        const plan = planRefresh(outcome, mountedRef.current);
+        pendingRefreshRef.current = plan.markPending;
+        if (plan.flushNow) { flushRef.current(); }
+        return mountedRef.current;
+      };
+
       try {
         const [res] = await Promise.all([
           openBox(box.id, adShown),
           new Promise<void>((resolve) => setTimeout(resolve, 1000)),
         ]);
-        if (!mountedRef.current) { return; }
+        if (!settle('opened')) { return; }
         setResult(res as OpenBoxResult);
         setOpenedSlots(targets);
         setPhase('revealed');
         openedCountRef.current += 1;
-        pendingRefreshRef.current = true;
       } catch (error) {
-        if (!mountedRef.current) { return; }
-        if ((error as AxiosError).response?.status === 409) {
+        const conflict = (error as AxiosError).response?.status === 409;
+        // ⚠️ 실패도 갱신한다. 응답을 못 받은 것과 서버가 처리 안 한 것을 구분할 수 없어,
+        //    타임아웃인데 서버는 이미 적립을 커밋했을 수 있다(안 하면 캐시는 늘었는데
+        //    홈 잔액이 앱 재시작 전까지 옛날 값으로 남는다).
+        if (!settle(conflict ? 'already-opened' : 'failed')) { return; }
+        if (conflict) {
           // 이미 개봉된 상자 — 보상은 이미 지급됨. 인벤토리 갱신 후 안내.
           setAlreadyOpened(true);
           setOpenedSlots(slots.map((_, i) => i)); // 금액을 모르므로 전부 연 것으로 처리
           setPhase('revealed');
-          pendingRefreshRef.current = true;
           return;
         }
         lockRef.current = false;
         setPhase('sealed');
-        // ⚠️ 응답을 못 받은 것과 서버가 처리 안 한 것을 구분할 수 없다. 타임아웃인데 서버는
-        //    이미 적립을 커밋했을 수 있으므로, 실패로 보더라도 지갑·상자 목록은 갱신한다.
-        //    (안 하면 캐시는 늘었는데 홈 잔액이 앱 재시작 전까지 옛날 값으로 남는다)
-        pendingRefreshRef.current = true;
-        showToast('상자 개봉 결과를 확인하지 못했어요. 지갑에서 확인해주세요.', 'error');
+        showToast('상자 개봉 결과를 확인하지 못했어요. 지갑에서 확인해주세요', 'error');
         goHome();
       }
     },
@@ -273,8 +340,11 @@ export default function BoxOpenScreen({
         paddingTop: 8,
         paddingBottom: 8,
       }}>
+        {/* 개봉 중엔 잠근다(위 beforeRemove와 **같은 `locked` 값**). 사라지게 하면 상단이
+            들썩이므로 자리는 두고 흐리게만 — 곧 다시 눌린다는 게 읽힌다. */}
         <Pressable
-          onPress={() => goHome()}
+          onPress={goHome}
+          disabled={locked}
           hitSlop={8}
           style={{
             width: 38,
@@ -285,6 +355,7 @@ export default function BoxOpenScreen({
             borderColor: 'rgba(255,255,255,0.1)',
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: locked ? 0.35 : 1,
           }}
         >
           <Icon name="close" size={18} color="rgba(255,255,255,0.65)" />

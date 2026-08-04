@@ -1,11 +1,15 @@
 /**
  * AccountSettingsScreen — 계정 설정.
  *
- * 신원/계정 영역: 화면 표시(테마) · 계정 연결(구글/카카오) · 약관·정책 · 회원 탈퇴.
- * (알림/캐시내역 등 기능 영역은 설정 메인에 독립 섹션으로 둔다.)
+ * 신원/계정 영역만 담는다: 계정 연결(구글/카카오) · 약관·정책 · 회원 탈퇴.
+ * 설정 첫 화면의 **프로필 블록을 탭하면** 여기로 온다.
+ *
+ * ⚠️ 예전에 얹혀 있던 두 가지를 뺐다(2026-08-04) — 계정과 무관해서다.
+ *    · 친구 초대 → `Referral`(설정 > 리워드). 캐시가 걸린 리워드 기능이다.
+ *    · 테마 모드 → `DisplaySettings`(설정 > 앱 > 화면·소리). 앱 표시 설정이다.
  */
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Config from 'react-native-config';
@@ -15,49 +19,12 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 
-import { AppHeader, AppText, ConfirmSheet, ListRow, ListSection, useToast } from '../../components';
-import { ReferralSection } from './components/ReferralSection';
-import { useThemeColors, useThemeMode } from '../../theme/ThemeProvider';
-import type { ThemeMode } from '../../store/theme';
+import { AppHeader, ConfirmSheet, ListRow, ListSection, useToast } from '../../components';
 import { useMe } from '../../api/hooks';
 import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 import { deleteAccount, linkAccount } from '../../api/auth';
 import { useAuth } from '../../store/AuthContext';
 import type { MainStackScreenProps } from '../../navigation/types';
-
-/** 테마 모드 선택 행 — [ 시스템 | 라이트 | 다크 ] 세그먼트. 선택됨만 brand. */
-const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
-  { mode: 'system', label: '시스템' },
-  { mode: 'light', label: '라이트' },
-  { mode: 'dark', label: '다크' },
-];
-
-function ThemeModeRow() {
-  const c = useThemeColors();
-  const { mode, setMode } = useThemeMode();
-  return (
-    <View className="px-xl py-md" style={{ minHeight: 56, justifyContent: 'center' }}>
-      <View className="flex-row rounded-md p-xs" style={{ backgroundColor: c['bg-tertiary'], gap: 4 }}>
-        {THEME_OPTIONS.map((opt) => {
-          const active = mode === opt.mode;
-          return (
-            <Pressable
-              key={opt.mode}
-              onPress={() => setMode(opt.mode)}
-              className="flex-1 items-center rounded-sm py-md active:opacity-70"
-              style={{ backgroundColor: active ? c.brand : 'transparent' }}>
-              <AppText
-                variant="subheading"
-                style={{ color: active ? c['on-brand'] : c['text-secondary'] }}>
-                {opt.label}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
 
 export default function AccountSettingsScreen(): React.JSX.Element {
   const navigation = useNavigation<MainStackScreenProps<'AccountSettings'>['navigation']>();
@@ -97,11 +64,11 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       await queryClient.invalidateQueries();
       showToast(
         switched
-          ? '이미 가입된 구글 계정으로 로그인했어요.'
-          : '구글 계정을 연결했어요. 이제 기프티콘 교환도 가능해요.',
+          ? '이미 가입된 구글 계정으로 로그인했어요'
+          : '구글 계정을 연결했어요. 이제 기프티콘도 교환할 수 있어요',
       );
     } catch {
-      showToast('구글 연결에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+      showToast('구글 계정을 연결하지 못했어요', 'error');
     } finally {
       setLinking(false);
     }
@@ -119,8 +86,8 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       await queryClient.invalidateQueries();
       showToast(
         switched
-          ? '이미 가입된 카카오 계정으로 로그인했어요.'
-          : '카카오 계정을 연결했어요. 이제 기프티콘 교환도 가능해요.',
+          ? '이미 가입된 카카오 계정으로 로그인했어요'
+          : '카카오 계정을 연결했어요. 이제 기프티콘도 교환할 수 있어요',
       );
     } catch (err) {
       // 사용자 취소(-1 / -1002)는 조용히 무시.
@@ -128,7 +95,7 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       if (code === -1 || code === -1002) {
         return;
       }
-      showToast('카카오 연결에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+      showToast('카카오 계정을 연결하지 못했어요', 'error');
     } finally {
       setLinking(false);
     }
@@ -144,7 +111,7 @@ export default function AccountSettingsScreen(): React.JSX.Element {
       await deleteAccount();
       signOut();
     } catch {
-      showToast('탈퇴에 실패했어요. 잠시 후 다시 시도해주세요.', 'error');
+      showToast('탈퇴하지 못했어요', 'error');
       setWithdrawing(false);
     }
   }
@@ -153,14 +120,6 @@ export default function AccountSettingsScreen(): React.JSX.Element {
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="계정 설정" showBack />
       <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
-        {/* 친구 초대 — 계정 설정 최상단(캐시가 걸린 기능이라 눈에 띄게) */}
-        <ReferralSection />
-
-        {/* 화면 표시 — 테마 모드 */}
-        <ListSection title="화면 표시">
-          <ThemeModeRow />
-        </ListSection>
-
         {/* 계정 연결 — 게스트만. 이미 연결된 유저에겐 '연결됨' 한 줄이 무의미해 섹션을 숨긴다. */}
         {m?.is_guest && (
           <ListSection title="계정 연결">

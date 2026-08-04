@@ -16,6 +16,7 @@ import { getAccessToken, getRefreshToken, setTokens } from '../store/auth';
 import { forceSignOut } from '../store/AuthContext';
 import { isNetworkError } from './errors';
 import { networkRetryDelayMs, shouldRetryNetworkError } from './retry';
+import { beginNetworkRetry, endNetworkRetry } from './retryNotice';
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -91,7 +92,20 @@ apiClient.interceptors.response.use(
       if (retryable) {
         originalRequest._netRetry = attempt + 1;
         await wait(networkRetryDelayMs(attempt));
-        return apiClient(originalRequest);
+        // 재시도는 재귀로 이어진다(다음 시도도 이 인터셉터를 다시 탄다). 화면 알림은
+        // **최초 진입(attempt 0)에서만** 짝을 만들어, 중간 시도마다 바가 껌뻑이지 않게 한다.
+        if (attempt > 0) {
+          return apiClient(originalRequest);
+        }
+        beginNetworkRetry();
+        try {
+          const retried = await apiClient(originalRequest);
+          endNetworkRetry(true);
+          return retried;
+        } catch (retryError) {
+          endNetworkRetry(false);
+          throw retryError;
+        }
       }
     }
 

@@ -14,7 +14,7 @@ import { hairline, radius, shadowStyle } from '../../theme/tokens';
 import { translateImage, translateText } from '../../api/translate';
 import {
   classifyTranslateError,
-  errorMessage,
+  errorMessage, toastText,
   type TransErrorKind,
 } from '../../lib/translate/errors';
 import type { MainStackScreenProps } from '../../navigation/types';
@@ -90,7 +90,7 @@ export default function TranslateResultScreen({
       }
       // 재번역 실패는 화면을 갈아엎지 않는다 — 기존 결과·편집 유지 + 토스트로만 알림.
       setStatus('done');
-      showToast(errorMessage(classifyTranslateError(e)).message, 'error');
+      showToast(toastText(classifyTranslateError(e)), 'error');
     }
   }, [source, showToast]);
 
