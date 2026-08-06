@@ -34,17 +34,31 @@ QUIZ_MILESTONE_INTERVAL = 10  # 당일 정답 N개마다(리셋: 매일 0) 캐�
 QUIZ_MILESTONE_BONUS = 10
 QUIZ_MILESTONE_MAX = 20  # 하루 최대 여기까지만(10, 20). 그 이후로는 더 지급 안 함.
 
-# 정답 시 상자 등급 가중치 (⚠️ 임시 테스트값 50/50 — 배포 전 90/10 원복)
+# 정답 시 상자 등급 가중치. 게임 관례대로 일반 → 파랑(레어) → 보라(에픽) → 버건디(레전더리).
+# ⚠️⚠️ 임시 테스트값 — 네 등급을 다 보려고 25%씩 4등분해 뒀다. 배포 전 반드시 원복!
+#      원래 값: 일반 73.30 / 파랑 16.45 / 보라 8.05 / 버건디 2.20 (docs/캐시-경제-설계.md §3)
 _BOX_GRADE_WEIGHTS = [
-    (CashBox.Grade.NORMAL, 30),
-    (CashBox.Grade.PURPLE, 40),
-    (CashBox.Grade.BURGUNDY, 30),  # ⚠️ 임시 테스트값 30% — 배포 전 반드시 낮출 것
+    (CashBox.Grade.NORMAL, 25),
+    (CashBox.Grade.BLUE, 25),
+    (CashBox.Grade.PURPLE, 25),
+    (CashBox.Grade.BURGUNDY, 25),
 ]
 
-# 묶음 상자 — 확률로 보상 개수를 늘린다. 인벤토리·광고 횟수는 1개로 세고 캐시만 여러 번 뽑는다.
-# ⚠️ 임시 테스트값 50% — 기대 지급액이 2배가 되므로 배포 전 반드시 낮춰야 한다.
+# 묶음 상자 — 보상 개수를 늘린다. 인벤토리·광고 횟수는 1개로 세고 캐시만 여러 번 뽑는다.
+#
+# ⚠️ 묶음 확률은 **등급마다 다르다**. 공통 상수 하나로 두면 안 된다 — 버건디 묶음은 최고
+#    금액이 3번 굴러가는 단일 최대 지급 경로라, 등급이 높을수록 묶음도 어려워야 한다.
+#    (등급 확률 × 묶음 확률이 곱해지므로, 공통값이면 상위 등급 기대값이 통제 없이 커진다.)
 # ⚠️ 확률은 반드시 서버에서만 굴린다(클라이언트 값 신뢰 금지).
-BOX_BURST_CHANCE = 0.5
+# 근거·기대값 계산은 docs/캐시-경제-설계.md.
+# ⚠️⚠️ 임시 테스트값 — 묶음 연출을 보려고 전 등급 30%로 올려 뒀다. 배포 전 반드시 원복!
+#      원래 값: 일반 0.0177 / 파랑 0.0578 / 보라 0.0683 / 버건디 0.0455
+_BOX_BURST_CHANCE = {
+    CashBox.Grade.NORMAL: 0.30,
+    CashBox.Grade.BLUE: 0.30,
+    CashBox.Grade.PURPLE: 0.30,
+    CashBox.Grade.BURGUNDY: 0.30,
+}
 BOX_BURST_COUNT = 3
 
 
@@ -298,9 +312,9 @@ def _roll_box_grade():
     return random.choices(grades, weights=weights, k=1)[0]
 
 
-def _roll_burst_count():
-    """이 상자가 몇 개의 보상을 줄지. 상자 개수는 어차피 1개이므로 상한과 무관하다."""
-    return BOX_BURST_COUNT if random.random() < BOX_BURST_CHANCE else 1
+def _roll_burst_count(grade):
+    """이 상자가 몇 개의 보상을 줄지. 상자 개수는 어차피 1개이므로 일일 상한과 무관하다."""
+    return BOX_BURST_COUNT if random.random() < _BOX_BURST_CHANCE[grade] else 1
 
 
 def _build_question_data(user, item_type, word_type, level, exclude_ids=None):
@@ -636,8 +650,10 @@ def grade_answer(user, question_token, choice_index, answer_ms=None):
         # 세트에 상한을 걸면 오래된 세트를 재개했을 때 정답을 맞춰도 상자가 안 나왔다.
         # 상자 상한은 일일 기준 하나만 둔다.
         if daily.boxes_earned < MAX_BOXES_PER_DAY:
+            # 등급을 먼저 뽑고 그 등급의 묶음 확률로 개수를 정한다(등급별로 다르다).
+            grade = _roll_box_grade()
             box = CashBox.objects.create(
-                user=user, grade=_roll_box_grade(), burst_count=_roll_burst_count(),
+                user=user, grade=grade, burst_count=_roll_burst_count(grade),
             )
             daily.boxes_earned += 1
             if quiz_set:

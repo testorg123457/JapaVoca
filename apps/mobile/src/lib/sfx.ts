@@ -8,7 +8,7 @@
  * 재생 시에는 가벼운 source 노드만 새로 만들어 붙인다(짧은 효과음의 표준 방식).
  */
 import { AppState } from 'react-native';
-import type { AudioBuffer, AudioContext } from 'react-native-audio-api';
+import type { AudioBuffer, AudioContext, GainNode } from 'react-native-audio-api';
 
 import { isSfxEnabled } from '../store/sfx';
 
@@ -19,7 +19,15 @@ const SOURCES = {
 
 export type SfxName = keyof typeof SOURCES;
 
+/**
+ * 효과음 볼륨(0~1).
+ * ⚠️ 원본을 그대로(1.0) 내보내면 정답음이 튄다. 이어폰으로 들으면 특히 크다.
+ *    파일을 다시 만들지 않고 게인으로만 낮춘다 — 나중에 조절하기도 쉽다.
+ */
+const SFX_VOLUME = 0.72;
+
 let context: AudioContext | null = null;
+let gain: GainNode | null = null;
 const buffers = new Map<SfxName, AudioBuffer>();
 const loading = new Map<SfxName, Promise<void>>();
 /** 디코딩 실패 횟수. 계속 실패하는 기기에서 매 문항마다 재시도하지 않도록 상한을 둔다. */
@@ -41,6 +49,23 @@ function getContext(): AudioContext | null {
     context = null;
   }
   return context;
+}
+
+/**
+ * 볼륨 조절용 게인 노드. 컨텍스트당 하나만 만들어 destination에 물려 두고,
+ * 재생할 때마다 source를 여기에 연결한다(source → gain → 스피커).
+ */
+function getGain(ctx: AudioContext): GainNode | null {
+  if (gain) { return gain; }
+  try {
+    const node = ctx.createGain();
+    node.gain.value = SFX_VOLUME;
+    node.connect(ctx.destination);
+    gain = node;
+  } catch {
+    gain = null; // 게인을 못 만들면 원음 그대로 — 소리가 안 나는 것보단 낫다.
+  }
+  return gain;
 }
 
 function load(name: SfxName): Promise<void> {
@@ -112,7 +137,7 @@ export function playSfx(name: SfxName): void {
     if (ctx.state === 'suspended') { ctx.resume(); }
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    source.connect(getGain(ctx) ?? ctx.destination);
     source.start(ctx.currentTime);
   } catch {
     // 재생 실패는 무시 — 정답 판정·화면 전환에 영향을 주지 않는다.

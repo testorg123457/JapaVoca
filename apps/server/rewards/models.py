@@ -106,6 +106,7 @@ class CashBox(models.Model):
 
     class Grade(models.TextChoices):
         NORMAL = 'normal', '일반'
+        BLUE = 'blue', '파랑'
         PURPLE = 'purple', '보라'
         BURGUNDY = 'burgundy', '버건디'
 

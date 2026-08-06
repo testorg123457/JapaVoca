@@ -13,40 +13,44 @@ import { openBox, type OpenBoxResult } from '../../api/boxes';
 import { useMe } from '../../api/hooks';
 import { useRewardedAd } from '../../hooks/useRewardedAd';
 import type { MainStackScreenProps } from '../../navigation/types';
-import { yellow } from '../../theme/tokens';
+import { fontFamily, radius, yellow } from '../../theme/tokens';
+import { useThemeColors } from '../../theme/ThemeProvider';
+import { GRADE_ANIM, GRADE_COLOR, GRADE_LABEL } from '../../lib/boxGrade';
 import {
-  boxBurstHeight, boxBurstLayout, boxStageTouchPad, slotRect, slotTouchRect,
+  boxBurstHeight, boxBurstLayout, boxStageTouchPad, boxTouchArea, slotRect,
 } from './boxBurstLayout';
-import { boxGradeStyle } from './boxGradeStyle';
 import { planRefresh, type OpenOutcome } from './boxOpenRefresh';
-import { BoxBackdrop } from './components/BoxBackdrop';
+import { GradeFlair } from './components/GradeFlair';
 
 const AD_EVERY = 3;
 
-/** 상자를 놓는 영역의 좌우 여백. */
-const STAGE_PAD = 24;
 /** 상자가 터진 뒤 캐시 칩이 뜨기까지의 지연(ms). 터지는 순간에 맞춘다. */
 const CHIP_DELAY_MS = 520;
 /** 여러 개를 한 번에 열 때의 시차(ms). 동시에 터지면 무엇이 앞인지 안 읽힌다. */
 const BURST_STAGGER_MS = 130;
-/**
- * 보상 문구 자리. 개봉 전에도 이 높이를 비워 둔다.
- * ⚠️ 조건부로 렌더하면 보상이 뜨는 순간 중앙 정렬이 다시 계산돼 재생 중인 상자가
- *    위로 점프한다(끊겨 보이는 원인). 자리를 미리 잡아 레이아웃을 고정한다.
- */
-const REWARD_SLOT_H = 80;
-/** 상자 무대와 보상 문구 사이 간격. 파티클이 상자 아래로 떨어지므로 넉넉히 둔다. */
-const REWARD_GAP = 150;
 /**
  * 상자를 세로 중앙에서 살짝 아래로 내리는 양(px).
  * 레이아웃이 아니라 transform이라 탭 영역도 그림과 함께 같이 내려간다.
  */
 const STAGE_OFFSET_Y = 6;
 /**
+ * 상자를 남은 공간의 중앙보다 위로 올리는 양(px).
+ * 가운데 정렬이라 **실제 이동은 이 값의 절반**(48px)이다.
+ *
+ * ⚠️ 상단에 제목 두 줄이 생기면서 위쪽이 채워졌다. 그래서 예전만큼(206) 올릴 필요가 없다.
+ *    상자가 제목에 너무 붙지 않으면서 버튼과도 안 멀어지는 지점.
+ */
+const STAGE_LIFT = 96;
+/**
  * 개봉이 끝난 뒤 나가기 버튼을 조금 더 잠가 두는 시간(ms).
  * 보상 연출이 자리를 잡기 전에 눌리는 걸 막는다. 흐림도 이 시간만큼 함께 유지된다.
  */
 const LEAVE_LOCK_RELEASE_MS = 200;
+/**
+ * 상자가 다 열린 뒤 결과 페이지로 넘어가기까지 기다리는 시간(ms).
+ * 터지는 연출과 캐시 칩이 눈에 들어올 만큼은 두고, 지루해지기 전에 넘긴다.
+ */
+const RESULT_DELAY_MS = 1400;
 
 export default function BoxOpenScreen({
   route,
@@ -61,7 +65,12 @@ export default function BoxOpenScreen({
     me.data ? { userId: me.data.id, context: 'box_open' } : undefined,
   );
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  /**
+   * 이 화면은 항상 목록의 **첫 상자**만 연다. 다음 상자는 결과 페이지가 남은 목록으로
+   * 이 화면을 `replace`해서 다시 띄운다 — 화면 안에서 인덱스를 올리며 상태를 되감던
+   * 방식은 되감을 곳이 여러 군데라 어긋나기 쉬웠다.
+   */
+  const currentIndex = 0;
   const [phase, setPhase] = useState<'sealed' | 'opening' | 'revealed'>('sealed');
   const [result, setResult] = useState<OpenBoxResult | null>(null);
   /** 이미 열린 상자의 슬롯 번호. 묶음은 탭할 때마다 하나씩 열린다. */
@@ -81,6 +90,11 @@ export default function BoxOpenScreen({
   const stageH = boxBurstHeight(slots);
   /** 탭 영역을 아래로 넓힌 만큼 무대를 키운다. 안 키우면 안드로이드에서 그 부분이 안 눌린다. */
   const touchPad = boxStageTouchPad(slots);
+  /** 상자 전체를 덮는 단일 탭 영역 — 한 번 누르면 남은 상자가 전부 열린다. */
+  const touchArea = useMemo(
+    () => boxTouchArea(slots, screenW, stageH),
+    [slots, screenW, stageH],
+  );
   /** 가운데부터 열리도록 한 재생 순서(가운데 → 좌 → 우). */
   const playOrder = useMemo(() => (slots.length === 3 ? [1, 0, 2] : [0]), [slots]);
 
@@ -186,15 +200,42 @@ export default function BoxOpenScreen({
     };
   }, []);
 
-  const isLast = currentIndex >= boxes.length - 1;
   // 지금 보고 있는 상자는 빼고 센다 — 마지막 상자에서 "1개 남음"으로 뜨던 문제.
   const remaining = boxes.length - currentIndex - 1;
 
   // 등급은 인벤토리에서 넘어온 box.grade로 개봉 전(밀봉)부터 공개.
-  // 배경·glow·뱃지는 등급별 설정 한 곳에서(boxGradeStyle).
-  const gradeStyle = boxGradeStyle(box.grade);
+  const c = useThemeColors();
+  const gradeColor = GRADE_COLOR[box.grade];
 
   const allOpened = phase === 'revealed' && openedSlots.length >= slots.length;
+
+  /**
+   * 모든 슬롯이 열리면 결과 페이지로 넘긴다.
+   *
+   * 개봉 화면은 **연출**만 맡고, 얼마를 받았는지 확인하는 건 결과 페이지의 일이다.
+   * 거기서 디스플레이 광고도 띄운다(docs/캐시-경제-설계.md §4).
+   *
+   * ⚠️ `replace` — 개봉 화면을 스택에 남기지 않는다. 남기면 뒤로가기로 이미 연 상자에
+   *    돌아가고, 그 상자는 서버가 409를 준다.
+   * ⚠️ 갱신(flushRefresh)을 먼저 흘린다. 결과 페이지에서 잔액을 보여주므로 여기서
+   *    미뤄두면 홈 잔액이 옛 값으로 남는다.
+   */
+  const resultSentRef = useRef(false);
+  useEffect(() => {
+    if (!allOpened || !result || resultSentRef.current) { return; }
+    resultSentRef.current = true;
+    const timer = setTimeout(() => {
+      clearTimers();
+      flushRef.current();
+      allowLeaveRef.current = true;
+      navigation.replace('BoxResult', {
+        result,
+        remaining: boxes.slice(currentIndex + 1),
+      });
+    }, RESULT_DELAY_MS);
+    return () => clearTimeout(timer);
+    // allOpened/result가 확정되는 순간 한 번만.
+  }, [allOpened, result, boxes, currentIndex, navigation, clearTimers]);
 
   // 개별 보상. 서버가 rewards를 안 주는 구버전이면 총합 1개로 취급한다.
   const rewards: number[] = result
@@ -305,31 +346,11 @@ export default function BoxOpenScreen({
     open(playOrder.filter((i) => !openedSlots.includes(i)));
   }
 
-  function handleNext() {
-    clearTimers();
-    flushRefresh(); // 애니메이션이 끝나기 전에 넘어가는 경우의 안전망
-    if (isLast) {
-      goHome();
-      return;
-    }
-    setCurrentIndex((i) => i + 1);
-    setPhase('sealed');
-    setResult(null);
-    setOpenedSlots([]);
-    setAlreadyOpened(false);
-    lockRef.current = false;
-  }
+  // ⚠️ '다음 상자 / 홈으로'는 결과 페이지(BoxResultScreen)가 맡는다. 여기서 다음 상자로
+  //    넘어가던 handleNext는 제거했다 — 상태를 두 곳에서 되감으면 어긋난다.
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: gradeStyle.bg }}
-      edges={['top', 'bottom']}
-    >
-      {/* 배경(radial) — 헤더·버튼까지 덮어야 비네트가 화면 가장자리에서 끊기지 않으므로
-          루트 첫 자식으로 깔고, 이후 형제들이 그 위에 쌓이게 한다. */}
-      {gradeStyle.backdrop.kind === 'radial' && (
-        <BoxBackdrop spec={gradeStyle.backdrop} />
-      )}
+    <SafeAreaView className="flex-1 bg-bg-primary" edges={['top', 'bottom']}>
 
       {/* 상단 */}
       <View style={{
@@ -337,7 +358,7 @@ export default function BoxOpenScreen({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 8,
+        paddingTop: 18,
         paddingBottom: 8,
       }}>
         {/* 개봉 중엔 잠근다(위 beforeRemove와 **같은 `locked` 값**). 사라지게 하면 상단이
@@ -350,109 +371,123 @@ export default function BoxOpenScreen({
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.1)',
+            backgroundColor: c['bg-tertiary'],
             alignItems: 'center',
             justifyContent: 'center',
             opacity: locked ? 0.35 : 1,
           }}
         >
-          <Icon name="close" size={18} color="rgba(255,255,255,0.65)" />
+          <Icon name="close" size={18} color={c['text-secondary']} />
         </Pressable>
 
         {/* 남은 게 없으면 뱃지 자체를 숨긴다("0개 남음"은 표시할 이유가 없다). */}
         {remaining > 0 && (
           <View style={{
-            borderRadius: 20,
-            paddingHorizontal: 12,
+            borderRadius: radius.sm,
+            paddingHorizontal: 10,
             paddingVertical: 5,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.1)',
+            backgroundColor: c['bg-tertiary'],
           }}>
-            <AppText variant="label" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <AppText variant="label" className="text-text-tertiary">
               {remaining}개 남음
             </AppText>
           </View>
         )}
       </View>
 
+      {/* 제목 — 화면을 꾸미는 대신 문장으로 말한다(좌측 정렬). */}
+      <View className="px-xl" style={{ paddingTop: 18 }}>
+        <View
+          className="self-start"
+          style={{
+            borderRadius: radius.sm,
+            paddingHorizontal: 9,
+            paddingVertical: 4,
+            backgroundColor: `${gradeColor}1F`,
+            marginBottom: 12,
+          }}>
+          <AppText variant="micro" style={{ color: gradeColor, fontFamily: fontFamily.bold }}>
+            {GRADE_LABEL[box.grade]} 상자
+          </AppText>
+        </View>
+        <AppText
+          className="text-text-primary"
+          style={{ fontFamily: fontFamily.bold, fontSize: 26, lineHeight: 35, letterSpacing: -0.8 }}>
+          상자가 도착했어요{'\n'}열어서 캐시를 받으세요
+        </AppText>
+      </View>
+
       {/* 중앙 */}
       {/* ⚠️ 좌우 패딩 없음 — 상자 무대가 화면 폭을 다 써야 옆 상자가 안 잘린다.
           패딩이 필요한 건 아래 보상 영역뿐이다. */}
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        {/* 상자 뒤 glow(일반·보라) — 상자를 중심으로 놓여야 해서 중앙 컨테이너 안에 둔다. */}
-        {gradeStyle.backdrop.kind === 'glow' && (
-          <BoxBackdrop spec={gradeStyle.backdrop} />
-        )}
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: STAGE_LIFT }}>
 
         {/* 상자 무대.
-            ⚠️ 터치 영역은 '보이는 상자' rect로 둔다. Lottie(viewSize)는 rect보다 훨씬 크지만
-               `overflow: visible`로 rect 밖까지 그려질 뿐, 터치는 rect 안에서만 받는다.
-               (rect들은 서로 안 겹치므로 옆 상자를 눌러도 그 상자가 열린다. viewSize를 터치
-                영역으로 쓰면 가운데 상자가 화면 폭을 다 덮어 옆 상자 탭을 삼켜 버린다.)
+            ⚠️ 탭 판정은 슬롯별이 아니라 **무대 전체 하나**다. 한 번 누르면 남은 상자가
+               전부 열리므로 "어느 상자를 눌렀나"를 가릴 필요가 없어졌고, 덕분에 판정
+               영역을 훨씬 크게 잡을 수 있다(예전엔 이웃과 겹치면 엉뚱한 상자가 열려서
+               가로를 3%밖에 못 넓혔다).
+            ⚠️ 그래서 Lottie는 Pressable 안의 형제로 두고 전부 pointerEvents:none이다.
+               Lottie 뷰는 상자의 3.6배라 부모 밖까지 뻗는데, RN은 overflow visible이면
+               부모 밖 좌표도 자식으로 내려보내(TouchTargetHelper) 판정이 어긋난다.
             ⚠️ zIndex는 쓰지 않는다(안드로이드 터치 판정과 어긋남) — 뒤 상자부터 렌더링해
-               가운데가 위에 그려지게만 한다. */}
-        {/* ⚠️ 무대 높이는 그림(stageH)이 아니라 탭 여백까지 포함한 값이다. 안드로이드가
-            부모 밖 터치를 안 주기 때문. 늘린 만큼 marginBottom 음수로 상쇄해서
-            가운데 정렬은 그대로 둔다(상자가 위로 밀려 올라가지 않게). */}
+               가운데가 위에 그려지게만 한다.
+            ⚠️ 무대 높이는 그림(stageH)이 아니라 탭 여백까지 포함한 값이다. 안드로이드가
+               부모 밖 터치를 안 주기 때문. 늘린 만큼 marginBottom 음수로 상쇄해서
+               가운데 정렬은 그대로 둔다(상자가 위로 밀려 올라가지 않게). */}
+        {/* 등급 연출 — 일반은 안 그린다. 귀한 등급만 글로우·반짝임이 켜진다. */}
+        <GradeFlair grade={box.grade} boxSize={stageH} />
+
         <View style={{
           height: stageH + touchPad,
           width: screenW,
           marginBottom: -touchPad,
           transform: [{ translateY: STAGE_OFFSET_Y }],
         }}>
-          {[...slots.keys()]
-            .sort((a, b) => slots[a].z - slots[b].z)
-            .map((i) => {
-              const slot = slots[i];
-              const rect = slotRect(slot, screenW, stageH);
-              const touch = slotTouchRect(slot, screenW, stageH);
-              return (
-                <PressableScale
-                  key={`${currentIndex}-${i}`}
-                  onPress={() => open([i])}
-                  pressedScale={0.94}
-                  accessibilityRole="button"
-                  accessibilityLabel="상자 열기"
-                  style={{
-                    position: 'absolute',
-                    left: touch.x,
-                    top: touch.y,
-                    width: touch.w,
-                    height: touch.h,
-                    opacity: slot.opacity,
-                    overflow: 'visible',
-                  }}
-                >
+          <PressableScale
+            onPress={openAll}
+            pressedScale={0.94}
+            accessibilityRole="button"
+            accessibilityLabel={slots.length > 1 ? '상자 모두 열기' : '상자 열기'}
+            style={{
+              position: 'absolute',
+              left: touchArea.x,
+              top: touchArea.y,
+              width: touchArea.w,
+              height: touchArea.h,
+              overflow: 'visible',
+            }}
+          >
+            {[...slots.keys()]
+              .sort((a, b) => slots[a].z - slots[b].z)
+              .map((i) => {
+                const slot = slots[i];
+                const rect = slotRect(slot, screenW, stageH);
+                return (
                   <LottieView
                     key={`${currentIndex}-${box.grade}-${i}`}
                     ref={(r) => { lottieRefs.current[i] = r; }}
-                    source={gradeStyle.anim}
+                    source={GRADE_ANIM[box.grade]}
                     autoPlay={false}
                     loop={false}
                     speed={1.6}
                     // 갱신은 한 번만 흘리면 되므로 가운데 상자 하나에만 건다.
                     onAnimationFinish={slot.z === 2 ? flushRefresh : undefined}
-                    // ⚠️ 터치 판정에서 뺀다. Lottie 뷰는 상자의 3.6배라 부모 밖까지 뻗는데,
-                    //    RN은 overflow visible + clipChildren=false면 부모 밖 좌표도 자식으로
-                    //    내려보낸다(TouchTargetHelper). 그대로 두면 가운데 상자의 캔버스가
-                    //    옆 상자 영역을 덮어 엉뚱한 상자가 열릴 수 있다. 판정은 Pressable 사각형만.
-                    //    (LottieView는 pointerEvents prop을 안 받아 style로 준다)
                     // 탭 영역이 커져도 그림은 안 움직이게, '보이는 상자' 중심에 절대배치한다.
+                    // (LottieView는 pointerEvents prop을 안 받아 style로 준다)
                     style={{
                       pointerEvents: 'none',
                       position: 'absolute',
-                      left: rect.x + rect.w / 2 - touch.x - slot.viewSize / 2,
-                      top: rect.y + rect.h / 2 - touch.y - slot.viewSize / 2,
+                      opacity: slot.opacity,
+                      left: rect.x + rect.w / 2 - touchArea.x - slot.viewSize / 2,
+                      top: rect.y + rect.h / 2 - touchArea.y - slot.viewSize / 2,
                       width: slot.viewSize,
                       height: slot.viewSize,
                     }}
                   />
-                </PressableScale>
-              );
-            })}
+                );
+              })}
+          </PressableScale>
 
           {/* 획득 캐시 칩 — 터치 영역과 분리해 '보이는 상자'(rect) 아래에 따로 얹는다.
               (터치 영역은 viewSize라 커서, 칩을 그 안에 두면 위치가 어긋난다.) */}
@@ -488,101 +523,6 @@ export default function BoxOpenScreen({
             })}
         </View>
 
-        {/* 보상 자리 — 높이 고정(레이아웃 점프 방지). 내용만 갈아끼운다. */}
-        <View style={{
-          height: REWARD_SLOT_H,
-          alignSelf: 'stretch',
-          alignItems: 'center',
-          paddingHorizontal: STAGE_PAD,
-          // 상자에서 떨어지는 파티클과 글자가 겹치지 않도록 충분히 띄운다.
-          marginTop: REWARD_GAP,
-        }}>
-        {/* 아직 안 연 상자가 있으면 안내만 — 총합은 다 열고 나서 보여준다. */}
-        {phase === 'revealed' && result && !allOpened && (
-          <Animated.View entering={FadeInUp.duration(300)} style={{ marginTop: 28 }}>
-            <AppText variant="label" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              남은 상자를 눌러 열어보세요
-            </AppText>
-          </Animated.View>
-        )}
-
-        {allOpened && result && (
-          <Animated.View
-            entering={FadeInUp.duration(380)}
-            style={{ alignItems: 'center', marginTop: 16 }}
-          >
-            {gradeStyle.badge && (
-              <View style={{
-                borderRadius: 20,
-                paddingHorizontal: 12,
-                paddingVertical: 5,
-                marginBottom: 12,
-                backgroundColor: gradeStyle.badge.bg,
-                borderWidth: 1,
-                borderColor: gradeStyle.badge.border,
-              }}>
-                <AppText
-                  variant="caption"
-                  style={{ color: gradeStyle.badge.text, fontWeight: '800' }}
-                >
-                  {gradeStyle.badge.label}
-                </AppText>
-              </View>
-            )}
-            <AppText
-              variant="label"
-              style={{ color: 'rgba(255,255,255,0.38)', marginBottom: 14, letterSpacing: -0.2 }}
-            >
-              캐시를 획득했어요
-            </AppText>
-
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-              {/* 코인 아이콘 */}
-              <View style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: yellow[400],
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 10,
-                shadowColor: yellow[400],
-                shadowOpacity: 0.55,
-                shadowRadius: 14,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 8,
-              }}>
-                <AppText style={{ color: '#7A6100', fontWeight: '900', fontSize: 15 }}>C</AppText>
-              </View>
-
-              <AppText style={{
-                fontSize: 52,
-                fontWeight: '800',
-                color: yellow[400],
-                letterSpacing: -2,
-                lineHeight: 56,
-              }}>
-                {result.reward_cash.toLocaleString()}
-              </AppText>
-
-              <AppText style={{
-                fontSize: 22,
-                fontWeight: '700',
-                color: `${yellow[400]}88`,
-                marginBottom: 10,
-              }}>
-                C
-              </AppText>
-            </View>
-
-            <AppText
-              variant="caption"
-              style={{ color: 'rgba(255,255,255,0.26)', marginTop: 6 }}
-            >
-              잔액 {result.balance_after.toLocaleString()} C
-            </AppText>
-          </Animated.View>
-        )}
 
         {/* 이미 개봉된 상자(409) — 보상 금액 미상, 안내로 대체 */}
         {phase === 'revealed' && !result && alreadyOpened && (
@@ -604,25 +544,18 @@ export default function BoxOpenScreen({
             </AppText>
           </Animated.View>
         )}
-        </View>
       </View>
 
-      {/* 하단 버튼 */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 30, paddingTop: 8 }}>
+      {/* 주액션.
+          ⚠️ 화면 맨 아래에 붙이지 않는다. 상자가 세로 중앙보다 살짝 아래 있어서,
+             버튼까지 바닥에 붙으면 둘 사이가 텅 비고 버튼만 멀리 떨어져 보인다.
+             바닥에서 충분히 띄워 상자와 한 덩어리로 읽히게 한다. */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 56, paddingTop: 8 }}>
+        {/* 결과 페이지가 '다음 상자 / 홈으로'를 맡는다. 여기선 여는 버튼만 둔다.
+            ⚠️ 비활성 상태를 따로 두지 않는다 — 재입력은 open()이 phase로 막는다. */}
         {!allOpened ? (
-          // 버튼은 남은 상자를 전부 연다. ⚠️ disabled를 쓰지 않는다 — Button의 disabled
-          // 면색(bg-bg-tertiary)이 라이트 토큰이라 어두운 개봉 화면에서 흰색으로 번쩍인다.
-          // 개봉 중 재입력은 open()이 phase로 막으므로 버튼은 활성인 채로 둔다.
-          <Button
-            title={phase === 'sealed' ? '상자 열기' : '남은 상자 열기'}
-            onPress={openAll}
-          />
-        ) : (
-          <Button
-            title={isLast ? '홈으로' : '다음 상자 열기'}
-            onPress={handleNext}
-          />
-        )}
+          <Button title="상자 열기" size="lg" onPress={openAll} />
+        ) : null}
       </View>
     </SafeAreaView>
   );

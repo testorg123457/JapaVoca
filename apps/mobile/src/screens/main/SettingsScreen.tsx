@@ -97,11 +97,6 @@ export default function SettingsScreen(): React.JSX.Element {
             leftIcon="bell"
             title="알림"
             onPress={() => navigation.navigate('NotificationSettings')}
-          />
-          <ListRow
-            leftIcon="sparkles"
-            title="화면 · 소리"
-            onPress={() => navigation.navigate('DisplaySettings')}
             last
           />
         </ListSection>

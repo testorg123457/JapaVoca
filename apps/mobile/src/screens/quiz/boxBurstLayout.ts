@@ -36,10 +36,10 @@ export const MAX_BOX_SIZE = 108;
 /** 3개일 때 가운데 상자 — 낱개보다 조금 크게. */
 const BURST_CENTER = 104;
 
-const SIDE_RATIO = 0.72; // 옆 상자 크기 = 가운데의 72%
-// 옆 상자를 충분히 벌린다. 너무 겹치면 드러난 부분이 없어 탭할 수가 없다.
+const SIDE_RATIO = 0.8; // 옆 상자 크기 = 가운데의 80%
+// 옆 상자를 충분히 벌린다. 너무 겹치면 셋이 한 덩어리로 뭉개져 보인다.
 const SIDE_DX = 0.92;
-const SIDE_DY = -0.15; // 위로 물러남 — 옆 상자 윗부분이 드러나 탭할 곳이 생긴다
+const SIDE_DY = -0.15; // 위로 물러남 — 뒤에 있는 느낌
 const SIDE_OPACITY = 1; // 반투명하게 두지 않는다 — 크기·위치·겹침만으로 원근을 낸다
 
 function slot(dx: number, dy: number, size: number, z: number, opacity: number): BoxSlot {
@@ -56,9 +56,9 @@ export function boxBurstLayout(count: number, availWidth: number): BoxSlot[] {
     return single;
   }
 
-  // 가장 바깥 끝 = SIDE_DX*c + (SIDE_RATIO*c)/2 = 1.28c 이므로 c ≤ availWidth/2.56.
+  // 가장 바깥 끝 = SIDE_DX*c + (SIDE_RATIO*c)/2 = 1.32c 이므로 c ≤ availWidth/2.64.
   // 좁은 화면에서만 이 상한이 걸린다.
-  const center = Math.round(Math.min(BURST_CENTER, availWidth / 2.56));
+  const center = Math.round(Math.min(BURST_CENTER, availWidth / 2.64));
   const side = Math.round(center * SIDE_RATIO);
   const dx = Math.round(center * SIDE_DX);
   const dy = Math.round(center * SIDE_DY);
@@ -87,22 +87,33 @@ export function slotRect(s: BoxSlot, stageW: number, stageH: number) {
  *
  * ⚠️ 탭 영역을 '보이는 상자' 사각형과 똑같이 두면 상자 위쪽을 눌러야만 열린다.
  *    Lottie 그림이 캔버스 정중앙이 아니라 아래로 치우쳐 있어서, 눈에 보이는 상자가
- *    사각형보다 아래에 그려지기 때문이다. 그래서 아래로 크게 넓힌다.
- *    (위쪽도 조금 남겨둔다 — 지금 눌러서 열리던 자리를 뺏지 않으려고.)
+ *    사각형보다 아래에 그려지기 때문이다. 그래서 아래로 더 크게 넓힌다.
  *
- * 가로는 거의 못 넓힌다. 옆 상자와 6px 정도밖에 안 떨어져 있어서(SIDE_DX 참고)
- * 넓히면 이웃 영역을 삼켜 엉뚱한 상자가 열린다.
+ * ⚠️ 묶음은 **더 크게** 잡는다. 탭 한 번에 셋이 다 열리므로 옆 상자를 개별로 겨냥할
+ *    이유가 없어졌고, 그래서 이웃 영역과 겹쳐도 상관없다(예전엔 겹치면 엉뚱한 상자가
+ *    열려서 가로를 3%밖에 못 넓혔다).
+ * ⚠️ 낱개는 적당히만. 화면 절반이 버튼처럼 되면 어디를 눌러도 열려서 오히려 이상하다.
  */
-export const TOUCH_PAD_BOTTOM = 0.6;
-export const TOUCH_PAD_TOP = 0.18;
-export const TOUCH_PAD_X = 0.03;
+type TouchPad = { x: number; top: number; bottom: number };
+export const SINGLE_TOUCH_PAD: TouchPad = { x: 0.22, top: 0.28, bottom: 0.75 };
+export const BURST_TOUCH_PAD: TouchPad = { x: 0.3, top: 0.35, bottom: 0.85 };
 
-/** 탭 영역 사각형. 그림은 그대로 두고 누를 수 있는 범위만 넓힌다. */
-export function slotTouchRect(s: BoxSlot, stageW: number, stageH: number) {
+/** 슬롯 개수에 맞는 여백. */
+export function touchPadFor(slotCount: number): TouchPad {
+  return slotCount > 1 ? BURST_TOUCH_PAD : SINGLE_TOUCH_PAD;
+}
+
+/** 한 슬롯의 탭 영역. 그림은 그대로 두고 누를 수 있는 범위만 넓힌다. */
+export function slotTouchRect(
+  s: BoxSlot,
+  stageW: number,
+  stageH: number,
+  pad: TouchPad = SINGLE_TOUCH_PAD,
+) {
   const r = slotRect(s, stageW, stageH);
-  const padX = Math.round(s.size * TOUCH_PAD_X);
-  const padTop = Math.round(s.size * TOUCH_PAD_TOP);
-  const padBottom = Math.round(s.size * TOUCH_PAD_BOTTOM);
+  const padX = Math.round(s.size * pad.x);
+  const padTop = Math.round(s.size * pad.top);
+  const padBottom = Math.round(s.size * pad.bottom);
   return {
     x: r.x - padX,
     y: r.y - padTop,
@@ -112,11 +123,32 @@ export function slotTouchRect(s: BoxSlot, stageW: number, stageH: number) {
 }
 
 /**
+ * 상자 전체를 덮는 **하나의** 탭 영역(= 각 슬롯 탭 영역의 합집합).
+ *
+ * 탭 한 번에 남은 상자를 전부 열기 때문에 판정도 하나면 된다. 슬롯마다 Pressable을
+ * 두던 예전 방식은 "어느 상자를 눌렀나"를 가려야 해서 영역을 좁게 잡을 수밖에 없었다.
+ *
+ * 가로는 무대 밖으로 나가지 않게 자른다 — 안드로이드는 부모 밖 터치를 자식에게 안 준다.
+ */
+export function boxTouchArea(slots: BoxSlot[], stageW: number, stageH: number) {
+  const pad = touchPadFor(slots.length);
+  const rects = slots.map((s) => slotTouchRect(s, stageW, stageH, pad));
+  const left = Math.max(0, Math.min(...rects.map((r) => r.x)));
+  const right = Math.min(stageW, Math.max(...rects.map((r) => r.x + r.w)));
+  // ⚠️ 위쪽은 무대 밖으로 넘기지 않는다. 안드로이드는 부모 밖 터치를 자식에게 안 줘서
+  //    어차피 죽은 영역인데, 위로 삐져나가면 상단 X 버튼 근처를 덮을 위험만 생긴다.
+  const top = Math.max(0, Math.min(...rects.map((r) => r.y)));
+  const bottom = Math.max(...rects.map((r) => r.y + r.h));
+  return { x: left, y: top, w: right - left, h: bottom - top };
+}
+
+/**
  * 탭 영역이 무대 아래로 삐져나가는 양.
  *
  * ⚠️ 안드로이드는 부모 밖의 터치를 자식에게 안 준다. 아래로 넓힌 만큼 무대 높이를
  *    늘려야 실제로 눌린다(늘린 만큼은 marginBottom 음수로 상쇄해 그림 위치는 유지).
  */
 export function boxStageTouchPad(slots: BoxSlot[]): number {
-  return Math.round(Math.max(...slots.map((s) => s.size)) * TOUCH_PAD_BOTTOM);
+  const pad = touchPadFor(slots.length);
+  return Math.round(Math.max(...slots.map((s) => s.size)) * pad.bottom);
 }

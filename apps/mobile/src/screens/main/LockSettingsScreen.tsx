@@ -10,6 +10,8 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { AppHeader, AppText, ConfirmSheet, ListRow, ListSection, ToggleRow } from '../../components';
+import { isSfxEnabled, setSfxEnabled } from '../../store/sfx';
+import { preloadSfx } from '../../lib/sfx';
 import {
   disableLockScreen,
   enableLockScreen,
@@ -23,6 +25,9 @@ export default function LockSettingsScreen({
 }: MainStackScreenProps<'LockSettings'>): React.JSX.Element {
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockSheetVisible, setLockSheetVisible] = useState(false);
+  // 효과음은 기기 설정(MMKV)이라 서버 프로필과 무관하다. MMKV는 반응형이 아니므로
+  // 초기값만 읽어 로컬 state로 들고 간다.
+  const [sfxOn, setSfxOn] = useState(isSfxEnabled);
 
   useEffect(() => {
     isLockScreenEnabled().then(setLockEnabled);
@@ -52,6 +57,22 @@ export default function LockSettingsScreen({
                 last
               />
             </ListSection>
+
+            <View>
+              <ListSection title="소리">
+                <ToggleRow
+                  title="정답 · 오답 효과음"
+                  value={sfxOn}
+                  onValueChange={(v) => { setSfxOn(v); setSfxEnabled(v); if (v) { preloadSfx(); } }}
+                  last
+                />
+              </ListSection>
+              {/* ⚠️ 이 설정은 잠금화면 전용이 아니다. 앱에서 푸는 퀴즈에도 적용되므로
+                  "잠금화면에서만 나는 소리"로 오해하지 않도록 한 줄 덧붙인다. */}
+              <AppText variant="caption" className="mt-md px-xl text-text-tertiary">
+                앱에서 푸는 퀴즈에도 함께 적용돼요.
+              </AppText>
+            </View>
 
             <ListSection title="꾸미기">
               <ListRow

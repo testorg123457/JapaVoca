@@ -17,11 +17,29 @@ from django.utils import timezone
 from .models import CashBox, Daily, Ledger, Wallet
 
 # 개봉 시 등급별 캐시 보상 범위.
-BOX_REWARD_RANGE = {
-    CashBox.Grade.NORMAL: (1, 4),    # 기존 (10,40)의 1/10, 최대치 축소 (임시)
-    CashBox.Grade.PURPLE: (5, 15),   # 일반 최대치(4) 초과부터 (임시)
-    CashBox.Grade.BURGUNDY: (16, 40),  # 보라 최대치(15) 초과부터 (임시 — 확률·금액 미확정)
+# 등급별 보상 구간 — 등급 안에서 다시 저·중·고 3구간으로 나누고 50/30/20 가중.
+# 같은 등급에서도 "오늘은 좀 더 나왔네"가 생기고, 무게가 아래쪽에 실려 기대값이 눌린다.
+#
+# ⚠️ 구간은 **빈틈 없이** 붙인다. 중간 값이 비면 그 숫자만 영영 안 나온다.
+# ⚠️ 등급끼리 **겹치지 않는다**(일반 최대 10 < 파랑 최소 11 …). 겹치면 등급을 나눈 의미가 없다.
+# 근거·기대값 계산은 docs/캐시-경제-설계.md.
+BOX_REWARD_BANDS = {
+    CashBox.Grade.NORMAL:   [((5, 6), 50), ((7, 8), 30), ((9, 10), 20)],      # 평균 6.9
+    CashBox.Grade.BLUE:     [((11, 12), 50), ((13, 14), 30), ((15, 16), 20)],  # 평균 12.9
+    CashBox.Grade.PURPLE:   [((17, 24), 50), ((25, 33), 30), ((34, 40), 20)],  # 평균 26.35
+    CashBox.Grade.BURGUNDY: [((41, 65), 50), ((66, 95), 30), ((96, 120), 20)], # 평균 72.25
 }
+
+
+def roll_box_reward(grade) -> int:
+    """등급 하나에서 보상 1개를 뽑는다. 구간을 가중 추첨한 뒤 그 안에서 균등 추첨.
+
+    ⚠️ 확률은 반드시 서버에서만 굴린다(클라이언트 값 신뢰 금지).
+    """
+    bands = BOX_REWARD_BANDS[grade]
+    ranges, weights = zip(*bands)
+    lo, hi = random.choices(ranges, weights=weights, k=1)[0]
+    return random.randint(lo, hi)
 
 
 class CashError(Exception):
@@ -121,9 +139,8 @@ def open_cash_box(user, box_id, *, ad_verified=False, ad_log_id=None) -> tuple[C
 
     # 묶음 상자(burst_count>1)는 보상을 개수만큼 각각 굴린다. 인벤토리·광고 횟수는
     # 1개로 세지만 캐시는 여러 번 뽑는 셈. 원장은 묶음 하나이므로 합계 1건만 남긴다.
-    lo, hi = BOX_REWARD_RANGE[box.grade]
     count = max(1, box.burst_count)
-    breakdown = [random.randint(lo, hi) for _ in range(count)]
+    breakdown = [roll_box_reward(box.grade) for _ in range(count)]
     reward = sum(breakdown)
 
     box.reward_cash = reward
@@ -159,10 +176,15 @@ def wallet_is_consistent(user) -> bool:
 
 
 def list_unopened_boxes(user):
-    """미개봉 상자 목록(최신순)."""
+    """미개봉 상자 목록 — **먼저 받은 것부터**(FIFO).
+
+    ⚠️ 예전엔 최신순(-created_at)이었다. 개봉 화면은 항상 목록의 첫 상자를 열기 때문에,
+       그러면 오래된 상자가 계속 뒤로 밀려 영영 안 열린다. 지금은 유효기간이 없어 피해가
+       없지만, 붙이는 순간 사용자 모르게 캐시가 만료된다. 재고는 먼저 들어온 것부터 나간다.
+    """
     return CashBox.objects.filter(
         user=user, status=CashBox.Status.UNOPENED,
-    ).order_by('-created_at')
+    ).order_by('created_at')
 
 
 def get_today_daily(user) -> dict:

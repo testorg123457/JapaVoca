@@ -12,6 +12,7 @@ import type { MainStackParamList } from './types';
 import HomeScreen from '../screens/main/HomeScreen';
 import LockQuizScreen from '../screens/quiz/LockQuizScreen';
 import BoxOpenScreen from '../screens/quiz/BoxOpenScreen';
+import BoxResultScreen from '../screens/quiz/BoxResultScreen';
 import KanaScreen from '../screens/main/KanaScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import AccountSettingsScreen from '../screens/main/AccountSettingsScreen';
@@ -28,7 +29,6 @@ import ReferralRedeemScreen from '../screens/main/ReferralRedeemScreen';
 import ReferralScreen from '../screens/main/ReferralScreen';
 import StudySettingsScreen from '../screens/main/StudySettingsScreen';
 import NotificationSettingsScreen from '../screens/main/NotificationSettingsScreen';
-import DisplaySettingsScreen from '../screens/main/DisplaySettingsScreen';
 import BookmarkScreen from '../screens/main/BookmarkScreen';
 import JapaneseTranslateScreen from '../screens/main/JapaneseTranslateScreen';
 import TranslateCropScreen from '../screens/main/TranslateCropScreen';
@@ -50,12 +50,16 @@ export default function MainStack(): React.JSX.Element {
         component={BoxOpenScreen}
         options={{ presentation: 'fullScreenModal' }}
       />
+      <Stack.Screen
+        name="BoxResult"
+        component={BoxResultScreen}
+        options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+      />
       <Stack.Screen name="Kana" component={KanaScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <Stack.Screen name="StudySettings" component={StudySettingsScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
-      <Stack.Screen name="DisplaySettings" component={DisplaySettingsScreen} />
       <Stack.Screen name="LockSettings" component={LockSettingsScreen} />
       <Stack.Screen name="LockTheme" component={LockThemeScreen} />
       <Stack.Screen name="TermsDetail" component={TermsDetailScreen} />

@@ -4,9 +4,9 @@
  * 신원/계정 영역만 담는다: 계정 연결(구글/카카오) · 약관·정책 · 회원 탈퇴.
  * 설정 첫 화면의 **프로필 블록을 탭하면** 여기로 온다.
  *
- * ⚠️ 예전에 얹혀 있던 두 가지를 뺐다(2026-08-04) — 계정과 무관해서다.
- *    · 친구 초대 → `Referral`(설정 > 리워드). 캐시가 걸린 리워드 기능이다.
- *    · 테마 모드 → `DisplaySettings`(설정 > 앱 > 화면·소리). 앱 표시 설정이다.
+ * ⚠️ 친구 초대는 뺐다(2026-08-04) → `Referral`(설정 > 리워드). 캐시가 걸린 리워드 기능이다.
+ * ⚠️ 테마는 여기 있다. 잠깐 '화면·소리'로 분리했다가 되돌렸다 — 앱 전체 표시 설정이라
+ *    잠금화면 밑에 둘 수 없고, 그렇다고 1~2줄짜리 화면을 따로 둘 만큼도 아니었다.
  */
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -20,6 +20,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 import { AppHeader, ConfirmSheet, ListRow, ListSection, useToast } from '../../components';
+import { ThemePicker } from './components/ThemePicker';
 import { useMe } from '../../api/hooks';
 import { loginWithKakaoAccount } from '@react-native-seoul/kakao-login';
 import { deleteAccount, linkAccount } from '../../api/auth';
@@ -120,6 +121,10 @@ export default function AccountSettingsScreen(): React.JSX.Element {
     <View className="flex-1 bg-bg-secondary">
       <AppHeader title="계정 설정" showBack />
       <ScrollView contentContainerClassName="gap-2xl py-xl" showsVerticalScrollIndicator={false}>
+        <ListSection title="화면 테마">
+          <ThemePicker />
+        </ListSection>
+
         {/* 계정 연결 — 게스트만. 이미 연결된 유저에겐 '연결됨' 한 줄이 무의미해 섹션을 숨긴다. */}
         {m?.is_guest && (
           <ListSection title="계정 연결">

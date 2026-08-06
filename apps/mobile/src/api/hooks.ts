@@ -145,7 +145,7 @@ export function useLedger(direction?: LedgerDirection) {
   });
 }
 
-export type BoxGrade = 'normal' | 'purple' | 'burgundy';
+export type BoxGrade = 'normal' | 'blue' | 'purple' | 'burgundy';
 /**
  * 미개봉 상자 1개.
  * burst_count: 이 상자가 주는 보상 개수(1 또는 3). 3이어도 인벤토리·광고 횟수는

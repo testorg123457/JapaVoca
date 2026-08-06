@@ -33,6 +33,7 @@ import { useBoxes, useDailyToday, useReferral, useWallet } from '../../api/hooks
 import { markReferralPromptShown, wasReferralPromptShown } from '../../store/auth';
 import { ReferralPromptModal } from './components/ReferralPromptModal';
 import { useUnreadCount } from '../../api/notifications';
+import { GRADE_COLOR, GRADE_LABEL, summarizeBoxes } from '../../lib/boxGrade';
 import { HomeBannerCarousel } from './components/HomeBannerCarousel';
 import type { MainStackScreenProps } from '../../navigation/types';
 
@@ -60,6 +61,8 @@ export default function HomeScreen(): React.JSX.Element {
 
   const balance = wallet.data?.balance ?? 0;
   const boxCount = boxes.data?.length ?? 0;
+  /** 등급별 보유 현황 — 어떤 상자를 갖고 있는지 홈에서 바로 보이게. */
+  const gradeCounts = summarizeBoxes(boxes.data);
   const todayCorrectCount = daily.data?.correct_count ?? 0;
   const cycleCorrectCount = todayCorrectCount % 10;
   const justCompletedTen = todayCorrectCount > 0 && cycleCorrectCount === 0;
@@ -256,9 +259,31 @@ export default function HomeScreen(): React.JSX.Element {
                   <AppText variant="title" className="text-text-primary">
                     {hasBoxes ? `보유 상자 ${boxCount}개` : '상자가 아직 없어요'}
                   </AppText>
-                  <AppText variant="body" className="text-text-tertiary">
-                    {hasBoxes ? '탭해서 바로 열어보세요' : '퀴즈를 풀면 상자를 받을 수 있어요'}
-                  </AppText>
+                  {/* 등급별 보유 — 점 색이 곧 등급이다(장식 아님). 개수가 0인 등급은 안 나온다.
+                      ⚠️ 묶음 상자도 1개로 센다. 인벤토리·광고 횟수가 1개라서. */}
+                  {hasBoxes ? (
+                    <View className="flex-row flex-wrap items-center" style={{ gap: 10, marginTop: 2 }}>
+                      {gradeCounts.map(({ grade, count }) => (
+                        <View key={grade} className="flex-row items-center" style={{ gap: 5 }}>
+                          <View
+                            style={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: 4,
+                              backgroundColor: GRADE_COLOR[grade],
+                            }}
+                          />
+                          <AppText variant="caption" className="text-text-secondary">
+                            {GRADE_LABEL[grade]} {count}
+                          </AppText>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <AppText variant="body" className="text-text-tertiary">
+                      퀴즈를 풀면 상자를 받을 수 있어요
+                    </AppText>
+                  )}
                 </View>
                 {hasBoxes ? (
                   <Icon name="chevron-right" size={20} color={c['text-tertiary']} strokeWidth={2.2} />

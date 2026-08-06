@@ -89,7 +89,14 @@ export const primitives = {
   // 단색 기능색(스케일 불필요) — 500=메인, 50=옅은 배경
   green: { 50: '#E6F9EE', 500: '#2AC171' }, // success
   blue: { 50: '#EBF2FF', 500: '#3D7FE8' }, // info
-  purple: { 50: '#F3EEFE', 500: '#7C4DFF' }, // 상자 등급색(purple — BoxOpenScreen)
+  // 상자 등급색(purple — BoxOpenScreen). burgundy와 같은 4단계 램프를 둔다 —
+  // 개봉 화면의 방사 그라데이션이 중심(밝음)→바깥(어두움) 단계를 필요로 한다.
+  purple: { 50: '#F3EEFE', 300: '#A98BFF', 500: '#7C4DFF', 700: '#43227F', 900: '#241247' },
+  // 상자 등급색(blue 등급 — 레어). ⚠️ 이름을 `blue`로 두면 위 info용 `blue`와 키가 겹쳐
+  //    info가 조용히 덮어써진다. 보석 이름(purple/burgundy 관례)을 따라 sapphire로 둔다.
+  // ⚠️ 값은 blue-box-animation.json 실제 색에서 뽑았다 — 상자 그림과 배경 빛이 한 세트로
+  //    보이려면 같은 램프를 써야 한다(버건디가 그렇다).
+  sapphire: { 300: '#5FA8FF', 500: '#0B6BD8', 700: '#0A3F86', 900: '#06184A' },
   // 상자 최고 등급(burgundy — BoxOpenScreen). "검정 + 버건디".
   // ⚠️ danger 레드(#E8432D)와 역할이 다르다. 레드=경고·오답·캐시 차감, 버건디=등급.
   //    레드는 밝은 주황빛(B 45), 버건디는 어둡고 자홍 쪽(B 69 > G 41)이라 구분된다.

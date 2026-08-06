@@ -7,6 +7,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BoxItem } from '../api/hooks';
+import type { OpenBoxResult } from '../api/boxes';
 import type { GiftExchange } from '../api/exchange';
 
 export type RootStackParamList = {
@@ -36,6 +37,8 @@ export type MainStackParamList = {
   /** 학습 퀴즈. 인앱 진입 + 잠금화면(LockApp)이 공유하는 단일 퀴즈 화면. */
   LockQuiz: undefined;
   BoxOpen: { boxes: BoxItem[] };
+  /** 개봉 결과 — 획득 캐시 확인 + 디스플레이 광고. remaining은 아직 안 연 상자. */
+  BoxResult: { result: OpenBoxResult; remaining: BoxItem[] };
   /** 히라가나/가타카나 학습. */
   Kana: undefined;
   /** 설정(헤더 우측 버튼으로 진입). 첫 화면은 "무엇을 바꿀지 고르는 목차"다. */
@@ -46,8 +49,6 @@ export type MainStackParamList = {
   StudySettings: undefined;
   /** 알림 설정(설정 > 앱 > 알림) — 푸시 토글들. 알림 '목록'은 Notifications. */
   NotificationSettings: undefined;
-  /** 화면·소리(설정 > 앱) — 테마 모드 + 효과음. */
-  DisplaySettings: undefined;
   /** 친구 초대(설정 > 리워드) — 내 코드 공유 + 추천인 코드 입력 진입. */
   Referral: undefined;
   /** 잠금화면 학습 설정(설정 > 잠금화면 설정). */

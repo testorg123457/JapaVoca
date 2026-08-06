@@ -11,7 +11,7 @@ from django.test import TestCase
 from accounts.models import User
 
 from .models import CashBox, Ledger, Wallet
-from .services import BOX_REWARD_RANGE, BoxAlreadyOpened, open_cash_box
+from .services import BOX_REWARD_BANDS, BoxAlreadyOpened, open_cash_box
 
 
 class OpenCashBoxTest(TestCase):
@@ -33,7 +33,8 @@ class OpenCashBoxTest(TestCase):
 
         box, ledger = open_cash_box(self.user, box.id)
 
-        lo, hi = BOX_REWARD_RANGE[CashBox.Grade.NORMAL]
+        bands = BOX_REWARD_BANDS[CashBox.Grade.NORMAL]
+        lo, hi = bands[0][0][0], bands[-1][0][1]
         self.assertEqual(len(box.reward_breakdown), 1)
         self.assertTrue(lo <= box.reward_cash <= hi)
         self.assertEqual(ledger.amount, box.reward_cash)
@@ -47,7 +48,8 @@ class OpenCashBoxTest(TestCase):
 
         # 보상은 3개, 각각 따로 굴린 값.
         self.assertEqual(len(box.reward_breakdown), 3)
-        lo, hi = BOX_REWARD_RANGE[CashBox.Grade.NORMAL]
+        bands = BOX_REWARD_BANDS[CashBox.Grade.NORMAL]
+        lo, hi = bands[0][0][0], bands[-1][0][1]
         for amount in box.reward_breakdown:
             self.assertTrue(lo <= amount <= hi)
 
@@ -104,7 +106,40 @@ class RollBurstCountTest(TestCase):
     def test_roll_returns_burst_or_single(self):
         from learning.services import BOX_BURST_COUNT, _roll_burst_count
 
-        with mock.patch('learning.services.random.random', return_value=0.0):
-            self.assertEqual(_roll_burst_count(), BOX_BURST_COUNT)
-        with mock.patch('learning.services.random.random', return_value=0.99):
-            self.assertEqual(_roll_burst_count(), 1)
+        for grade in CashBox.Grade.values:
+            with mock.patch('learning.services.random.random', return_value=0.0):
+                self.assertEqual(_roll_burst_count(grade), BOX_BURST_COUNT)
+            with mock.patch('learning.services.random.random', return_value=0.99):
+                self.assertEqual(_roll_burst_count(grade), 1)
+
+    def test_burst_chance_is_per_grade(self):
+        """묶음 확률은 등급마다 다르다 — 공통 상수 하나면 상위 등급 기대값이 통제 없이 커진다.
+
+        버건디 묶음은 최고 금액이 3번 굴러가는 단일 최대 지급 경로다.
+        """
+        from learning.services import _BOX_BURST_CHANCE
+
+        # 모든 등급에 값이 있어야 한다(빠지면 KeyError로 상자 생성이 터진다).
+        for grade in CashBox.Grade.values:
+            self.assertIn(grade, _BOX_BURST_CHANCE)
+
+    def test_reward_bands_cover_every_grade_without_gaps(self):
+        """구간은 빈틈 없이 붙고, 등급끼리 겹치지 않는다."""
+        from .services import BOX_REWARD_BANDS
+
+        order = [
+            CashBox.Grade.NORMAL, CashBox.Grade.BLUE,
+            CashBox.Grade.PURPLE, CashBox.Grade.BURGUNDY,
+        ]
+        prev_hi = 0
+        for grade in order:
+            bands = BOX_REWARD_BANDS[grade]
+            self.assertEqual(sum(w for _, w in bands), 100)
+            ranges = [r for r, _ in bands]
+            # 등급 안: 빈틈 없이 이어진다
+            for (lo, hi), (next_lo, _) in zip(ranges, ranges[1:]):
+                self.assertLessEqual(lo, hi)
+                self.assertEqual(next_lo, hi + 1)
+            # 등급 사이: 겹치지 않는다
+            self.assertGreater(ranges[0][0], prev_hi)
+            prev_hi = ranges[-1][1]
